@@ -1,6 +1,8 @@
-# AWS
+# AWS project
+
 ## Overview
-An AWS SAM project to stream users' Spotify activity, analyze the lyrics, and add some info to a Search index and Spotify.
+
+This is an AWS SAM project to stream users' Spotify activity, analyze the lyrics, and add some info to a Search index and Spotify.
 
 Uses the following components:
 - An OpenSearch domain (OpenSearchServiceDomain) to maintain an index with key lyric passages, along with metadata:
@@ -23,6 +25,7 @@ Uses the following components:
     - Almost all code for the Lambda functions is delegated to the layer; the handlers themselves only deal with parsing input and constructing responses
 
 ## Setup
+
 - Create a zip file to store the content for CommonLayer
     - In `./shared`, run `zip -r layer-package.zip nodejs node_modules`
 - An env.json file for running locally (check the template.yaml to figure out which variables each Lambda function needs)
