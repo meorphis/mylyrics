@@ -1,0 +1,161 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  OpenSearchServiceDomain:
+    Type: AWS::OpenSearchService::Domain
+    Properties:
+      ClusterConfig:
+        InstanceCount: '1'
+        InstanceType: 't3.small.search'
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: 10
+        VolumeType: 'gp2'
+  DefaultEncryptionPolicy:
+    Type: 'AWS::OpenSearchServerless::SecurityPolicy'
+    Properties:
+      Name: default-encryption-policy
+      Type: encryption
+      Description: Encryption policy for test collection
+      Policy: >-
+        {"Rules":[{"ResourceType":"collection","Resource":["collection/passage-collection", "collection/song-collection"]}],"AWSOwnedKey":true}
+  ProcessSongFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./handlers
+      Handler: process_song_function.handler
+      Runtime: nodejs18.x
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          SONG_TABLE_NAME: !Ref SongTable
+          OPENSEARCH_URL: !Sub "https://${OpenSearchServiceDomain.DomainEndpoint}/"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SongTable
+        - Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:openaiApiKey-cB7XLM
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'es:ESHttp*'
+            Resource: 
+              Fn::Join:
+                - ''
+                - - 'arn:aws:es:'
+                  - !Ref 'AWS::Region'
+                  - ':'
+                  - !Ref 'AWS::AccountId'
+                  - ':domain/'
+                  - !Ref OpenSearchServiceDomain
+                  - '/*'
+      Events:
+        addSongToSearchQueue:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ProcessSongQueue.Arn
+            BatchSize: 1
+      Layers:
+        - !Ref CommonLayer
+  ProcessSongQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ProcessSongDeadLetterQueue.Arn
+        maxReceiveCount: 3
+  ProcessSongDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 60
+  ProcessUsersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./handlers
+      Handler: process_users_function.handler
+      Runtime: nodejs18.x
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref UserTable
+          SONG_TABLE_NAME: !Ref SongTable
+          SONG_LISTEN_TABLE_NAME: !Ref SongListenTable
+          PROCESSSONGQUEUE_QUEUE_URL: !Ref ProcessSongQueue
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SongTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SongListenTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ProcessSongQueue.QueueName
+        - Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:spotifyClientSecret-HogZZp
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{deviceId}
+            Method: POST
+      Layers:
+        - !Ref CommonLayer
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  SongTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: songId
+          AttributeType: S
+        - AttributeName: artistId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: artistId
+          KeyType: HASH
+        - AttributeName: songId
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  SongListenTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: time
+          AttributeType: N
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: time
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      TimeToLiveSpecification:
+        AttributeName: expirationTime
+        Enabled: true
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ./shared/layer-package.zip
+      CompatibleRuntimes:
+        - nodejs18.x
+  

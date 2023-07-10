@@ -1,0 +1,7 @@
+aws/sample_events
+aws/shared/layer-package.zip
+aws/env.json
+aws/packaged.yaml
+aws/shared/node_modules
+aws/shared/nodejs
+aws/shared/package-lock.json
