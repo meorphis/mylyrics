@@ -6,7 +6,7 @@ import { getOpenAIClient } from "../../utility/clients";
 const OPEN_AI_PARAMS = {
   model: "gpt-3.5-turbo",
   temperature: 0.5,
-  top_p: 0.5,
+  top_p: 0.2,
 }
 
 // *** PUBLIC INTERFACE ***

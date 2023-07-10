@@ -98,11 +98,10 @@ Resources:
             Action: secretsmanager:GetSecretValue
             Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:spotifyClientSecret-HogZZp
       Events:
-        Api:
-          Type: Api
+        ProcessUsersScheduledEvent:
+          Type: Schedule
           Properties:
-            Path: /{deviceId}
-            Method: POST
+            Schedule: rate(3 minutes)
       Layers:
         - !Ref CommonLayer
   UserTable:

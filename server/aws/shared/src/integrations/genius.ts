@@ -1,6 +1,18 @@
 import axios from "axios";
 import {load as cheerioLoad} from "cheerio";
 import { Song } from "../utility/types";
+import { stringSimilarity } from "string-similarity-js";
+
+// *** CONSTANTS ***
+// minimum similarity (Sørensen–Dice coefficient) between the spotify song name and the genius song
+// name to consider them the same song
+const MIN_SONG_SIMILARITY = 0.1;
+
+// same as above but for artist names
+const MIN_ARTIST_SIMILARITY = 0.1;
+
+// the cutoff for the number of words in a song's lyrics before we truncate it
+const MAX_LYRICS_WORDS = 1000;
 
 // *** PUBLIC INTERFACE ***
 // takes as input an artist name and a song name and returns the lyrics
@@ -30,15 +42,41 @@ const getLyricsUrl = async ({song} : {song: Song}) : Promise<string | null> => {
   );
 
   try {
-    const songHits = searchResponse.data.response.sections[0].hits.filter((h: {
-      type: string, result: {url: string}
-    }) => h.type == "song")
+    const songHitsSection = searchResponse.data.response.sections.find(
+      (s: {type: string}) => s.type == "song"
+    );
 
-    if (songHits.length == 0) {
+    if (songHitsSection == null || songHitsSection.hits.length == 0) {
       return null;
     }
-  
-    return songHits[0].result.url;
+
+    const geniusSongName = songHitsSection.hits[0].result.title;
+    const geniusArtistName = songHitsSection.hits[0].result.primary_artist.name;
+
+    const geniusSongNameSimilarity = stringSimilarity(songName, geniusSongName);
+    const geniusArtistNameSimilarity = stringSimilarity(artistName, geniusArtistName);
+
+    console.log(`genius song similarity: ${JSON.stringify(
+      {
+        songName,
+        geniusSongName,
+        geniusSongNameSimilarity,
+        artistName,
+        geniusArtistName,
+        geniusArtistNameSimilarity,
+      }
+    )}`);
+
+    // if the song name or artist name is too different, we probably got the wrong song
+    // we might get some false positives here, but we prefer that vs. indexing the wrong song
+    if (
+      geniusSongNameSimilarity < MIN_SONG_SIMILARITY ||
+      geniusArtistNameSimilarity < MIN_ARTIST_SIMILARITY
+    ) {
+      return null;
+    }
+
+    return songHitsSection.hits[0].result.url;
   } catch (e) {
     throw Error(`could not parse genius response ${JSON.stringify(searchResponse.data)}`);
   }
@@ -46,25 +84,29 @@ const getLyricsUrl = async ({song} : {song: Song}) : Promise<string | null> => {
 
 const getLyricsFromUrl = async (url: string) => {
   const lyricsResponse = await axios.get(url);
-  const lyrics = lyricsResponse.data;
+  const lyricsHTML = lyricsResponse.data;
 
   try {
-    const $ = cheerioLoad(lyrics);
+    const $ = cheerioLoad(lyricsHTML);
 
     const lyricsContainer = $("[data-lyrics-container=\"true\"]");
 
-    // Replace <br> with newline
+    // replace <br> with newline
     $("br", lyricsContainer).replaceWith("\n");
 
-    // Replace the elements with their text contents
+    // replace the elements with their text contents
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     $("a", lyricsContainer).replaceWith(((_i: any, el: any) => $(el).text()) as any);
 
-    // Remove all child elements, leaving only top-level text content
+    // remove all child elements, leaving only top-level text content
     lyricsContainer.children().remove();
 
-    return lyricsContainer.text();
+    const lyrics = lyricsContainer.text();
+
+    // limit the number of words in the lyrics to avoid unbounded openai costs
+    return lyrics.split(" ").slice(0, MAX_LYRICS_WORDS).join(" ");
+
   } catch (e) {
-    throw Error(`could not parse genius response ${lyrics}`);
+    throw Error(`could not parse genius response ${lyricsHTML}`);
   }
 }
