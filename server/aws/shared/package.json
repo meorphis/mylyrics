@@ -25,6 +25,7 @@
     "node-cache": "^5.1.2",
     "openai": "^3.3.0",
     "spotify-web-api-node": "^5.0.2",
+    "string-similarity-js": "^2.1.4",
     "uuid": "^9.0.0",
     "weaviate-ts-client": "^1.4.0"
   }

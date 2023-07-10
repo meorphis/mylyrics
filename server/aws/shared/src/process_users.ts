@@ -13,7 +13,7 @@ import { Song } from "./utility/types";
 
 // *** CONSTANTS ***
 const SONG_LISTEN_EXPIRATION_SECONDS = 60 * 60 * 24 * 28; // 28 days
-const MAX_SONGS_PER_ARTIST = 10;
+const MAX_SONGS_PER_ARTIST = 5;
 
 // *** PUBLIC INTERFACE ***
 // for each user in the database, we add some data to dynamo and search depending on the user's
@@ -126,13 +126,19 @@ const getUserCurrentlyPlayingSongData = async (
 ) => {
   const sp = getSpotifyClient(spotifyAccessToken);
   const spotifyResponse = await sp.getMyCurrentPlayingTrack();
+
+  const isCurrentlyPlaying = spotifyResponse.body.is_playing;
+  if (!isCurrentlyPlaying) {
+    return null;
+  }
+
   const songObj = spotifyResponse.body.item;
 
   if (songObj == null || !("name" in songObj) || !("artists" in songObj)) {
     return null;
   }
 
-  const songName = songObj.name;
+  const songName = sanitizeSongName(songObj.name);
   const artistName = songObj.artists[0].name;
 
   return {
@@ -144,6 +150,29 @@ const getUserCurrentlyPlayingSongData = async (
     },
     artistSpotifyId: songObj.artists[0].id,
   }  
+}
+
+// devised by looking at some song names on spotify
+const sanitizeSongName = (songName: string) => {
+  // remove (feat *)
+  songName = songName.replace(/\(feat.*\)/, "");
+
+  // remove (Remastered)
+  songName = songName.replace(/\(Remastered\)/, "");
+
+  // remove Mono)
+  songName = songName.replace(/\(Mono\)/, "");
+
+  // if there's a dash, remove it and everything after it
+  const dashIndex = songName.indexOf("-");
+  if (dashIndex != -1) {
+    songName = songName.substring(0, dashIndex);
+  }
+
+  // remove trailing whitespace
+  songName = songName.trim();
+
+  return songName
 }
 
 const wasUserAlreadyListeningToSong = async (
@@ -251,7 +280,7 @@ const enqueueSong = async (
       if (trackNames.size >= MAX_SONGS_PER_ARTIST) {
         break;
       }
-      trackNames.add(track.name);
+      trackNames.add(sanitizeSongName(track.name));
     }
   }
   
