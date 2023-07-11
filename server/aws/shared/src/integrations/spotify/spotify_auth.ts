@@ -42,14 +42,6 @@ export const getFreshSpotifyToken = async (userObj: Record<string, AttributeValu
     `${SPOTIFY_CLIENT_ID}:${spotifyClientSecret}`
   );
 
-  console.log(`spotify info: ${JSON.stringify(
-    {
-      SPOTIFY_CLIENT_ID,
-      spotifyClientSecret,
-      existingRefreshToken,
-    }
-  )}`)
-
   const spotifyResponse = await axios.post(
     "https://accounts.spotify.com/api/token",
     `grant_type=refresh_token&refresh_token=${existingRefreshToken}`,
