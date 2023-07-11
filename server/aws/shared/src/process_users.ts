@@ -12,8 +12,12 @@ import { dbClient, getSpotifyClient, sqs } from "./utility/clients";
 import { Song } from "./utility/types";
 
 // *** CONSTANTS ***
-const SONG_LISTEN_EXPIRATION_SECONDS = 60 * 60 * 24 * 28; // 28 days
+// when we've never indexed any data for an artist, we add several top tracks (in addition to the
+// currently playing song) to seed
 const MAX_SONGS_PER_ARTIST = 5;
+// we keep song listens for 28 days so that we can query lyrics that are relevant to
+// the user's current listening habits
+const SONG_LISTEN_EXPIRATION_SECONDS = 60 * 60 * 24 * 28; // 28 days
 
 // *** PUBLIC INTERFACE ***
 // for each user in the database, we add some data to dynamo and search depending on the user's
@@ -75,8 +79,6 @@ const processOneUser = async (userObj: Record<string, AttributeValue>) => {
     return
   }
 
-  await recordListen({userId, song});
-
   if (!(await isAtLeastOneSongIndexedForArtist(song.artistId))) {
     // if we've never indexed any data for this artist, add several top songs (in addition to the
     // currently playing song) to seed
@@ -89,18 +91,29 @@ const processOneUser = async (userObj: Record<string, AttributeValue>) => {
       }),
       createAddSongToSearchTasks({songs: [song]})
     ]);
-  } else if (!(await isSongIndexed(song))) {
-    // otherwise, if we haven't indexed the current song, add it (note that the queue's task
-    // itself will check again, to ensure atomicity)
-    console.log(`artist ${song.artistName} has indexed songs, but not ${song.songName}`);
-    await enqueueSong({
-      song,
-      spotifyAccessToken,
-      includeTopTracksForArtistId: null
-    });
   } else {
-    console.log(`${song.songName} by ${song.artistName} is already indexed`);
+    const {isIndexed, isMissingLyrics} = await getSongInfo(song);
+    
+    if (isMissingLyrics) {
+      // if we don't have lyrics, it's not useful to have the song in the user's listening history
+      return;
+    }
+
+    if (!isIndexed) {
+      // otherwise, if we haven't indexed the current song, add it (note that the queue's task
+      // itself will check again, to ensure atomicity)
+      console.log(`artist ${song.artistName} has indexed songs, but not ${song.songName}`);
+      await enqueueSong({
+        song,
+        spotifyAccessToken,
+        includeTopTracksForArtistId: null
+      });
+    } else {
+      console.log(`${song.songName} by ${song.artistName} is already indexed`);
+    }
   }
+
+  await recordListen({userId, song});
 };
 
 const assertEnvironmentVariables = () => {
@@ -181,11 +194,6 @@ const wasUserAlreadyListeningToSong = async (
 ) => {
   const queryParams = {
     TableName: process.env.SONG_LISTEN_TABLE_NAME,
-    Key: {
-      userId: {
-        "S": userId,
-      },
-    },
     KeyConditionExpression: "userId = :userId",
     ExpressionAttributeValues: {
       ":userId": {
@@ -218,14 +226,14 @@ const recordListen = async ({
   await dbClient.send(new PutItemCommand( {
     TableName: process.env.SONG_LISTEN_TABLE_NAME,
     Item: {
-      userId: {
+      "songId": {
+        "S": song.songId
+      },
+      "userId": {
         "S": userId
       },
       "time": {
         "N": time.toString()
-      },
-      "songId": {
-        "S": song.songId
       },
       "expirationTime": {
         "N": (
@@ -249,7 +257,7 @@ const isAtLeastOneSongIndexedForArtist = async (artistId: string) => {
   return (songsIndexedForArtist.Count || 0) > 0;
 }
 
-const isSongIndexed = async (song: Song) => {
+const getSongInfo = async (song: Song) => {
   const songItem = await dbClient.send(new GetItemCommand({
     TableName: process.env.SONG_TABLE_NAME,
     Key: {
@@ -261,8 +269,18 @@ const isSongIndexed = async (song: Song) => {
       },
     },
   }));
+
+  if (songItem.Item == null) {
+    return {
+      isIndexed: false,
+      isMissingLyrics: false,
+    }
+  }
     
-  return songItem.Item != null;
+  return {
+    isIndexed: true,
+    isMissingLyrics: songItem.Item.missingLyrics?.BOOL === true,
+  };
 }
 
 const enqueueSong = async (

@@ -1,6 +1,11 @@
 import {getLyrics} from "./integrations/genius";
 import {labelPassages, vectorizePassages} from "./integrations/open_ai/open_ai_integration";
-import {PutItemCommand, UpdateItemCommand} from "@aws-sdk/client-dynamodb";
+import {
+  PutItemCommand,
+  UpdateItemCommand,
+  QueryCommand,
+  DeleteItemCommand
+} from "@aws-sdk/client-dynamodb";
 import {getSearchClient, dbClient} from "./utility/clients";
 import {uuidForArtist, uuidForPassage, uuidForSong} from "./utility/uuid";
 import {Song, VectorizedAndLabeledPassage} from "./utility/types";
@@ -36,6 +41,7 @@ export const processSong = async (
 
   if (lyrics == null) {
     console.log(`no lyrics found for song: ${artistName}: ${songName}`)
+    await markLyricsAsMissing({song});
     return;
   }
 
@@ -51,9 +57,9 @@ export const processSong = async (
 
   console.log(`got analysis for song: ${JSON.stringify(
     {
-      song: `${artistName}: ${songName}`,
-      sentiments: sentiments.join(", "),
-      passages: passages,
+      song,
+      sentiments,
+      passages,
     }
   )}`);
 
@@ -72,6 +78,10 @@ export const processSong = async (
 const assertEnvironmentVariables = () => {
   if (process.env.SONG_TABLE_NAME == null) {
     throw new Error("SONG_TABLE_NAME is not defined in the environment");
+  }
+
+  if (process.env.SONG_LISTEN_TABLE_NAME == null) {
+    throw new Error("SONG_LISTEN_TABLE_NAME is not defined in the environment");
   }
 
   if (process.env.OPENSEARCH_URL == null) {
@@ -119,6 +129,69 @@ const addSongToDynamo = async (
   console.log(`added song ${song.artistName}: ${song.songName} to db`)
 
   return true;
+}
+
+// if we discover that a song's lyrics are missing from genius, we:
+// - mark the song as missing lyrics
+// - delete any existing song listens, as these are no longer relevant for our purposes
+const markLyricsAsMissing = async (
+  {song} : {song: Song}
+) => {
+  await dbClient.send(new UpdateItemCommand(
+    {
+      TableName: process.env.SONG_TABLE_NAME,
+      Key: {
+        "songId": {
+          "S": song.songId
+        },
+        "artistId": {
+          "S": song.artistId
+        },
+      },
+      UpdateExpression: "set isMissingLyrics = :missing",
+      ExpressionAttributeValues: {
+        ":missing": {
+          "BOOL": true
+        },
+      },
+    }
+  ));
+
+  // get existing song listens
+  const params = {
+    TableName: process.env.SONG_LISTEN_TABLE_NAME,
+    IndexName: "songIdIndex",
+    KeyConditionExpression: "songId = :songId",
+    ExpressionAttributeValues: {
+      ":songId": {
+        "S": song.songId
+      },
+    },
+  }
+  const songListensResponse = await dbClient.send(new QueryCommand(params));
+
+  // delete each song listen
+  await Promise.all(songListensResponse.Items?.map(async (item) => {
+    if (item.userId?.S == null || item.time?.N == null) {
+      throw new Error(
+        `song listen for song ${item.songId.S} unexpectedly missing userId or timestamp`
+      );
+    }
+
+    await dbClient.send(new DeleteItemCommand(
+      {
+        TableName: process.env.SONG_LISTEN_TABLE_NAME,
+        Key: {
+          "userId": {
+            "S": item.userId.S
+          },
+          "time": {
+            "N": item.time.N
+          },
+        },
+      }
+    ));
+  }) || []);
 }
 
 const addSongToSearch = async (

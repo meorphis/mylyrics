@@ -103,6 +103,11 @@ const getLyricsFromUrl = async (url: string) => {
 
     const lyrics = lyricsContainer.text();
 
+    if (lyrics.length == 0) {
+      // it's probably an instrumental
+      return null;
+    }
+
     // limit the number of words in the lyrics to avoid unbounded openai costs
     return lyrics.split(" ").slice(0, MAX_LYRICS_WORDS).join(" ");
 
