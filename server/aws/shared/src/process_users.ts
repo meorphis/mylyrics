@@ -177,7 +177,7 @@ const sanitizeSongName = (songName: string) => {
   songName = songName.replace(/\(Mono\)/, "");
 
   // if there's a dash, remove it and everything after it
-  const dashIndex = songName.indexOf("-");
+  const dashIndex = songName.indexOf(" - ");
   if (dashIndex != -1) {
     songName = songName.substring(0, dashIndex);
   }
