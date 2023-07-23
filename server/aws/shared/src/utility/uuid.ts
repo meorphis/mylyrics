@@ -1,22 +1,23 @@
-import {v5} from "uuid";
-import { Song } from "./types";
+import {createHash} from "crypto";
 
-export const uuidForSong = ({
-  songName, artistName,
-}: {songName: string, artistName: string}) => {
-  return v5(
-    `${artistName}: ${songName}`, "0b6ea510-176f-482f-85f9-2fd70bb30fe1"
-  );
+// 12 bytes allows us to have >10 trillion ids before we have a 0.1% chance of collision
+export const createShortUniqueId = (seed: string) => {
+  return createHash("shake256", { outputLength: 12 })
+    .update(seed)
+    // base64url is 6 bits per character, so 12 bytes = 16 characters
+    .digest("base64url");
 };
-  
+
 export const uuidForArtist = ({artistName}: {artistName: string}) => {
-  return v5(artistName, "eca91d8c-ef5a-4b2f-8ee0-481318e0efc0");
-};
-  
+  return createShortUniqueId(`artist: ${artistName}`);
+}
+
+export const uuidForSong = ({songName, artistName}: {songName: string, artistName: string}) => {
+  return createShortUniqueId(`song: ${songName} by ${artistName}`);
+}
+
 export const uuidForPassage = (
-  {song, lyrics}: {song: Song, lyrics: string}
+  {lyrics, songName, artistName}: {lyrics: string, songName: string, artistName: string}
 ) => {
-  return v5(
-    `${song.artistName}: ${song.songName}: ${lyrics}`, "9e2cdd05-4d00-4ccf-a40b-d82305430fcf"
-  );
-};
+  return createShortUniqueId(`lyrics: ${lyrics} in ${songName} by ${artistName}`);
+}
