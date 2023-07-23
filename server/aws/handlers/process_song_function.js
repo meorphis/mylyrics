@@ -8,10 +8,19 @@ export async function handler(event) {
         return buildResponse(400, {error: "Invalid number of records"});
     }
 
-    const {body} = records[0];
-    const {songName, artistName} = JSON.parse(body);
+    var song
+    try {
+        const {body} = records[0];
+        song = JSON.parse(body);
+    } catch (e) {
+        return buildResponse(400, {error: `Invalid JSON: "${body}"`});
+    }
 
-    await processSong({songName, artistName});
+    try {
+        await processSong(song);
+    } catch (e) {
+        return buildResponse(500, {message: "Unexpected error processing song", error: getErrorAsObject(e)});
+    }
     return buildResponse(200, {});
 }
 
@@ -21,6 +30,14 @@ const buildResponse = (statusCode, body) => {
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body,
+    };
+}
+
+const getErrorAsObject = (e) => {
+    return {
+        name: e.name,
+        message: e.message,
+        stack: e.stack,
     };
 }

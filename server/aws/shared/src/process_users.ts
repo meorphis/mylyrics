@@ -1,318 +1,316 @@
-import {getFreshSpotifyToken} from "./integrations/spotify/spotify_auth";
-import {
-  ScanCommand,
-  GetItemCommand,
-  QueryCommand,
-  PutItemCommand,
-  AttributeValue
-} from "@aws-sdk/client-dynamodb";
-import { uuidForArtist, uuidForSong } from "./utility/uuid";
+import {getFreshSpotifyResponse} from "./integrations/spotify/spotify_auth";
 import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
-import { dbClient, getSpotifyClient, sqs } from "./utility/clients";
-import { Song } from "./utility/types";
+import { sqs } from "./integrations/aws";
+import { Song, SimplifiedSong, SongListen } from "./utility/types";
+import { 
+  getEnrichedSongs, getTopSongsForArtist, getUserRecentlyPlayedSongs,
+} from "./integrations/spotify/spotify_data";
+import { getFirestoreDb } from "./integrations/firebase";
+import { DocumentData } from "firebase-admin/firestore";
 
 // *** CONSTANTS ***
 // when we've never indexed any data for an artist, we add several top tracks (in addition to the
 // currently playing song) to seed
 const MAX_SONGS_PER_ARTIST = 5;
-// we keep song listens for 28 days so that we can query lyrics that are relevant to
-// the user's current listening habits
-const SONG_LISTEN_EXPIRATION_SECONDS = 60 * 60 * 24 * 28; // 28 days
 
 // *** PUBLIC INTERFACE ***
-// for each user in the database, we add some data to dynamo and search depending on the user's
-// listening activity
+// for each user in the database that matches our "minute" seed, we add some data to db
+// and search depending on the user's recent listening activity
 // notes:
-// - first we check if the user is newly listening to a song; if so, we record the listen
-// - then if our system hasn't seen the song before, we add the song to the processing queue 
-// - we also add the artist's top tracks to the processing queue if we haven't seen the 
+// - first we check if the user has listened to songs since we last checked; if so, we record
+//    the listens
+// - then for each song that our system hasn't seen before, we add that song to the processing
+//     queue 
+// - we also add the each song's artist's top tracks to the processing queue if we haven't seen the 
 //    artist before
-export const processUsers = async () => {
+export const processUsers = async ({minute}: {minute: number}) => {
+  if (minute == null || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+    throw new Error(`invalid minute: ${minute}`);
+  }
+
   // make sure we have all the environment variables we need
   assertEnvironmentVariables();
 
-  // we'll do a full scan until it doesn't scale anymore
-  const users = await dbClient.send(new ScanCommand({
-    TableName: process.env.USER_TABLE_NAME,
-  }));
+  const db = await getFirestoreDb();
+  const users = await db.collection("users").where("seed", "==", minute).get();
 
-  if (users.Items == null) {
-    throw new Error(`failed to get users from dynamo
-      output: ${JSON.stringify(users)}
-    `);
+  const errors: unknown[] = [];
+
+  // avoid parallelizing for now, to avoid hitting spotify rate limits
+  for (const d of users.docs) {
+    try {
+      await processOneUser({userId: d.ref.id, userData: d.data()})
+    } catch (err) {
+      if (err instanceof Error) {
+        errors.push({
+          message: err.message,
+          stacktrace: err.stack,
+        });
+      } else {
+        errors.push(err);
+      }
+    }
   }
 
-  await Promise.all(users.Items.map(processOneUser));
+  if (errors.length > 0) {
+    throw Error(
+      "some usesr were not processed correctly: " +
+      JSON.stringify(errors)
+    );
+  }
 }
 
 // *** PRIVATE HELPERS ***
-const processOneUser = async (userObj: Record<string, AttributeValue>) => {  
-  const userId = userObj.userId["S"];
-
+const processOneUser = async ({userId, userData}: {userId: string, userData: DocumentData}) => {  
   console.log(`processing user ${userId}`);
 
-  // sanity check
-  if (userId == null) {
-    throw new Error(`user object ${JSON.stringify(userObj)} has no userId`);
-  }
+  const spotifyResponse = await getFreshSpotifyResponse(userData);
 
-  const spotifyAccessToken = await getFreshSpotifyToken(userObj);
-
-  if (spotifyAccessToken == null) {
+  if (spotifyResponse == null) {
     console.log(`no spotify access token for user ${userId}`);
     return;
   }
 
-  const currentSongData = await getUserCurrentlyPlayingSongData({spotifyAccessToken});
-  if (currentSongData == null) {
-    console.log(`user ${userId} is not listening to anything`);
+  if (spotifyResponse.status !== 200) {
+    throw new Error(
+      `error getting spotify access token for user ${userId}: ${JSON.stringify(spotifyResponse)}`
+    );
+  }
+
+  const {access_token: spotifyAccessToken} = spotifyResponse.data;
+
+  const lastCheckedRecentPlaysAt = userData.lastCheckedRecentPlaysAt;
+
+  if (lastCheckedRecentPlaysAt == null) {
+    console.log(`user ${userId} has no lastCheckedRecentPlaysAt`);
+  } else {
+    console.log(`user ${userId} lastCheckedRecentPlaysAt: ${lastCheckedRecentPlaysAt}`);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const recentListens = await getUserRecentlyPlayedSongs({
+    spotifyAccessToken,
+    lastCheckedRecentPlaysAt: userData.lastCheckedRecentPlaysAt,
+  });
+
+  const newLastCheckedRecentPlaysAt = (
+    recentListens.length > 0 ? Math.max(...recentListens.map((l) => l.metadata.playedAt)) :
+      Date.now()
+  );
+
+  await updateLastCheckedRecentPlaysAt({
+    userId, lastCheckedRecentPlaysAt: newLastCheckedRecentPlaysAt
+  });
+
+  if (recentListens.length === 0) {
+    console.log(`user ${userId} has not listening to anything since we last checked`);
     return;
   }
 
-  const {song, artistSpotifyId} = currentSongData;
-  console.log(`user ${userId} is listening to ${song.songName} by ${song.artistName}`);
-
-  if (await wasUserAlreadyListeningToSong(userId, song)) {
-    console.log(
-      `we've already recorded user ${userId} listening to ${song.songName} by ${song.artistName}`
-    );
-    return
+  const allArtistIds = Array.from(new Set(recentListens.map((l) => l.song.primaryArtist.id)));
+  const allArtists = [];
+  for (const artistId of allArtistIds) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const recentListen = recentListens.find((l) => l.song.primaryArtist.id === artistId)!;
+    allArtists.push(recentListen.song.primaryArtist);
   }
+  const allSongIds = Array.from(new Set(recentListens.map((l) => l.song.id)));
 
-  if (!(await isAtLeastOneSongIndexedForArtist(song.artistId))) {
-    // if we've never indexed any data for this artist, add several top songs (in addition to the
-    // currently playing song) to seed
-    console.log(`artist ${song.artistName} has no indexed songs, adding top tracks`);
-    await Promise.all([
-      enqueueSong({
-        song,
-        spotifyAccessToken,
-        includeTopTracksForArtistId: artistSpotifyId,
-      }),
-      createAddSongToSearchTasks({songs: [song]})
-    ]);
+  console.log(
+    // eslint-disable-next-line max-len
+    `user ${userId} has ${recentListens.length} recent listens - ${allSongIds.length} songs by ${allArtistIds.length} artists`
+  );
+
+  // note that the db that these values are read from is updated by processSong - we don't
+  // care about making it transactional because the worst case is that we run processSong on
+  // a song that's already been processed, in which case it will just return early
+  const [indexedArtistIds, indexedSongInfos]  = await Promise.all([
+    getIndexedArtistIds(allArtistIds),
+    getIndexedSongInfo(allSongIds)
+  ]);
+  const indexedSongIds = indexedSongInfos.map((s) => s.songId);
+
+  console.log(
+    `${indexedArtistIds.length} artists and ${indexedSongIds.length} songs are already indexed`
+  );
+
+  // filter out recent listens for songs without lyrics
+  const recentListensToRecord = recentListens.filter((l) => {
+    const songInfo = indexedSongInfos.find((s) => s.songId === l.song.id);
+    return songInfo == null || !songInfo.isMissingLyrics;
+  });
+
+  if (recentListensToRecord.length !== 0) {
+    console.log(`recording ${recentListensToRecord.length} recent listens`);
+    await recordListens({userId, listens: recentListensToRecord});
   } else {
-    const {isIndexed, isMissingLyrics} = await getSongInfo(song);
-    
-    if (isMissingLyrics) {
-      // if we don't have lyrics, it's not useful to have the song in the user's listening history
-      return;
-    }
-
-    if (!isIndexed) {
-      // otherwise, if we haven't indexed the current song, add it (note that the queue's task
-      // itself will check again, to ensure atomicity)
-      console.log(`artist ${song.artistName} has indexed songs, but not ${song.songName}`);
-      await enqueueSong({
-        song,
-        spotifyAccessToken,
-        includeTopTracksForArtistId: null
-      });
-    } else {
-      console.log(`${song.songName} by ${song.artistName} is already indexed`);
-    }
+    console.log("no recent listens to record");
   }
 
-  await recordListen({userId, song});
-};
+  // get top songs for artists that we haven't indexed any songs for, in order to seed data
+  const artistsWithoutIndexedSongs = allArtists.filter(
+    (a) => !indexedArtistIds.includes(a.id)
+  );
+  console.log(`getting top songs for ${artistsWithoutIndexedSongs.length} artists`);
+
+  const topSongsForArtists = (await Promise.all(
+    artistsWithoutIndexedSongs.map((artist) => getTopSongsForArtist({
+      artistSpotifyId: artist.spotifyId,
+      spotifyAccessToken,
+    }))
+  ));
+
+  const songsToProcess = await getSongsToProcess({
+    indexedSongIds,
+    recentListens: recentListensToRecord,
+    topSongsForArtists: topSongsForArtists.flat(),
+  })
+
+  const enrichedSongsToProcess = await getEnrichedSongs({
+    spotifyAccessToken,
+    simplifiedSongs: songsToProcess,
+  });
+
+  await createProcessSongTasks({songs: enrichedSongsToProcess});
+}
 
 const assertEnvironmentVariables = () => {
-  if (process.env.USER_TABLE_NAME == null) {
-    throw new Error("USER_TABLE_NAME is not defined in the environment");
-  }
-
-  if (process.env.SONG_TABLE_NAME == null) {
-    throw new Error("SONG_TABLE_NAME is not defined in the environment");
-  }
-
-  if (process.env.SONG_LISTEN_TABLE_NAME == null) {
-    throw new Error("SONG_LISTEN_TABLE_NAME is not defined in the environment");
-  }
-
   if (process.env.PROCESSSONGQUEUE_QUEUE_URL == null) {
     throw new Error("PROCESSSONGQUEUE_QUEUE_URL is not defined in the environment");
   }  
 };
 
-const getUserCurrentlyPlayingSongData = async (
-  {spotifyAccessToken}: {spotifyAccessToken: string}
+const updateLastCheckedRecentPlaysAt = async (
+  {userId, lastCheckedRecentPlaysAt}: {userId: string, lastCheckedRecentPlaysAt: number}
 ) => {
-  const sp = getSpotifyClient(spotifyAccessToken);
-  const spotifyResponse = await sp.getMyCurrentPlayingTrack();
+  const db = await getFirestoreDb();
 
-  const isCurrentlyPlaying = spotifyResponse.body.is_playing;
-  if (!isCurrentlyPlaying) {
-    return null;
-  }
-
-  const songObj = spotifyResponse.body.item;
-
-  if (songObj == null || !("name" in songObj) || !("artists" in songObj)) {
-    return null;
-  }
-
-  const songName = sanitizeSongName(songObj.name);
-  const artistName = songObj.artists[0].name;
-
-  return {
-    song: {
-      songName,
-      artistName,
-      songId: uuidForSong({songName, artistName}),
-      artistId: uuidForArtist({artistName}),
-    },
-    artistSpotifyId: songObj.artists[0].id,
-  }  
+  db.collection("users").doc(userId).update({
+    lastCheckedRecentPlaysAt
+  });
 }
 
-// devised by looking at some song names on spotify
-const sanitizeSongName = (songName: string) => {
-  // remove (feat *)
-  songName = songName.replace(/\(feat.*\)/, "");
+const getIndexedArtistIds = async (artistIds: string[]) => {
+  const db = await getFirestoreDb();
 
-  // remove (Remastered)
-  songName = songName.replace(/\(Remastered\)/, "");
+  const artistsIndexed = await db.collection("artists").where(
+    "artistId", "in", artistIds
+  ).get();
 
-  // remove Mono)
-  songName = songName.replace(/\(Mono\)/, "");
-
-  // if there's a dash, remove it and everything after it
-  const dashIndex = songName.indexOf(" - ");
-  if (dashIndex != -1) {
-    songName = songName.substring(0, dashIndex);
-  }
-
-  // remove trailing whitespace
-  songName = songName.trim();
-
-  return songName
+  return artistsIndexed.docs.map((d) => d.data().artistId);
 }
 
-const wasUserAlreadyListeningToSong = async (
-  userId: string,
-  song: Song,
-) => {
-  const queryParams = {
-    TableName: process.env.SONG_LISTEN_TABLE_NAME,
-    KeyConditionExpression: "userId = :userId",
-    ExpressionAttributeValues: {
-      ":userId": {
-        "S": userId
-      },
-    },
-    Limit: 1,
-    ScanIndexForward: false,
-  };
-      
-  const listens = await dbClient.send(new QueryCommand(queryParams));
-  const userHasAtLeastOneListen = listens.Count != null && listens.Count > 0;
-  
-  return (
-    userHasAtLeastOneListen && 
-    listens.Items != null &&
-    listens.Items[0]["songId"]["S"] === song.songId
-  );
+const getIndexedSongInfo = async (songIds: string[]) => {
+  const db = await getFirestoreDb();
+
+  const songsIndexed = await db.collection("songs").where(
+    "songId", "in", songIds
+  ).get();
+
+  return songsIndexed.docs.map((d) =>  {
+    return {
+      songId: d.data().songId,
+      isMissingLyrics: d.data().isMissingLyrics
+    }
+  });
 }
 
-const recordListen = async ({
+const recordListens = async ({
   userId,
-  song,
+  listens,
 } : {
   userId: string,
-  song: Song,
+  listens: SongListen[],
 }) => {
-  const time = Date.now();
-
-  await dbClient.send(new PutItemCommand( {
-    TableName: process.env.SONG_LISTEN_TABLE_NAME,
-    Item: {
-      "songId": {
-        "S": song.songId
-      },
-      "userId": {
-        "S": userId
-      },
-      "time": {
-        "N": time.toString()
-      },
-      "expirationTime": {
-        "N": (
-          Math.floor(time / 1000) + SONG_LISTEN_EXPIRATION_SECONDS
-        ).toString()
-      }
-    },
-  }));
-}
-
-const isAtLeastOneSongIndexedForArtist = async (artistId: string) => {
-  const songsIndexedForArtist = await dbClient.send(new QueryCommand({
-    TableName: process.env.SONG_TABLE_NAME,
-    KeyConditionExpression: "artistId = :artistId",
-    ExpressionAttributeValues: {
-      ":artistId": {"S": artistId},
-    },
-    Limit: 1,
-  }));
-
-  return (songsIndexedForArtist.Count || 0) > 0;
-}
-
-const getSongInfo = async (song: Song) => {
-  const songItem = await dbClient.send(new GetItemCommand({
-    TableName: process.env.SONG_TABLE_NAME,
-    Key: {
-      "songId": {
-        "S": song.songId
-      },
-      "artistId": {
-        "S": song.artistId
-      },
-    },
-  }));
-
-  if (songItem.Item == null) {
-    return {
-      isIndexed: false,
-      isMissingLyrics: false,
-    }
+  if (listens.length === 0) {
+    return;
   }
-    
-  return {
-    isIndexed: true,
-    isMissingLyrics: songItem.Item.missingLyrics?.BOOL === true,
-  };
+
+  const db = await getFirestoreDb();
+
+  const listenObjs = listens.map((l) => {
+    return {
+      userId,
+      songId: l.song.id,
+      artistId: l.song.primaryArtist.id,
+      time: l.metadata.playedAt,
+      context: l.metadata.playedFrom || "unknown",
+    }
+  })
+
+  await db.runTransaction(async (transaction) => {
+    const user = await transaction.get(db.collection("user-recent-listens").doc(userId));
+    const today = user.data()?.today || {};
+    const newToday = {
+      songs: [...listenObjs.map((l) => l.songId), ...(today.songs || [])],
+      artists: [...listenObjs.map((l) => l.artistId), ...(today.artists || [])]
+    }
+    // we're not using ArrayUnion because it doesn't allow duplicates
+    transaction.set(db.collection("user-recent-listens").doc(userId), {
+      today: newToday,
+    },
+    {
+      merge: true,
+    }
+    );
+    listenObjs.forEach((listen) => {
+      transaction.create(db.collection("recent-listens").doc(), listen);
+    });
+  });
 }
 
-const enqueueSong = async (
-  {song, spotifyAccessToken, includeTopTracksForArtistId}:
-  {song: Song, spotifyAccessToken: string, includeTopTracksForArtistId: string | null}
+const getSongsToProcess = async (
+  {indexedSongIds, recentListens, topSongsForArtists}:
+    {indexedSongIds: string[], recentListens: SongListen[], topSongsForArtists: SimplifiedSong[]}
 ) => {
-  const trackNames = new Set([song.songName]);
-
-  if (includeTopTracksForArtistId != null) {
-    const sp = getSpotifyClient(spotifyAccessToken);
-    const artistTopTracksResponse = await sp.getArtistTopTracks(
-      includeTopTracksForArtistId, "US"
-    );
-    for (const track of artistTopTracksResponse.body.tracks) {
-      if (trackNames.size >= MAX_SONGS_PER_ARTIST) {
-        break;
-      }
-      trackNames.add(sanitizeSongName(track.name));
+  // helper variables to prevent duplicates and respect limits
+  const songIdsInList: Set<string> = new Set([]);
+  const numSongsForArtist: {[key: string]: number} = {};
+  
+  // actual list of songs we will be processing
+  const songsToProcess: SimplifiedSong[] = [];
+  
+  // overall we should definitely process any unindexed song that actually has a listen;
+  // for top artist songs, we should process any song that doesn't take us over the limit
+  const maybeAddSong = (
+    {song, isFromTopSongsForArtists}:
+      {song: SimplifiedSong, isFromTopSongsForArtists: boolean}
+  ) => {
+    const numSongs = numSongsForArtist[song.primaryArtist.id] || 0;
+  
+    // don't add songs that we've already added
+    if (songIdsInList.has(song.id)) {
+      return;
     }
+  
+    // don't add songs that we've already indexed
+    if (indexedSongIds.includes(song.id)) {
+      return;
+    }
+  
+    // don't add songs from top songs for artists that would take us over the limit
+    if (isFromTopSongsForArtists && numSongs >= MAX_SONGS_PER_ARTIST ) {
+      return;
+    }
+  
+    // update helpers
+    songIdsInList.add(song.id);
+    numSongsForArtist[song.primaryArtist.id] = numSongs + 1;
+  
+    // update canonical list
+    songsToProcess.push(song);
   }
   
-  await createAddSongToSearchTasks({songs: Array.from(trackNames).map(
-    trackName => (
-      {
-        songName: trackName,
-        artistName: song.artistName,
-      })
-  )});
+  recentListens.map((l) => maybeAddSong({song: l.song, isFromTopSongsForArtists: false}));
+  topSongsForArtists.map(
+    (s) => maybeAddSong({song: s, isFromTopSongsForArtists: true})
+  );
+
+  return songsToProcess;
 }
 
-const createAddSongToSearchTasks = async (
-  {songs}: {songs: {songName: string, artistName: string}[]}
+const createProcessSongTasks = async (
+  {songs}: {songs: Song[]}
 ) => {
   // Split tracks array into chunks of 10 (SQS's SendMessageBatch limit)
   const trackChunks = Array(Math.ceil(songs.length / 10)).fill(0).map(
@@ -320,12 +318,9 @@ const createAddSongToSearchTasks = async (
   );
 
   for (const trackChunk of trackChunks) {
-    const entries = trackChunk.map((song, index) => ({
+    const entries = trackChunk.map((s, index) => ({
       Id: index.toString(), // must be a unique identifier within the batch
-      MessageBody: JSON.stringify({
-        songName: song.songName,
-        artistName: song.artistName,
-      }),
+      MessageBody: JSON.stringify(s),
     }));
 
     const params = {

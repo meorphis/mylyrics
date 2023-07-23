@@ -3,6 +3,15 @@ import {load as cheerioLoad} from "cheerio";
 import { Song } from "../utility/types";
 import { stringSimilarity } from "string-similarity-js";
 
+// *** TYPES ***
+type GetLyricsResponse = {
+  outcome: "success",
+  lyrics: string
+} | {
+  outcome: "failure",
+  reason: string,
+}
+
 // *** CONSTANTS ***
 // minimum similarity (Sørensen–Dice coefficient) between the spotify song name and the genius song
 // name to consider them the same song
@@ -21,15 +30,23 @@ const MAX_LYRICS_WORDS = 1000;
 // - returns null if the genius response is formatted as expected but does not
 //    contain a result for the song
 // - throws an error if the genius response is not formatted as expected
-export const getLyrics = async ({song} : {song: Song}) => {
+export const getLyrics = async ({song} : {song: Song}): Promise<GetLyricsResponse> => {
   const lyricsUrl = await getLyricsUrl({song});
-  return lyricsUrl == null ? null : await getLyricsFromUrl(lyricsUrl);
+  if (lyricsUrl == null)  {
+    return {
+      outcome: "failure",
+      reason: "url_not_found",
+    }
+  }
+  
+  return await getLyricsFromUrl(lyricsUrl);
 };
 
 // *** PRIVATE HELPERS ***
 const getLyricsUrl = async ({song} : {song: Song}) : Promise<string | null> => {
-  const {artistName, songName} = song;
-  const query = encodeURIComponent(artistName + " " + songName);
+  const {primaryArtist, name: songName} = song;
+  const sanitizedSongName = sanitizeSongName(songName);
+  const query = encodeURIComponent(primaryArtist.name + " " + sanitizedSongName);
   const searchResponse = await axios.get(
     `https://genius.com/api/search/multi?per_page=1&q=${query}`,
     {
@@ -53,15 +70,15 @@ const getLyricsUrl = async ({song} : {song: Song}) : Promise<string | null> => {
     const geniusSongName = songHitsSection.hits[0].result.title;
     const geniusArtistName = songHitsSection.hits[0].result.primary_artist.name;
 
-    const geniusSongNameSimilarity = stringSimilarity(songName, geniusSongName);
-    const geniusArtistNameSimilarity = stringSimilarity(artistName, geniusArtistName);
+    const geniusSongNameSimilarity = stringSimilarity(sanitizedSongName, geniusSongName);
+    const geniusArtistNameSimilarity = stringSimilarity(primaryArtist.name, geniusArtistName);
 
     console.log(`genius song similarity: ${JSON.stringify(
       {
-        songName,
+        sanitizedSongName,
         geniusSongName,
         geniusSongNameSimilarity,
-        artistName,
+        artistName: primaryArtist.name,
         geniusArtistName,
         geniusArtistNameSimilarity,
       }
@@ -82,7 +99,7 @@ const getLyricsUrl = async ({song} : {song: Song}) : Promise<string | null> => {
   }
 }
 
-const getLyricsFromUrl = async (url: string) => {
+const getLyricsFromUrl = async (url: string): Promise<GetLyricsResponse> => {
   const lyricsResponse = await axios.get(url);
   const lyricsHTML = lyricsResponse.data;
 
@@ -105,13 +122,42 @@ const getLyricsFromUrl = async (url: string) => {
 
     if (lyrics.length == 0) {
       // it's probably an instrumental
-      return null;
+      return {
+        outcome: "failure",
+        reason: "likely_instrumental",
+      };
     }
 
     // limit the number of words in the lyrics to avoid unbounded openai costs
-    return lyrics.split(" ").slice(0, MAX_LYRICS_WORDS).join(" ");
+    return {
+      outcome: "success",
+      lyrics: lyrics.split(" ").slice(0, MAX_LYRICS_WORDS).join(" ")
+    };
 
   } catch (e) {
     throw Error(`could not parse genius response ${lyricsHTML}`);
   }
+}
+
+// devised by looking at some song names on spotify
+const sanitizeSongName = (songName: string) => {
+  // remove (feat *)
+  songName = songName.replace(/\(feat.*\)/, "");
+  
+  // remove (Remastered)
+  songName = songName.replace(/\(Remastered\)/, "");
+  
+  // remove Mono)
+  songName = songName.replace(/\(Mono\)/, "");
+  
+  // if there's a dash, remove it and everything after it
+  const dashIndex = songName.indexOf(" - ");
+  if (dashIndex != -1) {
+    songName = songName.substring(0, dashIndex);
+  }
+  
+  // remove trailing whitespace
+  songName = songName.trim();
+  
+  return songName
 }

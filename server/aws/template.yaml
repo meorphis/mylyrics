@@ -28,18 +28,12 @@ Resources:
       Timeout: 60
       Environment:
         Variables:
-          SONG_TABLE_NAME: !Ref SongTable
-          SONG_LISTEN_TABLE_NAME: !Ref SongListenTable
           OPENSEARCH_URL: !Sub "https://${OpenSearchServiceDomain.DomainEndpoint}/"
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref SongTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref SongListenTable
         - Statement:
           - Effect: Allow
             Action: secretsmanager:GetSecretValue
-            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:openaiApiKey-cB7XLM
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:*
         - Statement:
           - Effect: Allow
             Action:
@@ -83,23 +77,14 @@ Resources:
       Timeout: 60
       Environment:
         Variables:
-          USER_TABLE_NAME: !Ref UserTable
-          SONG_TABLE_NAME: !Ref SongTable
-          SONG_LISTEN_TABLE_NAME: !Ref SongListenTable
           PROCESSSONGQUEUE_QUEUE_URL: !Ref ProcessSongQueue
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref UserTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref SongTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref SongListenTable
         - SQSSendMessagePolicy:
             QueueName: !GetAtt ProcessSongQueue.QueueName
         - Statement:
           - Effect: Allow
             Action: secretsmanager:GetSecretValue
-            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:spotifyClientSecret-HogZZp
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:*
       Events:
         ProcessUsersScheduledEvent:
           Type: Schedule
@@ -107,62 +92,27 @@ Resources:
             Schedule: rate(3 minutes)
       Layers:
         - !Ref CommonLayer
-  UserTable:
-    Type: AWS::DynamoDB::Table
+  SwapSpotifyCodeFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      AttributeDefinitions:
-        - AttributeName: userId
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: userId
-          KeyType: HASH
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-  SongTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: songId
-          AttributeType: S
-        - AttributeName: artistId
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: artistId
-          KeyType: HASH
-        - AttributeName: songId
-          KeyType: RANGE
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-  SongListenTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: songId
-          AttributeType: S
-        - AttributeName: userId
-          AttributeType: S
-        - AttributeName: time
-          AttributeType: N
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: userId
-          KeyType: HASH
-        - AttributeName: time
-          KeyType: RANGE
-      GlobalSecondaryIndexes:
-        - IndexName: songIdIndex
-          KeySchema:
-            - AttributeName: songId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-      TimeToLiveSpecification:
-        AttributeName: expirationTime
-        Enabled: true
+      CodeUri: ./handlers
+      Handler: swap_spotify_code_function.handler
+      Runtime: nodejs18.x
+      MemorySize: 256
+      Timeout: 60
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:*
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+      Layers:
+        - !Ref CommonLayer
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:

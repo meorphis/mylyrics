@@ -1,225 +1,172 @@
 import {getLyrics} from "./integrations/genius";
 import {labelPassages, vectorizePassages} from "./integrations/open_ai/open_ai_integration";
-import {
-  PutItemCommand,
-  UpdateItemCommand,
-  QueryCommand,
-  DeleteItemCommand
-} from "@aws-sdk/client-dynamodb";
-import {getSearchClient, dbClient} from "./utility/clients";
-import {uuidForArtist, uuidForPassage, uuidForSong} from "./utility/uuid";
+import {getSearchClient} from "./integrations/aws";
+import {uuidForPassage} from "./utility/uuid";
 import {Song, VectorizedAndLabeledPassage} from "./utility/types";
+import { getFirestoreDb } from "./integrations/firebase";
+import {FieldValue} from "firebase-admin/firestore";
 
 // *** PUBLIC INTERFACE ***
 // takes as input a song name and artist name and processes the song:
-// - adds the song to dynamo (function returns early here if the song has already been added)
+// - adds the song to db (function returns early here if the song has already been added)
 // - gets the lyrics from genius
 // - uses openai to pick the best passages and analyze sentiments
 // - adds the song to the search index
-// - updates the song in dynamo with the sentiments
-export const processSong = async (
-  {songName, artistName} : {songName: string, artistName: string}
-) => {
+// - updates the song in db with the sentiments
+export const processSong = async (song: Song) => {
   // make sure we have all the environment variables we need
   assertEnvironmentVariables();
 
-  const song = {
-    songName,
-    artistName,
-    songId: uuidForSong({songName, artistName}),
-    artistId: uuidForArtist({artistName}),
-  };
-
   // the song was already added to the db so we assume that another lambda
   // is already processing it
-  if (!addSongToDynamo(song)) {
+  if (!(await addSongToDb(song))) {
     return;
   }
 
   // lyrics from genius integration
-  const lyrics = await getLyrics({song});
+  const getLyricsResponse = await getLyrics({song});
 
-  if (lyrics == null) {
-    console.log(`no lyrics found for song: ${artistName}: ${songName}`)
-    await markLyricsAsMissing({song});
+  if (getLyricsResponse.outcome === "failure") {
+    console.log(
+      // eslint-disable-next-line max-len
+      `no lyrics found for song (${getLyricsResponse.reason}): ${song.primaryArtist.name}: ${song.name}`
+    )
+    await markLyricsAsMissing({song, reason: getLyricsResponse.reason});
     return;
   }
 
+  const {lyrics} = getLyricsResponse;
+
   console.log(`got lyrics for song: ${JSON.stringify(
     {
-      song: `${artistName}: ${songName}`,
+      song: `${song.primaryArtist.name}: ${song.name}`,
       lyrics,
     }
   )}`);
 
   // analysis from openai integration
-  const {sentiments, passages} = await labelPassages({lyrics});
+  const {sentiments: songSentiments, passages} = await labelPassages({lyrics});
 
   console.log(`got analysis for song: ${JSON.stringify(
     {
       song,
-      sentiments,
+      songSentiments,
       passages,
     }
   )}`);
 
   const vectorizedPassages = await vectorizePassages({labeledPassages: passages});
 
-  console.log(`got vectorized passages for song ${songName} by ${artistName}`);
+  console.log(`got vectorized passages for song ${song.name} by ${song.primaryArtist.name}`);
 
-  await addSongToSearch(song, {sentiments, vectorizedPassages});
-  console.log(`added song ${song.artistName}: ${song.songName} to search`);
+  await addSongToSearch(song, {songSentiments, vectorizedPassages});
+  console.log(`added song ${song.primaryArtist.name}: ${song.name} to search`);
 
-  await updateSentimentsForSong(song, sentiments);
-  console.log(`updated song ${song.artistName}: ${song.songName} with sentiments in dynamo`);
+  await updateSentimentsForSong(song, songSentiments);
+  console.log(`updated song ${song.primaryArtist.name}: ${song.name} with sentiments in db`);
 };
 
 // *** PRIVATE HELPERS ***
 const assertEnvironmentVariables = () => {
-  if (process.env.SONG_TABLE_NAME == null) {
-    throw new Error("SONG_TABLE_NAME is not defined in the environment");
-  }
-
-  if (process.env.SONG_LISTEN_TABLE_NAME == null) {
-    throw new Error("SONG_LISTEN_TABLE_NAME is not defined in the environment");
-  }
-
   if (process.env.OPENSEARCH_URL == null) {
     throw new Error("OPENSEARCH_URL is not defined in the environment");
   }
 }
 
-const addSongToDynamo = async (
+const addSongToDb = async (
   song: Song
 ): Promise<boolean>=> {
-  try {
-    await dbClient.send(new PutItemCommand({
-      TableName: process.env.SONG_TABLE_NAME,
-      Item: {
-        "songId": {
-          "S": song.songId
-        },
-        "artistId" : {
-          "S": song.artistId
-        },
-        "songName": {
-          "S": song.songName
-        },
-        "artistName": {
-          "S": song.artistName
-        },
-      },
-      // we achieve atomicity by using a conditional expression to make sure
-      // the song doesn't already exist in the db, and handling the error if it does
-      ConditionExpression: "songId <> :songId AND artistId <>  :artistid",
-      ExpressionAttributeValues: {
-        ":songId" : {"S": song.songId},
-        ":artistid": {"S": song.artistId}
-      }
-    }));
-  } catch (e) {
-    if (e instanceof Error && e.name === "ConditionalCheckFailedException") {
-      console.log(`song ${song.artistName}: ${song.songName} already exists in db`)
+  const db = await getFirestoreDb();
+  const songDocRef = db.collection("songs").doc(song.id)
+
+  return await db.runTransaction(async (transaction) => {
+    const songDoc = await transaction.get(songDocRef);
+
+    if (songDoc.exists) {
+      console.log(`song ${song.primaryArtist.name}: ${song.name} already exists in db`)
       return false;
     }
 
-    throw e;
-  }
+    transaction.set(songDocRef, {
+      songId: song.id,
+      artistId: song.primaryArtist.id,
+      songName: song.name,
+      artistName: song.primaryArtist.name,
+    });
 
-  console.log(`added song ${song.artistName}: ${song.songName} to db`)
+    transaction.set(db.collection("artists").doc(song.primaryArtist.id), {
+      artistId: song.primaryArtist.id,
+      artistName: song.primaryArtist.name,
+    });
 
-  return true;
+    console.log(`added song ${song.primaryArtist.name}: ${song.name} to db`)
+    return true;
+  });
 }
+
 
 // if we discover that a song's lyrics are missing from genius, we:
 // - mark the song as missing lyrics
 // - delete any existing song listens, as these are no longer relevant for our purposes
 const markLyricsAsMissing = async (
-  {song} : {song: Song}
+  {song, reason} : {song: Song, reason: string}
 ) => {
-  await dbClient.send(new UpdateItemCommand(
-    {
-      TableName: process.env.SONG_TABLE_NAME,
-      Key: {
-        "songId": {
-          "S": song.songId
-        },
-        "artistId": {
-          "S": song.artistId
-        },
-      },
-      UpdateExpression: "set isMissingLyrics = :missing",
-      ExpressionAttributeValues: {
-        ":missing": {
-          "BOOL": true
-        },
-      },
-    }
-  ));
-
-  // get existing song listens
-  const params = {
-    TableName: process.env.SONG_LISTEN_TABLE_NAME,
-    IndexName: "songIdIndex",
-    KeyConditionExpression: "songId = :songId",
-    ExpressionAttributeValues: {
-      ":songId": {
-        "S": song.songId
-      },
-    },
-  }
-  const songListensResponse = await dbClient.send(new QueryCommand(params));
-
-  // delete each song listen
-  await Promise.all(songListensResponse.Items?.map(async (item) => {
-    if (item.userId?.S == null || item.time?.N == null) {
-      throw new Error(
-        `song listen for song ${item.songId.S} unexpectedly missing userId or timestamp`
-      );
-    }
-
-    await dbClient.send(new DeleteItemCommand(
-      {
-        TableName: process.env.SONG_LISTEN_TABLE_NAME,
-        Key: {
-          "userId": {
-            "S": item.userId.S
-          },
-          "time": {
-            "N": item.time.N
-          },
-        },
-      }
+  const db = await getFirestoreDb();
+  await db.runTransaction(async (transaction) => {
+    // get all the song listens for the song
+    const songListenSnaps = await transaction.get(db.collection("recent-listens").where(
+      "songId", "==", song.id
     ));
-  }) || []);
+
+    const affectedUsers = songListenSnaps.docs.map((doc) => doc.data().userId);
+
+    // mark the lyrics as missing for the song
+    transaction.update(db.collection("songs").doc(song.id), {
+      lyricsMissingReason: reason,
+    })
+
+    // delete all the song listens
+    songListenSnaps.forEach((doc) => {
+      transaction.delete(doc.ref);
+    });
+
+    // remove the song listen for each affected user
+    affectedUsers.forEach((userId) => {
+      const docRef = db.collection("user-recent-listens").doc(userId);
+      transaction.update(docRef, {
+        "today.songs": FieldValue.arrayRemove(song.id),
+      });
+    });
+  });
 }
 
 const addSongToSearch = async (
   song: Song,
   {
-    sentiments,
+    songSentiments,
     vectorizedPassages,
   } :
   {
-    sentiments: string[],
+    songSentiments: string[],
     vectorizedPassages: VectorizedAndLabeledPassage[],
   }
 ) => {
   await Promise.all(vectorizedPassages.map(async (passage) => {    
     return await getSearchClient().index({
-      id: uuidForPassage({song, lyrics: passage.lyrics}),
+      id: uuidForPassage({
+        lyrics: passage.lyrics,
+        songName: song.name,
+        artistName: song.primaryArtist.name,
+      }),
       index: "song-lyric-passages",
       body: {
         ...passage,
+        primarySentiment: passage.sentiments[0],
         song: {
-          id: song.songId,
-          name: song.songName,
-          sentiments,
+          ...song,
+          sentiments: songSentiments,
         },
-        artist: {
-          id: song.artistId,
-          name: song.artistName,
-        },
+
         indexTime: Date.now(),
       },
       refresh: true,
@@ -231,23 +178,8 @@ const updateSentimentsForSong = async (
   song: Song,
   sentiments: string[],
 ) => {
-  await dbClient.send(new UpdateItemCommand(
-    {
-      TableName: process.env.SONG_TABLE_NAME,
-      Key: {
-        "songId": {
-          "S": song.songId
-        },
-        "artistId": {
-          "S": song.artistId
-        },
-      },
-      UpdateExpression: "set sentiments = :sentiments",
-      ExpressionAttributeValues: {
-        ":sentiments": {
-          "L": sentiments.map((s) => ({ "S": s }))
-        },
-      },
-    }
-  ));
+  const db = await getFirestoreDb();
+  await db.collection("songs").doc(song.id).update({
+    sentiments,
+  });
 }
