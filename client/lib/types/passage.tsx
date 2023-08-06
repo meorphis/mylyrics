@@ -9,20 +9,23 @@ export type PassageType = {
 };
 
 export type PassageGroupType = {
-  [passageKey: string]: PassageType;
-};
+  passageKey: string;
+  passage: PassageType;
+}[];
 
 export type PassageGroupsType = {
-  [groupKey: string]: PassageGroupType;
-};
+  groupKey: string;
+  passageGroup: PassageGroupType;
+}[];
 
 export type PassageGroupRequestType = RequestTypeWithPartial<PassageGroupType>;
 
-export type PassageGroupsDataType = {
-  [groupKey: string]: PassageGroupRequestType;
-};
+export type PassageGroupRequestsType = {
+  groupKey: string;
+  passageGroupRequest: PassageGroupRequestType;
+}[];
 
-export type PassageItemKey = {
+export type PassageItemKeyType = {
   groupKey: string;
   passageKey: string;
 };

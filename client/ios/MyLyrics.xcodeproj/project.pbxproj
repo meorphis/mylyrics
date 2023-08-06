@@ -18,6 +18,8 @@
 		8B6D12DFB3BE8E34D1F795FC /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3815A85B82786A54190D619 /* ExpoModulesProvider.swift */; };
 		A95338C42A624EB7005B8FC2 /* SpotifyiOS.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A95338C22A623B42005B8FC2 /* SpotifyiOS.xcframework */; };
 		A95338C52A624EB7005B8FC2 /* SpotifyiOS.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A95338C22A623B42005B8FC2 /* SpotifyiOS.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A95338D12A74CE77005B8FC2 /* MaterialIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A95338D02A74CE5F005B8FC2 /* MaterialIcons.ttf */; };
+		A95338D32A760496005B8FC2 /* Ionicons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A95338D22A760496005B8FC2 /* Ionicons.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +65,9 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyLyrics/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-MyLyrics-MyLyricsTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyLyrics-MyLyricsTests.release.xcconfig"; path = "Target Support Files/Pods-MyLyrics-MyLyricsTests/Pods-MyLyrics-MyLyricsTests.release.xcconfig"; sourceTree = "<group>"; };
 		A95338C22A623B42005B8FC2 /* SpotifyiOS.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = SpotifyiOS.xcframework; path = "../node_modules/react-native-spotify-remote/ios/external/SpotifySDK/SpotifyiOS.xcframework"; sourceTree = "<group>"; };
+		A95338CD2A74CD05005B8FC2 /* MaterialIcons.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = MaterialIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf"; sourceTree = "<group>"; };
+		A95338D02A74CE5F005B8FC2 /* MaterialIcons.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = MaterialIcons.ttf; path = "../../node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf"; sourceTree = "<group>"; };
+		A95338D22A760496005B8FC2 /* Ionicons.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Ionicons.ttf; path = "../../node_modules/react-native-vector-icons/Fonts/Ionicons.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F3815A85B82786A54190D619 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-MyLyrics-MyLyricsTests/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -117,6 +122,7 @@
 		13B07FAE1A68108700A75B9A /* MyLyrics */ = {
 			isa = PBXGroup;
 			children = (
+				A95338CD2A74CD05005B8FC2 /* MaterialIcons.ttf */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -156,6 +162,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				A95338CF2A74CE53005B8FC2 /* Fonts */,
 				13B07FAE1A68108700A75B9A /* MyLyrics */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* MyLyricsTests */,
@@ -184,6 +191,15 @@
 				2CFA6311390BE9F2EB8CB4DC /* ExpoModulesProvider.swift */,
 			);
 			name = MyLyrics;
+			sourceTree = "<group>";
+		};
+		A95338CF2A74CE53005B8FC2 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				A95338D02A74CE5F005B8FC2 /* MaterialIcons.ttf */,
+				A95338D22A760496005B8FC2 /* Ionicons.ttf */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
@@ -294,7 +310,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A95338D12A74CE77005B8FC2 /* MaterialIcons.ttf in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				A95338D32A760496005B8FC2 /* Ionicons.ttf in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

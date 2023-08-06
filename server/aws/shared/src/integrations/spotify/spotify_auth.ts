@@ -119,7 +119,6 @@ const makeSpotifyAuthRequest = async (
   } catch (error: any) {
 
     if (typeof error === "object" && "response" in error) {
-      console.log(JSON.stringify(error.response.data));
       return {
         status: error.response.status,
         data: {

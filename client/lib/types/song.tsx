@@ -4,9 +4,10 @@ type SongType = {
     image: string;
   };
   name: string;
-  artist: {
-    names: string[];
-  };
+  artists: {
+    name: string;
+  }[];
+  lyrics: string;
 };
 
 export default SongType;

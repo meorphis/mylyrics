@@ -1,5 +1,5 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
-import {PassageItemKey} from '../../types/passage';
+import {PassageItemKeyType} from '../../types/passage';
 
 export const activePassageSlice = createSlice({
   name: 'active_passage',
@@ -9,7 +9,7 @@ export const activePassageSlice = createSlice({
   },
   reducers: {
     setActivePassage: (
-      state: PassageItemKey,
+      state: PassageItemKeyType,
       action: PayloadAction<{
         groupKey?: string;
         passageKey?: string;
@@ -27,4 +27,4 @@ export const activePassageSlice = createSlice({
 
 export const {setActivePassage} = activePassageSlice.actions;
 
-export default activePassageSlice.reducer as Reducer<PassageItemKey>;
+export default activePassageSlice.reducer as Reducer<PassageItemKeyType>;

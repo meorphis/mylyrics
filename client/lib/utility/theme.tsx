@@ -1,13 +1,9 @@
 import React from 'react';
 import ThemeType from '../types/theme';
 
-type ThemeProviderProps = {
-  children: React.ReactNode;
-};
-
 // *** PUBLIC INTERFACE ***
 // should be place near the top of the component tree - allows children to set and get theme
-export const ThemeProvider = (props: ThemeProviderProps) => {
+export const ThemeProvider = ({children}: {children: React.ReactNode}) => {
   const [theme, setTheme] = React.useState<ThemeType>({
     primaryColor: 'white',
     secondaryColor: 'white',
@@ -16,21 +12,33 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
   });
 
   return (
-    <ThemeContext.Provider value={{theme, setTheme}}>
-      {props.children}
-    </ThemeContext.Provider>
+    <ThemeUpdateContext.Provider value={setTheme}>
+      <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+    </ThemeUpdateContext.Provider>
   );
 };
 
 export const useTheme = () => {
-  const {theme, setTheme} = React.useContext(ThemeContext);
+  const context = React.useContext(ThemeContext);
 
-  // safe to assume these aren't null since we'll use the ThemeProvider near the
-  // top of the component tree
-  return {theme: theme!, setTheme: setTheme!};
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+
+  return context;
 };
 
-const ThemeContext = React.createContext<{
-  theme?: ThemeType;
-  setTheme?: (theme: ThemeType) => void;
-}>({});
+export const useThemeUpdate = () => {
+  const context = React.useContext(ThemeUpdateContext);
+
+  if (context === undefined) {
+    throw new Error('useThemeUpdate must be used within a ThemeProvider');
+  }
+
+  return context;
+};
+
+const ThemeContext = React.createContext<ThemeType | undefined>(undefined);
+const ThemeUpdateContext = React.createContext<
+  ((theme: ThemeType) => void) | undefined
+>(undefined);

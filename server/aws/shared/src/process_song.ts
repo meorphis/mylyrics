@@ -2,7 +2,7 @@ import {getLyrics} from "./integrations/genius";
 import {labelPassages, vectorizePassages} from "./integrations/open_ai/open_ai_integration";
 import {getSearchClient} from "./integrations/aws";
 import {uuidForPassage} from "./utility/uuid";
-import {Song, VectorizedAndLabeledPassage} from "./utility/types";
+import {LabeledPassage, Song, VectorizedAndLabeledPassage} from "./utility/types";
 import { getFirestoreDb } from "./integrations/firebase";
 import {FieldValue} from "firebase-admin/firestore";
 
@@ -45,7 +45,9 @@ export const processSong = async (song: Song) => {
   )}`);
 
   // analysis from openai integration
-  const {sentiments: songSentiments, passages} = await labelPassages({lyrics});
+  const {
+    sentiments: songSentiments, passages, metadata: labelingMetadata
+  } = await labelPassages({lyrics});
 
   console.log(`got analysis for song: ${JSON.stringify(
     {
@@ -59,7 +61,16 @@ export const processSong = async (song: Song) => {
 
   console.log(`got vectorized passages for song ${song.name} by ${song.primaryArtist.name}`);
 
-  await addSongToSearch(song, {songSentiments, vectorizedPassages});
+  await addSongToSearch(
+    song,
+    {
+      songSentiments,
+      songLyrics: lyrics,
+      unvectorizedPassages: passages,
+      vectorizedPassages,
+      labelingMetadata
+    }
+  );
   console.log(`added song ${song.primaryArtist.name}: ${song.name} to search`);
 
   await updateSentimentsForSong(song, songSentiments);
@@ -144,34 +155,72 @@ const addSongToSearch = async (
   song: Song,
   {
     songSentiments,
+    songLyrics,
+    unvectorizedPassages,
     vectorizedPassages,
+    labelingMetadata,
   } :
   {
     songSentiments: string[],
+    songLyrics: string,
+    unvectorizedPassages: LabeledPassage[],
     vectorizedPassages: VectorizedAndLabeledPassage[],
+    labelingMetadata: {
+      labeledBy: string,
+    }
   }
 ) => {
-  await Promise.all(vectorizedPassages.map(async (passage) => {    
-    return await getSearchClient().index({
-      id: uuidForPassage({
-        lyrics: passage.lyrics,
-        songName: song.name,
-        artistName: song.primaryArtist.name,
-      }),
-      index: "song-lyric-passages",
-      body: {
-        ...passage,
-        primarySentiment: passage.sentiments[0],
-        song: {
-          ...song,
-          sentiments: songSentiments,
-        },
+  const {id: songId, ...songRest} = song;
+  const searchClient = getSearchClient();
 
+  await Promise.all([...vectorizedPassages.map((passage) => searchClient.index({
+    id: uuidForPassage({
+      lyrics: passage.lyrics,
+      songName: song.name,
+      artistName: song.primaryArtist.name,
+    }),
+    index: "song-lyric-passages",
+    body: {
+      ...passage,
+      metadata: {
+        ...passage.metadata,
+        ...labelingMetadata,
         indexTime: Date.now(),
       },
-      refresh: true,
-    });
-  }));
+      primarySentiment: passage.sentiments[0],
+      song: {
+        ...song,
+        lyrics: songLyrics,
+        sentiments: songSentiments,
+      },
+    },
+  })),
+  searchClient.index({
+    id: songId,
+    index: "song-lyric-songs",
+    body: {
+      ...songRest,
+      lyrics: songLyrics,
+      sentiments: songSentiments,
+      passageSentiments: Array.from(
+        new Set(unvectorizedPassages.map((passage) => passage.sentiments).flat())
+      ),
+      passages: unvectorizedPassages.map((passage) => {
+        return {
+          id: uuidForPassage({
+            lyrics: passage.lyrics,
+            songName: song.name,
+            artistName: song.primaryArtist.name,
+          }),
+          ...passage,
+        }
+      }),
+      metadata: {
+        ...labelingMetadata,
+        indexTime: Date.now(),
+      },
+    }
+  })]);
 }
 
 const updateSentimentsForSong = async (

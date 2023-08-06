@@ -456,8 +456,8 @@ export default class Carousel<T> extends React.Component<
     index: number,
     animated?: boolean,
     fireCallback?: boolean,
-    initial?: boolean,
-    lockScroll?: boolean,
+    briefTimeout?: boolean,
+    timeoutCallback?: () => void,
   ): void;
   /**
    * Snap to next item manually
