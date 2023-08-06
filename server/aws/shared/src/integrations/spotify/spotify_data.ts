@@ -110,6 +110,7 @@ export const getEnrichedSongs = async (
       },
       album: {
         ...song.album,
+        name: album.name,
         genres: album.genres,
         image: album.images[0],
         releaseDate: album.release_date,

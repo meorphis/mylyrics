@@ -49,7 +49,7 @@ const authenticateNatively = async ({deviceId}: {deviceId: string}) => {
     tokenRefreshURL: '',
     tokenSwapURL: 'http://172.20.10.3:3000?userId=' + deviceId,
     scopes: [
-      ApiScope.AppRemoteControlScope,
+      // ApiScope.AppRemoteControlScope,
       ApiScope.UserTopReadScope,
       ApiScope.UserReadRecentlyPlayedScope,
     ],

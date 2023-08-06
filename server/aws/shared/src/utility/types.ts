@@ -3,8 +3,10 @@ type LabeledPassageMetadata = {
     numCharsPerLine: number[];
     // since our UI will have to wrap text, an effective line can't be more than 35 characters
     numEffectiveLines: number;
-    indexedAt: number;
-    labeledBy: string;
+}
+
+export type LabelingMetadata = {
+    labeledBy: "gpt-3.5-turbo",
 }
 
 // a passage of lyrics that has been labeled with sentiments
@@ -84,6 +86,7 @@ export type Song = {
         popularity: number,
     },
     album: {
+        name: string,
         spotifyId: string,
         genres: string[],
         image: {
@@ -93,4 +96,29 @@ export type Song = {
         },
         releaseDate: string,
     },
+}
+
+export type SongWithLyrics = Song & {
+    lyrics: string,
+}
+
+export type Recommendation = {
+    lyrics: string,
+    song: {
+        id: string,
+        album: {
+            name: string,
+            image: string,
+        },
+        artists: {
+            id: string,
+            name: string,
+        }[],
+        name: string,
+        lyrics: string,
+    },
+    tags: {
+        type: "sentiment",
+        sentiment: string,
+    }[]
 }

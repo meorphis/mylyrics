@@ -1,5 +1,5 @@
 import {ASSISTANT_EXAMPLE_MESSAGE, SYSTEM_MESSAGE, USER_EXAMPLE_MESSAGE} from "./open_ai_prompt";
-import { LabeledPassage, VectorizedAndLabeledPassage } from "../../utility/types";
+import { LabeledPassage, LabelingMetadata, VectorizedAndLabeledPassage } from "../../utility/types";
 import { getSecretString } from "../aws";
 import { Configuration, OpenAIApi } from "openai";
 import { cachedFunction } from "../../utility/cache";
@@ -23,7 +23,7 @@ const OPEN_AI_PARAMS = {
 // produce valid JSON
 export const labelPassages = async (
   {lyrics} : {lyrics: string}
-): Promise<{sentiments: string[], passages: LabeledPassage[]}> => {
+): Promise<{sentiments: string[], passages: LabeledPassage[], metadata: LabelingMetadata}> => {
   const openai = await getOpenAIClient();
 
   const completionObject = await openai.createChatCompletion({
@@ -54,6 +54,9 @@ export const labelPassages = async (
     return {
       sentiments: content.floopters,
       passages: addMetadataToPassages(content.passages),
+      metadata: {
+        labeledBy: "gpt-3.5-turbo",
+      }
     }
   } else {
     throw Error(`openai response contains incorrect fields
@@ -119,8 +122,6 @@ const addMetadataToPassages = (passages: {
         numLines,
         numCharsPerLine,
         numEffectiveLines,
-        indexedAt: Date.now(),
-        labeledBy: MODEL,
       }
     }});
 }

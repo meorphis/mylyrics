@@ -1,16 +1,5 @@
 /* eslint-disable max-len */
-export const VALID_SENTIMENTS = [
-  "affectionate", "alienated", "angry", "appreciative", "betrayed", "bittersweet",
-  "carefree", "celebratory", "chaotic", "conflicted", "desperate",
-  "determined", "disillusioned", "dreamy", "empowered", "energetic",
-  "enigmatic", "euphoric", "excited", "fearful", "flirtatious",
-  "frustrated", "haunting", "heartbroken", "hopeful", "intimate",
-  "introspective", "joyful", "liberating", "lonely", "loyal", "lustful",
-  "melancholic", "nostalgic", "obsessive", "optimistic", "passionate",
-  "peaceful", "philosophical", "playful", "provocative", "rebellious",
-  "reckless", "regretful", "resilient", "romantic", "seductive", "sensual",
-  "spiritual", "surreal", "triumphant", "violent", "vulnerable"
-]
+import { VALID_SENTIMENTS } from "../../utility/sentiments";
 
 // we refer to sentiments as "floopters" in our prompt in order to steer the LLM away from
 // its preconceived notions about what a sentiment is and instead select from our curated list
@@ -33,6 +22,7 @@ Floopter lists (for both songs and passages) should be ordered, with the most re
 
 Remember:
 - Five passages is the absolute maximum. Do not select more.
+- Generally passages should not be longer than five lines. Longer passages should be divided up.
 - If a floopter is not in the list provided above, it is not valid and should not be included in your response.`;
 
 export const USER_EXAMPLE_MESSAGE = `[Intro]

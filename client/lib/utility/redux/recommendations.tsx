@@ -1,52 +1,99 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
-import {PassageGroupsDataType, PassageGroupsType} from '../../types/passage';
-import {errorToString} from '../error';
+import {
+  PassageGroupRequestType,
+  PassageGroupRequestsType,
+  PassageGroupsType,
+} from '../../types/passage';
 
-const EXPECTED_NUM_PASSAGES_WHEN_FULLY_LOADED = 1;
+const EXPECTED_NUM_PASSAGES_WHEN_FULLY_LOADED = 5;
 
 export const recommendationsSlice = createSlice({
   name: 'recommendations',
-  initialState: {},
+  initialState: [] as PassageGroupRequestsType,
   reducers: {
     markPassageGroupAsLoading: (
-      state: PassageGroupsDataType,
+      state: PassageGroupRequestsType,
       action: PayloadAction<{groupKey: string}>,
     ) => {
-      state[action.payload.groupKey] ||= {
-        data: {},
-        status: 'init',
-      };
-      state[action.payload.groupKey].status = 'loading';
+      const groupIndex = state.findIndex(
+        ({groupKey}) => groupKey === action.payload.groupKey,
+      );
+      if (groupIndex !== -1) {
+        state[groupIndex] = {
+          ...state[groupIndex],
+          passageGroupRequest: {
+            ...state[groupIndex].passageGroupRequest,
+            status: 'loading',
+          },
+        };
+      } else {
+        state.push({
+          groupKey: action.payload.groupKey,
+          passageGroupRequest: {
+            data: [],
+            status: 'loading',
+          },
+        });
+      }
     },
     markPassageGroupAsError: (
-      state: PassageGroupsDataType,
-      action: PayloadAction<{groupKey: string; error: Error}>,
+      state: PassageGroupRequestsType,
+      action: PayloadAction<{groupKey: string; error: string}>,
     ) => {
-      state[action.payload.groupKey] = {
-        ...state[action.payload.groupKey],
-        status: 'error',
-        error: errorToString(action.payload.error),
-      };
+      const groupIndex = state.findIndex(
+        ({groupKey}) => groupKey === action.payload.groupKey,
+      );
+      if (groupIndex !== -1) {
+        state[groupIndex] = {
+          ...state[groupIndex],
+          passageGroupRequest: {
+            ...state[groupIndex].passageGroupRequest,
+            status: 'error',
+            error: action.payload.error,
+          },
+        };
+      } else {
+        state.push({
+          groupKey: action.payload.groupKey,
+          passageGroupRequest: {
+            data: [],
+            status: 'error',
+            error: action.payload.error,
+          },
+        });
+      }
     },
     applyLoadedPassageGroups: (
-      state: PassageGroupsDataType,
+      state: PassageGroupRequestsType,
       action: PayloadAction<PassageGroupsType>,
     ) => {
-      Object.entries(action.payload).forEach(([groupKey, group]) => {
-        const previous = state[groupKey]?.data;
-        const updated = {
-          ...previous,
-          ...group,
+      action.payload.forEach(({groupKey, passageGroup}) => {
+        const previousIndex = state.findIndex(
+          ({groupKey: gk}) => gk === groupKey,
+        );
+        const updated = [
+          ...(previousIndex !== -1
+            ? state[previousIndex].passageGroupRequest.data
+            : []),
+          ...passageGroup,
+        ];
+
+        const newPassageGroupRequestContainer = {
+          groupKey,
+          passageGroupRequest: {
+            data: updated,
+            status:
+              updated.length >= EXPECTED_NUM_PASSAGES_WHEN_FULLY_LOADED
+                ? 'loaded'
+                : 'init',
+          } as PassageGroupRequestType,
         };
 
-        state[groupKey] = {
-          status:
-            Object.keys(updated).length >=
-            EXPECTED_NUM_PASSAGES_WHEN_FULLY_LOADED
-              ? 'loaded'
-              : 'init',
-          data: updated,
-        };
+        if (previousIndex !== -1) {
+          state[previousIndex] = newPassageGroupRequestContainer;
+        } else {
+          state.push(newPassageGroupRequestContainer);
+        }
       });
     },
   },
@@ -58,4 +105,4 @@ export const {
   applyLoadedPassageGroups,
 } = recommendationsSlice.actions;
 
-export default recommendationsSlice.reducer as Reducer<PassageGroupsDataType>;
+export default recommendationsSlice.reducer as Reducer<PassageGroupRequestsType>;

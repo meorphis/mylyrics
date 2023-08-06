@@ -109,8 +109,46 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /
+            Path: /swap_spotify_code
             Method: POST
+      Layers:
+        - !Ref CommonLayer
+  GetAdditionalRecommendationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./handlers
+      Handler: get_additional_recommendations_function.handler
+      Runtime: nodejs18.x
+      MemorySize: 256
+      Timeout: 60
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:*
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'es:ESHttp*'
+            Resource: 
+              Fn::Join:
+                - ''
+                - - 'arn:aws:es:'
+                  - !Ref 'AWS::Region'
+                  - ':'
+                  - !Ref 'AWS::AccountId'
+                  - ':domain/'
+                  - !Ref OpenSearchServiceDomain
+                  - '/*'
+      Environment:
+        Variables:
+          OPENSEARCH_URL: !Sub "https://${OpenSearchServiceDomain.DomainEndpoint}/"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /get_additional_recommendations
+            Method: GET
       Layers:
         - !Ref CommonLayer
   CommonLayer:

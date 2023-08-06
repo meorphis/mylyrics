@@ -3,7 +3,7 @@ import { URLSearchParams } from 'url';
 
 export async function handler(event) {
     try {
-        const { body, httpMethod, path, queryStringParameters } = event;
+        const { body, httpMethod, queryStringParameters } = event;
         if (httpMethod !== 'POST') {
             return buildResponse(400, {error: `Unsupported method "${httpMethod}"`});                
         }

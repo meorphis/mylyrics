@@ -35,7 +35,7 @@ export const DeviceIdProvider = (props: {
   }
 
   return (
-    <DeviceIdContext.Provider value={{deviceId}}>
+    <DeviceIdContext.Provider value={{deviceId: '27SVODDVM4'}}>
       {props.children}
     </DeviceIdContext.Provider>
   );

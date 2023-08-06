@@ -1,6 +1,9 @@
 import {configureStore} from '@reduxjs/toolkit';
 import recommendationsReducer from './recommendations';
 import activePassageReducer from './active_passage';
+import {enableMapSet} from 'immer';
+
+enableMapSet();
 
 export const store = configureStore({
   reducer: {

@@ -6,26 +6,28 @@ import {
   markPassageGroupAsError,
   markPassageGroupAsLoading,
 } from './redux/recommendations';
+import {errorToString} from './error';
+import {PassageItemKeyType} from '../types/passage';
+import {useDeviceId} from './device_id';
+import {unflattedRecommendations} from './db/recommendations';
 
-export const useActiveGroup = (groupKey: string) => {
-  const isActiveGroup = useSelector(
-    (state: RootState) => state.activePassage?.groupKey === groupKey,
+export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
+  const passageGroupKeyIsUninitialized = useSelector(
+    (state: RootState) =>
+      state.recommendations.find(({groupKey}) => groupKey === passage.groupKey)
+        ?.passageGroupRequest.status === 'init',
   );
-  const passageGroupDataStatus = useSelector(
-    (state: RootState) => state.recommendations[groupKey]?.status || 'init',
-  );
+
+  const deviceId = useDeviceId();
 
   const dispatch = useDispatch();
 
-  const setActiveGroup = async ({passageKey}: {passageKey?: string}) => {
-    dispatch(
-      setActivePassage({
-        passageKey,
-        groupKey,
-      }),
-    );
+  const setActiveGroup = async () => {
+    const {groupKey} = passage;
 
-    if (passageGroupDataStatus === 'init') {
+    dispatch(setActivePassage(passage));
+
+    if (passageGroupKeyIsUninitialized) {
       dispatch(
         markPassageGroupAsLoading({
           groupKey,
@@ -33,23 +35,21 @@ export const useActiveGroup = (groupKey: string) => {
       );
       try {
         const recommendationsResponse = await fetch(
-          `http://172.20.10.3:3000?groupKey=${groupKey}`,
+          `https://9v121mddj3.execute-api.us-east-2.amazonaws.com/Prod?userId=${deviceId}&sentiment=${groupKey}`,
         );
-        const recommendations = await recommendationsResponse.json();
+        const data = await recommendationsResponse.json();
+        const recommendations = unflattedRecommendations(data.recommendations);
         dispatch(applyLoadedPassageGroups(recommendations));
       } catch (e) {
         dispatch(
           markPassageGroupAsError({
             groupKey,
-            error: e as Error,
+            error: errorToString(e),
           }),
         );
       }
     }
   };
 
-  return {
-    isActiveGroup,
-    setActiveGroup,
-  };
+  return setActiveGroup;
 };

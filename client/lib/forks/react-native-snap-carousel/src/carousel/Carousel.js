@@ -133,6 +133,7 @@ export default class Carousel extends Component {
         this._onSnap = this._onSnap.bind(this);
 
         this._onLayout = this._onLayout.bind(this);
+        this._getItemLayout = this._getItemLayout.bind(this);
         this._onScroll = this._onScroll.bind(this);
         this._onScrollBeginDrag = props.enableSnap ? this._onScrollBeginDrag.bind(this) : undefined;
         this._onScrollEnd = props.enableSnap || props.autoplay ? this._onScrollEnd.bind(this) : undefined;
@@ -571,6 +572,12 @@ export default class Carousel extends Component {
         return 0;
     }
 
+    UNSAFE_componentWillReceiveProps (nextProps) {
+        if (this.props.data.length !== nextProps.data.length) {
+            this._initPositionsAndInterpolators(nextProps);
+        }
+    }
+
     _initPositionsAndInterpolators (props = this.props) {
         const { data, itemWidth, itemHeight, scrollInterpolator, vertical } = props;
         const sizeRef = vertical ? itemHeight : itemWidth;
@@ -967,6 +974,12 @@ export default class Carousel extends Component {
         }
     }
 
+    _getItemLayout (_, index) {
+        const { itemWidth, itemHeight, vertical } = this.props;
+        const sizeRef = vertical ? itemHeight : itemWidth;
+        return {length: sizeRef, offset: sizeRef * index, index}
+    }
+
     _snapScroll (delta) {
         const { swipeThreshold } = this.props;
 
@@ -1122,17 +1135,24 @@ export default class Carousel extends Component {
         this.pauseAutoPlay();
     }
 
-    snapToItem (index, animated = true, fireCallback = true) {
+    snapToItem (index, animated = true, fireCallback = true, briefTimeout = false, timeoutCallback = () => {}) {
         if (!index || index < 0) {
             index = 0;
         }
 
         const positionIndex = this._getPositionIndex(index);
 
-        if (positionIndex === this._activeItem) {
+        // if (positionIndex === this._activeItem) {
+        //     return;
+        // }
+
+        if (briefTimeout) {
+            setTimeout(() => {
+                this._snapToItem(positionIndex, animated, fireCallback);
+                timeoutCallback();
+            }, 1);
             return;
         }
-
         this._snapToItem(positionIndex, animated, fireCallback);
     }
 
@@ -1337,6 +1357,7 @@ export default class Carousel extends Component {
             onTouchStart: this._onTouchStart,
             onTouchEnd: this._onScrollEnd,
             onLayout: this._onLayout,
+            getItemLayout: this._getItemLayout,
             ...specificProps
         };
     }
