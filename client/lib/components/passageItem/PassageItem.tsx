@@ -10,26 +10,24 @@
 
 import React, {memo, useRef, useState} from 'react';
 import {LayoutChangeEvent, StyleSheet, View} from 'react-native';
-import {PassageType} from '../../types/passage';
 import SongInfo from './SongInfo';
 import PassageLyrics from './PassageLyrics';
 import ThemeType from '../../types/theme';
-import NonLoadedPassageItem from './NonLoadedPassageItem';
-import FastImage from 'react-native-fast-image';
 import ActionBar from './ActionBar';
 import {NavigationProp, useNavigation} from '@react-navigation/core';
 import {RootStackParamList} from '../../types/navigation';
 import {uuidv4} from '@firebase/util';
 import ItemContainer from '../common/ItemContainer';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {PassageType} from '../../types/passage';
 
 export type PassageItemProps = {
   passageItemKey?: {
     passageKey: string;
     groupKey: string;
   };
-  passage: PassageType | null;
-  passageTheme: ThemeType | undefined;
+  passage: PassageType;
+  passageTheme: ThemeType;
 };
 
 const PassageItem = (props: PassageItemProps) => {
@@ -42,54 +40,13 @@ const PassageItem = (props: PassageItemProps) => {
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const {passage, passageTheme, passageItemKey} = props;
-  const {lyrics, tags, song} = passage || {
-    lyrics: '',
-    tags: [],
-    song: {
-      name: '',
-      artists: [{name: ''}],
-      album: {
-        name: '',
-        image: '',
-      },
-      lyrics: '',
-    },
-  };
-
-  const [imageLoaded, setImageLoaded] = useState(false);
-  // const {theme: globalTheme} = useTheme();
-
-  let image = null;
-  if (song.album.image) {
-    image = (
-      <FastImage
-        source={{uri: song.album.image}}
-        style={styles.albumImage}
-        onLoad={() => {
-          console.log(`image loaded for ${passageItemKey?.passageKey}`);
-          setImageLoaded(true);
-        }}
-      />
-    );
-  }
-
-  const loading = !imageLoaded || passageTheme == null;
-
-  if (loading) {
-    return (
-      <ItemContainer>
-        {/* we need to mount the image, otherwise it will never actually load */}
-        <View style={styles.hidden}>{image}</View>
-        <NonLoadedPassageItem dataStatus="loading" message="Loading..." />
-      </ItemContainer>
-    );
-  }
+  const {lyrics, tags, song} = passage;
 
   return (
     <ItemContainer theme={passageTheme}>
       <View
         style={{...styles.container, borderColor: passageTheme.detailColor}}>
-        <SongInfo song={song} passageTheme={passageTheme} loadedImage={image} />
+        <SongInfo song={song} passageTheme={passageTheme} />
         <PassageLyrics
           song={song}
           lyrics={lyrics}
@@ -127,10 +84,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'flex-start',
-  },
-  albumImage: {
-    width: 100,
-    height: 100,
   },
   hidden: {
     opacity: 0,

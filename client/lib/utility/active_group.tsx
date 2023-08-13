@@ -7,9 +7,11 @@ import {
   markPassageGroupAsLoading,
 } from './redux/recommendations';
 import {errorToString} from './error';
-import {PassageItemKeyType} from '../types/passage';
+import {PassageItemKeyType, RawPassageType} from '../types/passage';
 import {useDeviceId} from './device_id';
-import {unflattedRecommendations} from './db/recommendations';
+import {unflattenRecommendations} from './db/recommendations';
+import {addImageDataToPassage} from './images';
+import {API_HOST} from './api';
 
 export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
   const passageGroupKeyIsUninitialized = useSelector(
@@ -35,10 +37,14 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
       );
       try {
         const recommendationsResponse = await fetch(
-          `https://9v121mddj3.execute-api.us-east-2.amazonaws.com/Prod?userId=${deviceId}&sentiment=${groupKey}`,
+          `${API_HOST}/get_additional_recommendations?userId=${deviceId}&sentiment=${groupKey}`,
         );
         const data = await recommendationsResponse.json();
-        const recommendations = unflattedRecommendations(data.recommendations);
+        const rawFlatRecommendations = data.recommendations as RawPassageType[];
+        const flatRecommendations = await Promise.all(
+          rawFlatRecommendations.map(addImageDataToPassage),
+        );
+        const recommendations = unflattenRecommendations(flatRecommendations);
         dispatch(applyLoadedPassageGroups(recommendations));
       } catch (e) {
         dispatch(

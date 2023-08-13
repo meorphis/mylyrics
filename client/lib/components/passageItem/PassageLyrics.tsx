@@ -8,7 +8,7 @@ import {
   splitLyricsWithPassages,
 } from '../../utility/lyrics';
 import {SharedElement} from 'react-navigation-shared-element';
-import SongType from '../../types/song';
+import {SongType} from '../../types/song';
 
 type Props = {
   song: SongType;

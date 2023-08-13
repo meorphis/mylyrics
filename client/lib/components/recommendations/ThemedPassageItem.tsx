@@ -1,21 +1,23 @@
 // this HOC is responsible for determining the theme for a PassageItem based on
 // its album art and then setting the global theme if the passage is currently
 
-import {memo, useEffect, useState} from 'react';
+import {memo, useEffect} from 'react';
 import PassageItem, {PassageItemProps} from '../passageItem/PassageItem';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import {useThemeUpdate} from '../../utility/theme';
-import {ImageColorsResult, getColors} from 'react-native-image-colors';
 import React from 'react';
-import {PassageType} from '../../types/passage';
+import {PassageType, RawPassageType} from '../../types/passage';
+import _ from 'lodash';
+import {ActivityIndicator} from 'react-native';
+import ItemContainer from '../common/ItemContainer';
 
 type WithPassageThemeProps = {
   passageItemKey: {
     passageKey: string;
     groupKey: string;
   };
-  passage: PassageType | null;
+  passage: RawPassageType;
 };
 
 const WithPassageTheme = (
@@ -24,62 +26,71 @@ const WithPassageTheme = (
   const ThemedPassageItem: React.FC<WithPassageThemeProps> = props => {
     console.log('rendering ThemedPassageItem');
 
-    const {passage} = props;
-    const {image: imageUrl} = passage?.song.album || {
-      image: null,
-    };
+    const {image} = props.passage.song.album;
+
+    const imageData = useSelector(
+      (state: RootState) => state.imageData[image],
+      _.isEqual,
+    );
+
     const passageIsActive = useSelector(
       (state: RootState) =>
         state.activePassage.passageKey === props.passageItemKey.passageKey &&
         state.activePassage.groupKey === props.passageItemKey.groupKey,
     );
     const updateGlobalTheme = useThemeUpdate();
-    const [albumColors, setAlbumColors] = useState<ImageColorsResult | null>(
-      null,
-    );
-
-    // get the colors for the album art
-    useEffect(() => {
-      if (imageUrl == null) {
-        return;
-      }
-      getColors(imageUrl, {quality: 'high'}).then(colors => {
-        console.log(`colors loaded for ${props.passageItemKey.passageKey}`);
-        setAlbumColors(colors);
-      });
-    }, []);
 
     // albumColors behaves different on iOS and Android, so we need to normalize
-    const theme = albumColors
+    const theme = imageData
       ? {
           primaryColor:
-            albumColors.platform === 'ios'
-              ? albumColors.primary
-              : albumColors.vibrant,
+            imageData.colors.platform === 'ios'
+              ? imageData.colors.primary
+              : imageData.colors.vibrant,
           secondaryColor:
-            albumColors.platform === 'ios'
-              ? albumColors.secondary
-              : albumColors.darkVibrant,
+            imageData.colors.platform === 'ios'
+              ? imageData.colors.secondary
+              : imageData.colors.darkVibrant,
           backgroundColor:
-            albumColors.platform === 'ios'
-              ? albumColors.background
-              : albumColors.muted,
+            imageData.colors.platform === 'ios'
+              ? imageData.colors.background
+              : imageData.colors.muted,
           detailColor:
-            albumColors.platform === 'ios'
-              ? albumColors.detail
-              : albumColors.darkMuted,
+            imageData.colors.platform === 'ios'
+              ? imageData.colors.detail
+              : imageData.colors.darkMuted,
         }
-      : undefined;
+      : null;
 
-    // update the global theme is the passage has become active or the theme has
-    // finished loading
+    // update the global theme is the passage has become active
     useEffect(() => {
       if (passageIsActive && theme) {
         updateGlobalTheme(theme);
       }
     }, [passageIsActive, theme != null]);
 
-    return <WrappedComponent {...props} passageTheme={theme} />;
+    if (imageData == null) {
+      return (
+        <ItemContainer>
+          <ActivityIndicator />
+        </ItemContainer>
+      );
+    }
+
+    const passage = {
+      ...props.passage,
+      song: {
+        ...props.passage.song,
+        album: {
+          ...props.passage.song.album,
+          image: imageData,
+        },
+      },
+    } as PassageType;
+
+    return (
+      <WrappedComponent {...props} passage={passage} passageTheme={theme!} />
+    );
   };
 
   return ThemedPassageItem;

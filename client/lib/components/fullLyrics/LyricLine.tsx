@@ -85,7 +85,11 @@ const LyricLine = (props: Props) => {
   }
 
   return (
-    shouldShowAppearingText && <AppearingView>{innerComponent}</AppearingView>
+    shouldShowAppearingText && (
+      <AppearingView delay={50} duration={750}>
+        {innerComponent}
+      </AppearingView>
+    )
   );
 };
 
