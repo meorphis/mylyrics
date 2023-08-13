@@ -14,7 +14,7 @@ import {store} from './lib/utility/redux';
 import {NavigationContainer} from '@react-navigation/native';
 import {StackCardStyleInterpolator} from '@react-navigation/stack';
 import FullLyrics from './lib/components/fullLyrics/FullLyricsScreen';
-import RecommendationsScreen from './lib/components/recommendations/RecommendationsScreen';
+import MainScreen from './lib/components/main/MainScreen';
 import {RootStackParamList} from './lib/types/navigation';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {StyleSheet} from 'react-native';
@@ -24,10 +24,20 @@ import {
   createSharedElementStackNavigator,
 } from 'react-navigation-shared-element';
 import PassageItemScreen from './lib/components/passageItem/PassageItemScreen';
-import SongType from './lib/types/song';
+import {SongType} from './lib/types/song';
 import {cleanLyrics, splitLyricsWithPassages} from './lib/utility/lyrics';
+import {CacheManager} from '@georstat/react-native-image-cache';
+import {Dirs} from 'react-native-file-access';
 
 const Stack = createSharedElementStackNavigator<RootStackParamList>();
+
+CacheManager.config = {
+  baseDir: `${Dirs.CacheDir}/images_cache/`,
+  blurRadius: 15,
+  cacheLimit: 0,
+  sourceAnimationDuration: 1000,
+  thumbnailAnimationDuration: 1000,
+};
 
 function App(): JSX.Element {
   return (
@@ -38,8 +48,8 @@ function App(): JSX.Element {
             <SafeAreaProvider>
               <Stack.Navigator>
                 <Stack.Screen
-                  name="Recommendations"
-                  component={RecommendationsScreen}
+                  name="Main"
+                  component={MainScreen}
                   options={{
                     headerShown: false,
                     cardStyleInterpolator: forFade,

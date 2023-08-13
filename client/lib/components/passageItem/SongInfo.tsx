@@ -1,23 +1,22 @@
 // shows metadata for a song, including album art, song name, artist name, and
 // album name
 
-import {View, StyleSheet, Text} from 'react-native';
+import {View, StyleSheet, Text, Image} from 'react-native';
 import React from 'react';
 
-import SongType from '../../types/song';
+import {SongType} from '../../types/song';
 import ThemeType from '../../types/theme';
 import {textStyleCommon} from '../../utility/text';
 
 type Props = {
   song: SongType;
   passageTheme: ThemeType;
-  loadedImage: React.JSX.Element | null;
 };
 
 const SongInfo = (props: Props) => {
   console.log(`rendering SongInfo ${props.song.name}`);
 
-  const {song, passageTheme, loadedImage} = props;
+  const {song, passageTheme} = props;
 
   const {
     primaryColor: songNameColor,
@@ -27,7 +26,7 @@ const SongInfo = (props: Props) => {
 
   return (
     <View style={styles.metadataRow}>
-      {loadedImage}
+      <Image source={{uri: song.album.image.blob}} style={styles.albumImage} />
       <View style={styles.metadataText}>
         <Text
           numberOfLines={2}
@@ -54,6 +53,10 @@ const SongInfo = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
+  albumImage: {
+    width: 100,
+    height: 100,
+  },
   metadataRow: {
     flexDirection: 'row',
     padding: 0,

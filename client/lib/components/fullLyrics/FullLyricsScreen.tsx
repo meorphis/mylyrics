@@ -6,7 +6,7 @@ import {
   SafeAreaView,
   LayoutChangeEvent,
 } from 'react-native';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useRef, useState} from 'react';
 import {
   FullLyricsScreenProps,
   RootStackParamList,
@@ -24,7 +24,12 @@ import {isColorLight} from '../../utility/color';
 import SelectionButton from './SelectionButton';
 import AppearingView from '../common/AppearingView';
 import LyricLines from './LyricLines';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
+import {
+  NavigationProp,
+  useFocusEffect,
+  useNavigation,
+} from '@react-navigation/native';
+import BackButton from './BackButton';
 
 // shows the full lyrics for a song. a lot of the logic here is to ensure that
 // the animation from the passage item to the full lyrics is smooth
@@ -36,6 +41,8 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
     initiallyHighlightedPassageLyrics,
     parentYPosition,
   } = route.params;
+
+  console.log(parentYPosition);
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
@@ -101,46 +108,50 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   // the highlighted lyrics will be at the top of their parent component
   // on first render, but once the appearing lyrics are rendered, they'll
   // get pushed down - at this point, we need to scroll accordingly
-  useEffect(() => {
-    if (
-      topOfInitiallyHighlightedLyricsPosition != null &&
-      lyricsLayout != null
-    ) {
-      const scrollTo =
-        topOfInitiallyHighlightedLyricsPosition -
-        innerScrollViewPaddingTop +
-        safeAreaHeight;
+  useFocusEffect(
+    useCallback(() => {
+      if (
+        topOfInitiallyHighlightedLyricsPosition != null &&
+        lyricsLayout != null
+      ) {
+        const scrollTo =
+          topOfInitiallyHighlightedLyricsPosition -
+          innerScrollViewPaddingTop +
+          safeAreaHeight;
 
-      scrollView.current?.scrollTo({
-        y: scrollTo,
-        animated: false,
-      });
+        scrollView.current?.scrollTo({
+          y: scrollTo,
+          animated: false,
+        });
 
-      // scroll the spacers out of view - but wait a bit to ensure that the
-      // the appearing text has faded in
-      setTimeout(() => {
-        if (scrollTo < lyricsLayout!.start) {
-          // if the top spacer is in view (i.e. we've scrolled to a point above the
-          // start of the actual content, scroll down with animation)
-          scrollView.current?.scrollTo({
-            y: lyricsLayout!.start,
-          });
-        } else if (scrollTo + scrollViewHeight! > lyricsLayout!.end) {
-          // otherwise if the bottom spacer is in view, scroll up
-          scrollView.current?.scrollTo({
-            y: Math.max(
-              lyricsLayout!.end - scrollViewHeight!,
-              lyricsLayout!.start,
-            ),
-          });
-        } else {
-          // if we don't need to scroll, remove the spacers (otherwise, they'll
-          // be removed by onMomentumScrollEnd)
-          removeSpacers();
-        }
-      }, 500);
-    }
-  }, [topOfInitiallyHighlightedLyricsPosition != null && lyricsLayout != null]);
+        // scroll the spacers out of view - but wait a bit to ensure that the
+        // the appearing text has faded in
+        setTimeout(() => {
+          if (scrollTo < lyricsLayout!.start) {
+            // if the top spacer is in view (i.e. we've scrolled to a point above the
+            // start of the actual content, scroll down with animation)
+            scrollView.current?.scrollTo({
+              y: lyricsLayout!.start,
+            });
+          } else if (scrollTo + scrollViewHeight! > lyricsLayout!.end) {
+            // otherwise if the bottom spacer is in view, scroll up
+            scrollView.current?.scrollTo({
+              y: Math.max(
+                lyricsLayout!.end - scrollViewHeight!,
+                lyricsLayout!.start,
+              ),
+            });
+          } else {
+            // if we don't need to scroll, remove the spacers (otherwise, they'll
+            // be removed by onMomentumScrollEnd)
+            removeSpacers();
+          }
+        }, 500);
+      }
+    }, [
+      topOfInitiallyHighlightedLyricsPosition != null && lyricsLayout != null,
+    ]),
+  );
 
   const {width, height} = Dimensions.get('window');
 
@@ -162,6 +173,31 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   const [highlightedIndexes, setHighlightedIndexes] = useState<number[]>(
     initiallyHighlightedIndexes,
   );
+
+  const [shouldHide, setShouldHide] = React.useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setShouldHide(false);
+      return () => {
+        setTimeout(() => {
+          setShouldHide(true);
+          setShowAppearingText(false);
+          setShowSpacer(true);
+          setTopOfInitiallyHighlightedLyricsPosition(null);
+          setLyricsLayout(null);
+          scrollView.current?.scrollTo({
+            y: 0,
+            animated: false,
+          });
+        }, 500);
+      };
+    }, []),
+  );
+
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <ThemeBackground theme={theme}>
@@ -200,6 +236,8 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                 }}>
                 {showAppearingText && (
                   <AppearingView
+                    delay={50}
+                    duration={750}
                     // eslint-disable-next-line react-native/no-inline-styles
                     style={{
                       ...styles.metadataColumn,
@@ -253,22 +291,25 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
               </View>
               {showSpacer && <View style={{height}} />}
             </Animated.ScrollView>
-            <SelectionButton
-              highlightedIndexes={highlightedIndexes}
-              theme={theme}
-              onPress={() => {
-                navigation.navigate('PassageItem', {
-                  passage: {
-                    lyrics: highlightedIndexes
-                      .map(index => splitLyrics[index].lineText)
-                      .join('\n'),
-                    tags: [],
-                    song: song,
-                  },
-                  theme,
-                });
-              }}
-            />
+            <View style={styles.buttonContainer}>
+              <BackButton theme={theme} onPress={() => navigation.goBack()} />
+              <SelectionButton
+                highlightedIndexes={highlightedIndexes}
+                theme={theme}
+                onPress={() => {
+                  navigation.navigate('PassageItem', {
+                    passage: {
+                      lyrics: highlightedIndexes
+                        .map(index => splitLyrics[index].lineText)
+                        .join('\n'),
+                      tags: [],
+                      song: song,
+                    },
+                    theme,
+                  });
+                }}
+              />
+            </View>
           </ItemContainer>
         </View>
       </SafeAreaView>
@@ -303,6 +344,10 @@ const styles = StyleSheet.create({
   },
   albumNameText: {
     fontSize: 18,
+  },
+  buttonContainer: {
+    alignSelf: 'center',
+    flexDirection: 'row',
   },
 });
 

@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {auth as SpotifyAuth, ApiScope} from 'react-native-spotify-remote';
+import {API_HOST} from './api';
 // import { firebaseDb } from "./firebase";
 // import { setDoc, doc } from "firebase/firestore";
 // import {useDeviceId} from './device_id';
@@ -30,12 +31,13 @@ export const useSpotifyAuthentication = (): [
   ({deviceId}: {deviceId: string}) => Promise<void>,
 ] => {
   const [authStatus, setAuthStatus] = useState<SpotifyAuthStatus>('init');
+
   const makeRequest = async ({deviceId}: {deviceId: string}) => {
     setAuthStatus('pending');
 
-    await authenticateNatively({deviceId});
+    const authenticated = await authenticateNatively({deviceId});
 
-    setAuthStatus('succeeded');
+    setAuthStatus(authenticated ? 'succeeded' : 'init');
   };
 
   return [authStatus, makeRequest];
@@ -47,7 +49,7 @@ const authenticateNatively = async ({deviceId}: {deviceId: string}) => {
     clientID: CLIENT_ID,
     redirectURL: 'mylyrics://' + REDIRECT_PATH,
     tokenRefreshURL: '',
-    tokenSwapURL: 'http://172.20.10.3:3000?userId=' + deviceId,
+    tokenSwapURL: `${API_HOST}/swap_spotify_code?userId=${deviceId}`,
     scopes: [
       // ApiScope.AppRemoteControlScope,
       ApiScope.UserTopReadScope,
@@ -55,5 +57,13 @@ const authenticateNatively = async ({deviceId}: {deviceId: string}) => {
     ],
   };
 
-  await SpotifyAuth.authorize(spotifyConfig);
+  try {
+    await SpotifyAuth.authorize(spotifyConfig);
+    return true;
+  } catch (e) {
+    if (e instanceof Error) {
+      console.log(e.message);
+    }
+    return false;
+  }
 };

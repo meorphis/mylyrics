@@ -1,10 +1,10 @@
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import SongType from './song';
+import {SongType} from './song';
 import ThemeType from './theme';
 import {PassageType} from './passage';
 
 export type RootStackParamList = {
-  Recommendations: undefined;
+  Main: undefined;
   PassageItem: {
     passage: PassageType;
     theme: ThemeType;
