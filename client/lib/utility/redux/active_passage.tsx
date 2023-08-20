@@ -12,13 +12,13 @@ export const activePassageSlice = createSlice({
       state: PassageItemKeyType,
       action: PayloadAction<{
         groupKey?: string;
-        passageKey?: string;
+        passageKey?: string | null;
       }>,
     ) => {
       if (action.payload.groupKey) {
         state.groupKey = action.payload.groupKey;
       }
-      if (action.payload.passageKey) {
+      if (action.payload.passageKey !== undefined) {
         state.passageKey = action.payload.passageKey;
       }
     },

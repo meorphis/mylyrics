@@ -5,13 +5,7 @@
 // and then rendering the appropriate PassageItems accordingly
 import React, {memo} from 'react';
 import Carousel from '../../forks/react-native-snap-carousel';
-import {
-  ActivityIndicator,
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Dimensions, StyleSheet, Text, View} from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {setActivePassage} from '../../utility/redux/active_passage';
 import {RootState} from '../../utility/redux';
@@ -19,6 +13,9 @@ import _ from 'lodash';
 import ThemedPassageItem from './ThemedPassageItem';
 import {RawPassageType} from '../../types/passage';
 import Icon from 'react-native-vector-icons/Ionicons';
+import ThemedLoadingIndicator from './ThemedLoadingIndicator';
+
+export const CAROUSEL_MARGIN_TOP = 12;
 
 type PassageGroupItem = {
   passageKey: string;
@@ -70,8 +67,8 @@ const PassageGroupCarousel = (props: Props) => {
         loop
         loopClonesPerSide={2}
         data={data}
-        itemHeight={Dimensions.get('window').height * 0.8}
-        sliderHeight={Dimensions.get('window').height * 0.85}
+        itemHeight={Dimensions.get('window').height * 0.75}
+        sliderHeight={Dimensions.get('window').height * 0.75}
         layout="stack"
         vertical
         activeAnimationType="decay"
@@ -107,12 +104,7 @@ const PassageGroupCarousel = (props: Props) => {
           );
         }}
       />
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" />
-          <Text style={styles.loadingText}>loading more passages…</Text>
-        </View>
-      )}
+      {isLoading && <ThemedLoadingIndicator />}
       {isErrored && (
         <View style={styles.errorContainer}>
           <Icon name="alert-circle-outline" size={24} color="darkred" />
@@ -127,21 +119,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignSelf: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginLeft: 8,
-    color: 'darkgrey',
-  },
   errorContainer: {
     flex: 1,
     flexDirection: 'row',
     alignSelf: 'center',
     alignItems: 'center',
+    marginBottom: 24,
   },
   errorText: {
     marginLeft: 4,
@@ -149,6 +132,7 @@ const styles = StyleSheet.create({
   },
   carouselContainer: {
     marginHorizontal: 24,
+    marginTop: CAROUSEL_MARGIN_TOP,
   },
   contentContainer: {},
   slideStyle: {

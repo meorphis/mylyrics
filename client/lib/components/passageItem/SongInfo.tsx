@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
     padding: 0,
     flex: 0,
     paddingBottom: 16,
+    paddingTop: 12,
   },
   metadataText: {
     flexDirection: 'column',

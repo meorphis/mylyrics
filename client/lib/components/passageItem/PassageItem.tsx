@@ -9,7 +9,7 @@
 // number of passage groups and M is the number of passages in each
 
 import React, {memo, useRef, useState} from 'react';
-import {LayoutChangeEvent, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import SongInfo from './SongInfo';
 import PassageLyrics from './PassageLyrics';
 import ThemeType from '../../types/theme';
@@ -18,8 +18,8 @@ import {NavigationProp, useNavigation} from '@react-navigation/core';
 import {RootStackParamList} from '../../types/navigation';
 import {uuidv4} from '@firebase/util';
 import ItemContainer from '../common/ItemContainer';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PassageType} from '../../types/passage';
+import {CAROUSEL_MARGIN_TOP} from '../recommendations/PassageGroupCarousel';
 
 export type PassageItemProps = {
   passageItemKey?: {
@@ -35,26 +35,31 @@ const PassageItem = (props: PassageItemProps) => {
 
   const sharedTransitionKey = useRef<string>(uuidv4()).current;
   const [lyricsYPosition, setLyricsYPosition] = useState<number | null>(null);
-
-  const insets = useSafeAreaInsets();
+  const passageLyricsRef = useRef<View>(null);
+  const containerRef = useRef<View>(null);
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const {passage, passageTheme, passageItemKey} = props;
   const {lyrics, tags, song} = passage;
 
   return (
-    <ItemContainer theme={passageTheme}>
-      <View
-        style={{...styles.container, borderColor: passageTheme.detailColor}}>
+    <ItemContainer theme={passageTheme} containerRef={containerRef}>
+      <View style={{...styles.container}}>
         <SongInfo song={song} passageTheme={passageTheme} />
         <PassageLyrics
           song={song}
           lyrics={lyrics}
           theme={passageTheme}
           sharedTransitionKey={sharedTransitionKey}
-          onLayout={(e: LayoutChangeEvent) => {
-            setLyricsYPosition(e.nativeEvent.layout.y);
+          onLayout={() => {
+            passageLyricsRef.current!.measureLayout(
+              containerRef.current!,
+              (_, y) => {
+                setLyricsYPosition(y + CAROUSEL_MARGIN_TOP);
+              },
+            );
           }}
+          viewRef={passageLyricsRef}
         />
         <ActionBar
           tags={tags}
@@ -66,7 +71,7 @@ const PassageItem = (props: PassageItemProps) => {
               song: song,
               sharedTransitionKey: sharedTransitionKey,
               initiallyHighlightedPassageLyrics: lyrics,
-              parentYPosition: (lyricsYPosition || 0) + insets.top,
+              parentYPosition: lyricsYPosition || 0,
             });
           }}
         />
@@ -79,8 +84,6 @@ const styles = StyleSheet.create({
   container: {
     margin: 20,
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'white',
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'flex-start',

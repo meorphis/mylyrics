@@ -3,16 +3,21 @@
 // and updating the carousel accordingly
 
 import React, {useLayoutEffect, useRef} from 'react';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {StyleSheet, Dimensions} from 'react-native';
+import {Dimensions} from 'react-native';
 import Carousel from '../../forks/react-native-snap-carousel';
 import {RootState} from '../../utility/redux';
 import {useSelector} from 'react-redux';
 import PassageGroupCarousel from './PassageGroupCarousel';
 import {createSelector} from '@reduxjs/toolkit';
 
-const PassageGroupsCarousel = () => {
+type Props = {
+  activeGroupKey: string;
+};
+
+const PassageGroupsCarousel = (props: Props) => {
   console.log('rendering PassageGroupsCarousel');
+
+  const {activeGroupKey} = props;
 
   // create a selector with an input selector that transforms the group keys into a
   // string, so that we do not re-render the carousel when the group keys remain the
@@ -20,15 +25,15 @@ const PassageGroupsCarousel = () => {
   const passageGroupKeysSelector = createSelector(
     [
       (state: RootState) =>
-        state.recommendations.map(r => r.groupKey).join(','),
+        state.recommendations
+          .filter(r => r.passageGroupRequest.status !== 'init')
+          .map(r => r.groupKey)
+          .join(','),
     ],
     (joinedGroupKeys: string) => joinedGroupKeys.split(','),
   );
 
   const passageGroupKeys = useSelector(passageGroupKeysSelector);
-  const activeGroupKey = useSelector(
-    (state: RootState) => state.activePassage?.groupKey,
-  );
 
   const [localActiveGroupKey, setLocalActiveGroupKey] =
     React.useState<string>(activeGroupKey);
@@ -62,33 +67,25 @@ const PassageGroupsCarousel = () => {
   }, [carouselRef.current?.currentIndex, activeIndex]);
 
   return (
-    <SafeAreaView style={styles.safearea}>
-      <Carousel
-        // other props
-        ref={carouselRef}
-        data={passageGroupKeys}
-        itemWidth={Dimensions.get('window').width}
-        sliderWidth={Dimensions.get('window').width}
-        scrollEnabled={false}
-        useScrollView
-        keyExtractor={(item: string) => 'carousel-item-' + item}
-        renderItem={({item: passageGroupKey}: {item: string}) => {
-          return (
-            <PassageGroupCarousel
-              key={passageGroupKey}
-              passageGroupKey={passageGroupKey}
-            />
-          );
-        }}
-      />
-    </SafeAreaView>
+    <Carousel
+      // other props
+      ref={carouselRef}
+      data={passageGroupKeys}
+      itemWidth={Dimensions.get('window').width}
+      sliderWidth={Dimensions.get('window').width}
+      scrollEnabled={false}
+      useScrollView
+      keyExtractor={(item: string) => 'carousel-item-' + item}
+      renderItem={({item: passageGroupKey}: {item: string}) => {
+        return (
+          <PassageGroupCarousel
+            key={passageGroupKey}
+            passageGroupKey={passageGroupKey}
+          />
+        );
+      }}
+    />
   );
 };
-
-const styles = StyleSheet.create({
-  safearea: {
-    flex: 1,
-  },
-});
 
 export default PassageGroupsCarousel;

@@ -33,5 +33,5 @@ export type PassageGroupRequestsType = {
 
 export type PassageItemKeyType = {
   groupKey: string;
-  passageKey: string;
+  passageKey: string | null;
 };

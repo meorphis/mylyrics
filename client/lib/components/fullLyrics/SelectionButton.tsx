@@ -2,6 +2,7 @@ import React from 'react';
 import ThemeType from '../../types/theme';
 import ThemeButton from '../common/ThemeButton';
 import {StyleSheet} from 'react-native';
+import {ButtonColorChoice} from '../../utility/color';
 
 type Props = {
   highlightedIndexes: number[];
@@ -21,7 +22,7 @@ const SelectionButton = (props: Props) => {
     <ThemeButton
       text={text}
       theme={theme}
-      useSaturatedColor={true}
+      colorChoice={ButtonColorChoice.detailSaturated}
       isDisabled={isDisabled}
       onPress={onPress}
       style={styles.button}

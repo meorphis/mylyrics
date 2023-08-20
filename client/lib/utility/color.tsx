@@ -2,6 +2,15 @@ import tinycolor, {ColorFormats} from 'tinycolor2';
 import {rgba_to_lab, diff} from 'color-diff';
 import ThemeType from '../types/theme';
 
+export enum ButtonColorChoice {
+  detailSaturated,
+  detailUnsaturated,
+  primarySaturated,
+  primaryUnsaturated,
+  secondarySaturated,
+  secondaryUnsaturated,
+}
+
 export const addColorOpacity = (hexColor: string, opacity: number) => {
   if (!hexColor.includes('#')) {
     return hexColor;
@@ -66,8 +75,26 @@ const hslToLab = (hsl: {h: number; s: number; l: number}) => {
   });
 };
 
-export const buttonColorsForTheme = (theme: ThemeType) => {
-  const themeColor = theme.detailColor;
+export const buttonColorsForTheme = (
+  theme: ThemeType,
+  colorChoice: ButtonColorChoice,
+) => {
+  let themeColor;
+
+  switch (colorChoice) {
+    case ButtonColorChoice.detailSaturated:
+    case ButtonColorChoice.detailUnsaturated:
+      themeColor = theme.detailColor;
+      break;
+    case ButtonColorChoice.primarySaturated:
+    case ButtonColorChoice.primaryUnsaturated:
+      themeColor = theme.primaryColor;
+      break;
+    case ButtonColorChoice.secondarySaturated:
+    case ButtonColorChoice.secondaryUnsaturated:
+      themeColor = theme.secondaryColor;
+      break;
+  }
 
   // generally we use the detail color for the active tag, and the greyscale version of that for
   // the inactive tags, but if the detail color is close to grey to begin with, they end up too
@@ -95,12 +122,21 @@ export const buttonColorsForTheme = (theme: ThemeType) => {
     saturatedColor = contrastedColors.lightenable;
   }
 
-  return {unsaturatedColor, saturatedColor};
+  switch (colorChoice) {
+    case ButtonColorChoice.detailSaturated:
+    case ButtonColorChoice.primarySaturated:
+    case ButtonColorChoice.secondarySaturated:
+      return saturatedColor;
+    case ButtonColorChoice.detailUnsaturated:
+    case ButtonColorChoice.primaryUnsaturated:
+    case ButtonColorChoice.secondaryUnsaturated:
+      return unsaturatedColor;
+  }
 };
 
 // if two colors are too similar, lighten one and darken the other until they are sufficiently different
 // will prefer lightening down to the minLightness before darkening
-const ensureColorContrast = ({
+export const ensureColorContrast = ({
   lightenable,
   darkenable,
   preference,
@@ -124,9 +160,9 @@ const ensureColorContrast = ({
     const canDarken = hslDarkenable.l > minLightness;
 
     if ((canLighten && preference === 'lighten') || !canDarken) {
-      hslLightenable.l += Math.min(0.05, maxLightness - hslLightenable.l);
+      hslLightenable.l += Math.min(0.01, maxLightness - hslLightenable.l);
     } else if ((canDarken && preference === 'darken') || !canLighten) {
-      hslDarkenable.l -= Math.min(0.05, hslDarkenable.l - minLightness);
+      hslDarkenable.l -= Math.min(0.01, hslDarkenable.l - minLightness);
     } else {
       // shouldn't happen unless the parameters are impossible to satisfy
       throw Error(

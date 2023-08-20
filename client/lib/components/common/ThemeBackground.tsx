@@ -1,12 +1,11 @@
 import React from 'react';
-import AnimatedLinearGradient from '../recommendations/AnimatedLinearGradient';
+import AnimatedLinearGradient from './AnimatedLinearGradient';
 import {addColorOpacity} from '../../utility/color';
-import {StyleSheet, ViewStyle} from 'react-native';
+import {StyleSheet} from 'react-native';
 import ThemeType from '../../types/theme';
 
 type Props = {
   theme: ThemeType;
-  style?: ViewStyle;
   children: React.ReactNode;
 };
 
@@ -15,16 +14,16 @@ type Props = {
 const ThemeBackground = (props: Props) => {
   console.log('rendering ThemeBackground');
 
-  const {theme, style, children} = props;
+  const {theme, children} = props;
 
   return (
     <AnimatedLinearGradient
-      style={{...styles.gradient, ...style}}
+      style={styles.gradient}
       start={{x: 0, y: 0}}
       end={{x: 0, y: 1.0}}
       colors={[
-        addColorOpacity(theme.backgroundColor, 0.6),
-        addColorOpacity(theme.backgroundColor, 0.6),
+        addColorOpacity(theme.backgroundColor, 0.7),
+        addColorOpacity(theme.backgroundColor, 0.4),
       ]}>
       {children}
     </AnimatedLinearGradient>
@@ -34,6 +33,8 @@ const ThemeBackground = (props: Props) => {
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
+    flexDirection: 'row',
+    padding: 6,
   },
 });
 
