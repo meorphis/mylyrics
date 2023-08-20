@@ -16,10 +16,11 @@ type Props = {
   theme: ThemeType;
   sharedTransitionKey: string;
   onLayout: (event: LayoutChangeEvent) => void;
+  viewRef: React.RefObject<View>;
 };
 
 const PassageLyrics = (props: Props) => {
-  const {song, lyrics, theme, sharedTransitionKey, onLayout} = props;
+  const {song, lyrics, theme, sharedTransitionKey, onLayout, viewRef} = props;
 
   const splitLyrics = splitLyricsWithPassages({
     songLyrics: cleanLyrics(song.lyrics),
@@ -27,7 +28,7 @@ const PassageLyrics = (props: Props) => {
   });
 
   return (
-    <View style={styles.container} onLayout={onLayout}>
+    <View style={styles.container} onLayout={onLayout} ref={viewRef}>
       {splitLyrics
         .map(({lineText, passageLine}, index) => {
           if (passageLine == null) {
@@ -61,6 +62,7 @@ const styles = StyleSheet.create({
   lyricsLine: {
     fontSize: 18,
     color: 'lightgrey',
+    overflow: 'hidden',
   },
 });
 

@@ -3,13 +3,21 @@ import ThemeType from '../types/theme';
 
 // *** PUBLIC INTERFACE ***
 // should be place near the top of the component tree - allows children to set and get theme
-export const ThemeProvider = ({children}: {children: React.ReactNode}) => {
-  const [theme, setTheme] = React.useState<ThemeType>({
-    primaryColor: 'white',
-    secondaryColor: 'white',
-    backgroundColor: 'white',
-    detailColor: 'white',
-  });
+export const ThemeProvider = ({
+  initialTheme,
+  children,
+}: {
+  initialTheme?: ThemeType;
+  children: React.ReactNode;
+}) => {
+  const [theme, setTheme] = React.useState<ThemeType>(
+    initialTheme ?? {
+      primaryColor: 'white',
+      secondaryColor: 'white',
+      backgroundColor: 'white',
+      detailColor: 'white',
+    },
+  );
 
   return (
     <ThemeUpdateContext.Provider value={setTheme}>

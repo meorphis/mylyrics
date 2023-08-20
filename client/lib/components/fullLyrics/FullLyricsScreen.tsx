@@ -24,12 +24,9 @@ import {isColorLight} from '../../utility/color';
 import SelectionButton from './SelectionButton';
 import AppearingView from '../common/AppearingView';
 import LyricLines from './LyricLines';
-import {
-  NavigationProp,
-  useFocusEffect,
-  useNavigation,
-} from '@react-navigation/native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import BackButton from './BackButton';
+import {StackNavigationProp} from '@react-navigation/stack';
 
 // shows the full lyrics for a song. a lot of the logic here is to ensure that
 // the animation from the passage item to the full lyrics is smooth
@@ -42,9 +39,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
     parentYPosition,
   } = route.params;
 
-  console.log(parentYPosition);
-
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const songLyrics = cleanLyrics(song.lyrics);
 
@@ -115,9 +110,10 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
         lyricsLayout != null
       ) {
         const scrollTo =
-          topOfInitiallyHighlightedLyricsPosition -
-          innerScrollViewPaddingTop +
-          safeAreaHeight;
+          topOfInitiallyHighlightedLyricsPosition +
+          safeAreaHeight -
+          innerScrollViewPaddingTop -
+          6;
 
         scrollView.current?.scrollTo({
           y: scrollTo,
@@ -281,7 +277,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                     } else {
                       // very brief delay to ensure the page is entirely laid out before
                       // we show the appearing text
-                      setTimeout(() => setShowAppearingText(true), 1);
+                      setTimeout(() => setShowAppearingText(true), 100);
                     }
                   }}
                   theme={theme}
@@ -297,7 +293,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                 highlightedIndexes={highlightedIndexes}
                 theme={theme}
                 onPress={() => {
-                  navigation.navigate('PassageItem', {
+                  navigation.replace('PassageItem', {
                     passage: {
                       lyrics: highlightedIndexes
                         .map(index => splitLyrics[index].lineText)
@@ -331,6 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     paddingBottom: 24,
     marginBottom: 16,
+    marginTop: 16,
     marginHorizontal: 8,
     paddingHorizontal: 0,
     flex: 0,

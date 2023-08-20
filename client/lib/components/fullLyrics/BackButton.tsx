@@ -2,6 +2,7 @@ import React from 'react';
 import ThemeType from '../../types/theme';
 import ThemeButton from '../common/ThemeButton';
 import {StyleSheet} from 'react-native';
+import {ButtonColorChoice} from '../../utility/color';
 
 type Props = {
   theme: ThemeType;
@@ -16,7 +17,7 @@ const BackButton = (props: Props) => {
     <ThemeButton
       text={text}
       theme={theme}
-      useSaturatedColor={false}
+      colorChoice={ButtonColorChoice.detailUnsaturated}
       onPress={onPress}
       style={styles.button}
     />

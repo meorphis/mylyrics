@@ -1,32 +1,58 @@
 // renders a single tag for a passage
 
-import {StyleSheet, Text, TouchableOpacity, ViewStyle} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
+import Ionicon from 'react-native-vector-icons/Ionicons';
+
 import React from 'react';
 import {
   isColorLight,
   buttonColorsForTheme,
   addColorOpacity,
+  ButtonColorChoice,
 } from '../../utility/color';
 import {textStyleCommon} from '../../utility/text';
 import ThemeType from '../../types/theme';
 
 type Props = {
-  text: string;
+  text?: string;
   theme: ThemeType;
-  useSaturatedColor: boolean;
+  colorChoice: ButtonColorChoice;
   isDisabled?: boolean;
   onPress: () => void;
+  Container?: React.ComponentType<any>;
+  iconName?: string;
   style?: ViewStyle;
+  textStyle?: TextStyle;
 };
 
 const ThemeButton = (props: Props) => {
-  const {text, theme, useSaturatedColor, isDisabled, onPress, style} = props;
+  const {
+    text,
+    theme,
+    colorChoice,
+    isDisabled,
+    onPress,
+    Container,
+    iconName,
+    style,
+    textStyle,
+  } = props;
 
-  const {unsaturatedColor, saturatedColor} = buttonColorsForTheme(theme);
-  const buttonColor = addColorOpacity(
-    useSaturatedColor ? saturatedColor : unsaturatedColor,
-    isDisabled ? 0.5 : 1,
-  );
+  const useSaturatedColor = [
+    ButtonColorChoice.detailSaturated,
+    ButtonColorChoice.primarySaturated,
+    ButtonColorChoice.secondarySaturated,
+  ].includes(colorChoice);
+
+  const baseColor = buttonColorsForTheme(theme, colorChoice);
+  const buttonColor = addColorOpacity(baseColor, isDisabled ? 0.2 : 1);
 
   const isButtonColorLight = isColorLight(buttonColor);
   const textColor = isButtonColorLight ? '#000000' : '#FFFFFF';
@@ -36,30 +62,49 @@ const ThemeButton = (props: Props) => {
       : '#CCCCCC'
     : undefined;
 
+  const ContainerComponent = Container || Fragment;
+
   return (
     <TouchableOpacity
       style={{
         ...styles.button,
-        ...(useSaturatedColor ? styles.saturated : styles.unsaturated),
-        backgroundColor: addColorOpacity(
-          useSaturatedColor ? saturatedColor : unsaturatedColor,
-          isDisabled ? 0.2 : 1,
-        ),
-        borderColor,
         ...style,
+        ...(useSaturatedColor ? styles.saturated : styles.unsaturated),
+        backgroundColor: buttonColor,
+        borderColor,
       }}
       onPress={onPress}
       disabled={isDisabled}>
-      <Text style={{...textStyleCommon, color: textColor}}>{text}</Text>
+      <ContainerComponent color={buttonColor}>
+        {iconName && <Ionicon name={iconName} size={24} color={textColor} />}
+        {iconName && text && <View style={styles.textIconPadding} />}
+        {text && (
+          <Text
+            style={{
+              ...textStyleCommon,
+              ...styles.text,
+              color: textColor,
+              ...textStyle,
+            }}>
+            {text}
+          </Text>
+        )}
+      </ContainerComponent>
     </TouchableOpacity>
   );
 };
 
+const Fragment = (props: {color: string; children: React.ReactNode}) => {
+  const {children} = props;
+
+  return <React.Fragment>{children}</React.Fragment>;
+};
+
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 10,
     padding: 6,
     marginHorizontal: 6,
+    borderRadius: 10,
   },
   unsaturated: {
     borderWidth: 1,
@@ -72,6 +117,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 1,
     elevation: 2,
+  },
+  text: {
+    alignSelf: 'center',
+    textAlign: 'center',
+  },
+  textIconPadding: {
+    width: 8,
   },
 });
 

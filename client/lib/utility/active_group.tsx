@@ -7,11 +7,22 @@ import {
   markPassageGroupAsLoading,
 } from './redux/recommendations';
 import {errorToString} from './error';
-import {PassageItemKeyType, RawPassageType} from '../types/passage';
+import {
+  PassageGroupRequestsType,
+  PassageItemKeyType,
+  RawPassageType,
+} from '../types/passage';
 import {useDeviceId} from './device_id';
 import {unflattenRecommendations} from './db/recommendations';
-import {addImageDataToPassage} from './images';
 import {API_HOST} from './api';
+import {useCacheImageDataForUrls} from './images';
+import {useEffect} from 'react';
+import _ from 'lodash';
+
+const findFirstPassgeKey = (gk: string, passages: PassageGroupRequestsType) => {
+  return passages.find(({groupKey}) => gk === groupKey)?.passageGroupRequest
+    .data[0]?.passageKey;
+};
 
 export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
   const passageGroupKeyIsUninitialized = useSelector(
@@ -19,15 +30,34 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
       state.recommendations.find(({groupKey}) => groupKey === passage.groupKey)
         ?.passageGroupRequest.status === 'init',
   );
+  const allSentiments = useSelector(
+    (state: RootState) => state.recommendations.map(({groupKey}) => groupKey),
+    _.isEqual,
+  );
+
+  const firstPassageKey = useSelector((state: RootState) =>
+    findFirstPassgeKey(passage.groupKey, state.recommendations),
+  );
+
+  useEffect(() => {
+    if (passage.passageKey == null) {
+      if (firstPassageKey) {
+        dispatch(setActivePassage({passageKey: firstPassageKey}));
+      }
+    }
+  }, [firstPassageKey != null]);
 
   const deviceId = useDeviceId();
 
   const dispatch = useDispatch();
+  const cacheImageDataForUrls = useCacheImageDataForUrls();
 
   const setActiveGroup = async () => {
-    const {groupKey} = passage;
+    const {groupKey, passageKey} = passage;
 
-    dispatch(setActivePassage(passage));
+    dispatch(
+      setActivePassage({groupKey, passageKey: passageKey ?? firstPassageKey}),
+    );
 
     if (passageGroupKeyIsUninitialized) {
       dispatch(
@@ -40,11 +70,16 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
           `${API_HOST}/get_additional_recommendations?userId=${deviceId}&sentiment=${groupKey}`,
         );
         const data = await recommendationsResponse.json();
-        const rawFlatRecommendations = data.recommendations as RawPassageType[];
-        const flatRecommendations = await Promise.all(
-          rawFlatRecommendations.map(addImageDataToPassage),
+        const flatRecommendations = data.recommendations as RawPassageType[];
+
+        cacheImageDataForUrls(
+          flatRecommendations.map(({song}) => song.album.image),
         );
-        const recommendations = unflattenRecommendations(flatRecommendations);
+
+        const recommendations = unflattenRecommendations(
+          flatRecommendations,
+          allSentiments,
+        );
         dispatch(applyLoadedPassageGroups(recommendations));
       } catch (e) {
         dispatch(

@@ -8,6 +8,7 @@ import {
 import AppearingView from '../common/AppearingView';
 import React from 'react';
 import {
+  ButtonColorChoice,
   addColorOpacity,
   buttonColorsForTheme,
   isColorLight,
@@ -44,7 +45,10 @@ const LyricLine = (props: Props) => {
     onLayout,
   } = props;
 
-  const {saturatedColor} = buttonColorsForTheme(theme);
+  const saturatedColor = buttonColorsForTheme(
+    theme,
+    ButtonColorChoice.detailSaturated,
+  );
 
   const textStyle = {
     ...textStyleCommon,

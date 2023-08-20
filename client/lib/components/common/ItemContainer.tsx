@@ -9,15 +9,16 @@ import LinearGradient from 'react-native-linear-gradient';
 
 type Props = {
   theme?: ThemeType;
+  containerRef?: React.RefObject<View>;
   children: React.ReactNode;
 };
 
 const ItemContainer = (props: Props) => {
-  const {theme} = props;
+  const {theme, containerRef} = props;
   const {backgroundColor} = theme || {backgroundColor: 'lightgrey'};
 
   return (
-    <View style={styles.itemContainer}>
+    <View style={styles.itemContainer} ref={containerRef}>
       <LinearGradient
         style={styles.linearGradient}
         colors={[addColorOpacity(backgroundColor, 0.75), backgroundColor]}
@@ -33,13 +34,13 @@ const styles = StyleSheet.create({
   itemContainer: {
     flex: 1,
     backgroundColor: 'lightgrey',
-    borderRadius: 16,
+    borderRadius: 48,
     borderColor: 'rgba(0, 0, 0, 0.5)',
     borderWidth: 1,
   },
   linearGradient: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 48,
   },
 });
 

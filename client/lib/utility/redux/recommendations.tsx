@@ -63,6 +63,20 @@ export const recommendationsSlice = createSlice({
         });
       }
     },
+    initPassageGroups: (
+      state: PassageGroupRequestsType,
+      action: PayloadAction<string[]>,
+    ) => {
+      action.payload.forEach(groupKey => {
+        state.push({
+          groupKey,
+          passageGroupRequest: {
+            data: [],
+            status: 'init',
+          },
+        });
+      });
+    },
     applyLoadedPassageGroups: (
       state: PassageGroupRequestsType,
       action: PayloadAction<PassageGroupsType>,
@@ -71,10 +85,13 @@ export const recommendationsSlice = createSlice({
         const previousIndex = state.findIndex(
           ({groupKey: gk}) => gk === groupKey,
         );
+
+        if (previousIndex === -1) {
+          return;
+        }
+
         const updated = [
-          ...(previousIndex !== -1
-            ? state[previousIndex].passageGroupRequest.data
-            : []),
+          ...state[previousIndex].passageGroupRequest.data,
           ...passageGroup,
         ];
 
@@ -102,6 +119,7 @@ export const recommendationsSlice = createSlice({
 export const {
   markPassageGroupAsLoading,
   markPassageGroupAsError,
+  initPassageGroups,
   applyLoadedPassageGroups,
 } = recommendationsSlice.actions;
 
