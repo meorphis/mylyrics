@@ -1,5 +1,8 @@
 import { swapCodeForSpotifyResponse } from "./integrations/spotify/spotify_auth";
 
+// *** PUBLIC INTERFACE ***
+// a thin wrapper over swapCodeForSpotifyResponse that takes a userId string and a code
+// that was received from the spotify api and returns a spotify api response
 export const swapSpotifyCode = async (
   {userId, code}: {userId: string, code: string}
 ) => {

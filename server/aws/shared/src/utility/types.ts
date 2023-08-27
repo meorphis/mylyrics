@@ -32,16 +32,8 @@ export type SimplifiedSong = {
     spotifyId: string,
     isExplicit: boolean,
     isrc: string | undefined,
-    artists: {
-        id: string,
-        name: string,
-        spotifyId: string,
-    }[],
-    primaryArtist: {
-        id: string,
-        name: string,
-        spotifyId: string,
-    },
+    artists: SimplifiedArtist[],
+    primaryArtist: SimplifiedArtist,
     album: {
         spotifyId: string,
     }
@@ -74,17 +66,8 @@ export type Song = {
         tempo: number,
         valence: number,
     },
-    artists: {
-        id: string,
-        name: string,
-        spotifyId: string,
-    }[],
-    primaryArtist: {
-        id: string,
-        name: string,
-        spotifyId: string,
-        popularity: number,
-    },
+    artists: SimplifiedArtist[],
+    primaryArtist: Artist,
     album: {
         name: string,
         spotifyId: string,
@@ -96,6 +79,19 @@ export type Song = {
         },
         releaseDate: string,
     },
+}
+
+export type SimplifiedArtist = {
+    id: string,
+    name: string,
+    spotifyId: string,
+}
+
+export type Artist = {
+    id: string,
+    name: string,
+    spotifyId: string,
+    popularity: number,
 }
 
 export type SongWithLyrics = Song & {
@@ -120,5 +116,6 @@ export type Recommendation = {
     tags: {
         type: "sentiment",
         sentiment: string,
-    }[]
+    }[],
+    score: number,
 }

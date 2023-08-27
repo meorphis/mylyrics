@@ -84,6 +84,7 @@ const assertEnvironmentVariables = () => {
   }
 }
 
+// adds the song with basic metadata to the db
 const addSongToDb = async (
   song: Song
 ): Promise<boolean>=> {
@@ -108,7 +109,7 @@ const addSongToDb = async (
     transaction.set(db.collection("artists").doc(song.primaryArtist.id), {
       artistId: song.primaryArtist.id,
       artistName: song.primaryArtist.name,
-    });
+    }, {merge: true});
 
     console.log(`added song ${song.primaryArtist.name}: ${song.name} to db`)
     return true;
@@ -151,6 +152,7 @@ const markLyricsAsMissing = async (
   });
 }
 
+// adds song and individual passages to search indexes
 const addSongToSearch = async (
   song: Song,
   {
@@ -223,6 +225,7 @@ const addSongToSearch = async (
   })]);
 }
 
+// updates the sentiments for a song in the db after we've analyzed them
 const updateSentimentsForSong = async (
   song: Song,
   sentiments: string[],

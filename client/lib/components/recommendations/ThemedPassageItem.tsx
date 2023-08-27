@@ -2,7 +2,6 @@
 // its album art and then setting the global theme if the passage is currently
 
 import {memo, useEffect} from 'react';
-import PassageItem, {PassageItemProps} from '../passageItem/PassageItem';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import {useThemeUpdate} from '../../utility/theme';
@@ -11,6 +10,9 @@ import {PassageType, RawPassageType} from '../../types/passage';
 import _ from 'lodash';
 import {ActivityIndicator} from 'react-native';
 import ItemContainer from '../common/ItemContainer';
+import ViewShotPassageItem, {
+  ViewShotPassageItemProps,
+} from '../passageItem/ViewShotPassageItem';
 
 type WithPassageThemeProps = {
   passageItemKey: {
@@ -21,7 +23,7 @@ type WithPassageThemeProps = {
 };
 
 const WithPassageTheme = (
-  WrappedComponent: React.ComponentType<PassageItemProps>,
+  WrappedComponent: React.ComponentType<ViewShotPassageItemProps>,
 ) => {
   const ThemedPassageItem: React.FC<WithPassageThemeProps> = props => {
     console.log('rendering ThemedPassageItem');
@@ -96,6 +98,9 @@ const WithPassageTheme = (
   return ThemedPassageItem;
 };
 
-const ThemedPassageItem = memo(WithPassageTheme(PassageItem), () => true);
+const ThemedPassageItem = memo(
+  WithPassageTheme(ViewShotPassageItem),
+  () => true,
+);
 
 export default ThemedPassageItem;

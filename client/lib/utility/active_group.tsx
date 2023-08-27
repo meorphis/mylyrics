@@ -13,7 +13,10 @@ import {
   RawPassageType,
 } from '../types/passage';
 import {useDeviceId} from './device_id';
-import {unflattenRecommendations} from './db/recommendations';
+import {
+  unflattenRecommendations,
+  updateImpressions,
+} from './db/recommendations';
 import {API_HOST} from './api';
 import {useCacheImageDataForUrls} from './images';
 import {useEffect} from 'react';
@@ -71,6 +74,8 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
         );
         const data = await recommendationsResponse.json();
         const flatRecommendations = data.recommendations as RawPassageType[];
+
+        updateImpressions({deviceId, passages: flatRecommendations});
 
         cacheImageDataForUrls(
           flatRecommendations.map(({song}) => song.album.image),

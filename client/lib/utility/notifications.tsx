@@ -1,10 +1,15 @@
-import {getPermissionsAsync, requestPermissionsAsync} from 'expo-notifications';
+import {
+  getExpoPushTokenAsync,
+  getPermissionsAsync,
+  requestPermissionsAsync,
+} from 'expo-notifications';
 import {useEffect, useState} from 'react';
 
 export const useNotifications = () => {
   const [notificationStatus, setNotificationStatus] = useState('undetermined');
+  const [expoPushToken, setExpoPushToken] = useState('');
 
-  const getPermissions = async () => {
+  const setPermissions = async () => {
     const {status} = await getPermissionsAsync();
     if (status === 'granted') {
       setNotificationStatus(status);
@@ -14,9 +19,24 @@ export const useNotifications = () => {
     }
   };
 
+  const setPushToken = async () => {
+    const pushToken = (
+      await getExpoPushTokenAsync({
+        projectId: '9f10108c-729e-4e2d-97e0-9cf2b8b06ff4',
+      })
+    ).data;
+    setExpoPushToken(pushToken);
+  };
+
   useEffect(() => {
-    getPermissions();
+    setPermissions();
   });
 
-  return notificationStatus;
+  useEffect(() => {
+    if (notificationStatus === 'granted') {
+      setPushToken();
+    }
+  }, [notificationStatus]);
+
+  return {notificationStatus, expoPushToken};
 };

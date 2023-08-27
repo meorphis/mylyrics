@@ -19,16 +19,15 @@ export const getRecommendationsForSentiment = async (
 ): Promise<Recommendation[]> => {
   const db = await getFirestoreDb();
   const [impressionsSnap, recentListensSnap] = await Promise.all([
-    db.collection("user-impressions").doc(userId).get(),
+    db.collection("user-impressions").doc(`${userId}-${sentiment}`).get(),
     db.collection("user-recent-listens").doc(userId).get()
   ]);
-  const impressions = impressionsSnap.data() || {};
-  const ignoreSongIds = [...(impressions[sentiment] || []), ...(currentlyRecommendedSongIds || [])];
-  const ignoreArtistIds = currentlyRecommendedArtistIds || [];
-  
+  const impressions = impressionsSnap.data()?.value || [];
   const recentListens = recentListensSnap.data() || {};
 
   const searchClient = getSearchClient();
+
+  const {boosts, maxBoost} = getBoostsTerm({recentListens});
 
   const query = {
     index: "song-lyric-songs",
@@ -36,25 +35,50 @@ export const getRecommendationsForSentiment = async (
       query: {
         "function_score": {
           "query": {
-            "bool": {
-              "must_not": [
-                // do not return songs that the user has already seen passages from with this
-                // sentiment attached (either currently or before)
-                {"ids": {"values": ignoreSongIds}},
-
-                // if we have a current recommendation for this artist for this sentiment, don't
-                // get more
-                {"terms": {"primaryArtist.id": ignoreArtistIds}}
-              ],
-
-              // only return passages that do have the specified sentiment
-              "filter": {"term": {"passageSentiments": sentiment}},
+            "function_score": {
+              "query": {
+                "bool": {
+                  "must_not": [
+                    // do not return songs that the user has already seen passages from with this
+                    // sentiment attached (either currently or before)
+                    {"ids": {"values": currentlyRecommendedSongIds || []}},
+    
+                    // if we have a current recommendation for this artist for this sentiment, don't
+                    // get more
+                    {"terms": {"primaryArtist.id": currentlyRecommendedArtistIds || []}},
+                  ],
+    
+                  // only return passages that do have the specified sentiment
+                  "filter": {"term": {"passageSentiments": sentiment}},
+                }
+              },
+              "functions": boosts,
+              "score_mode": "sum",
+              "boost_mode": "replace",
+              // must have at least one recency/frequency boost OR a popularity of at least
+              // 80 (log base 10 of 80 is ~1.9)
+              "min_score": 1.9,
             }
           },
-          "functions": getBoostsTermFromRecentListens({recentListens}),
+          "functions": [
+            {
+              "filter": {
+                "bool": {
+                  "must_not": {
+                    "ids": {
+                      "values": impressions || []
+                    }
+                  }
+                }
+              },
+              // boost all candidates without an impression above all candidates with an
+              // impression
+              "weight": maxBoost,
+            }
+          ],
           "score_mode": "sum",
-          "boost_mode": "replace",
-        }
+          "boost_mode": "sum",
+        },
       },
       "collapse": {
         "field": "primaryArtist.id",
@@ -104,7 +128,7 @@ export const getRecommendationsForSentiment = async (
   // get the top N
   const passages = sortedParsedResults.slice(0, limit);
 
-  return passages.map(({song, passage}) => {
+  return passages.map(({song, passage, score}) => {
     return {
       lyrics: passage.lyrics,
       song: {
@@ -128,14 +152,110 @@ export const getRecommendationsForSentiment = async (
           sentiment,
         }
       }),
+      score,
     }
   });
 }
 
+export const getScoredSentiments = async (
+  {userId}: {userId: string}
+): Promise<{
+  sentiment: string,
+  count: number,
+  score: number,
+}[]> => {
+  const db = await getFirestoreDb();
+  const [impressionsSnap, recentListensSnap] = await Promise.all([
+    db.collection("user-impressions").doc(`${userId}-all`).get(),
+    db.collection("user-recent-listens").doc(userId).get()
+  ]);
+  const impressions = impressionsSnap.data()?.value || [];
+  const recentListens = recentListensSnap.data() || {};
+
+  const searchClient = getSearchClient();
+
+  const {boosts, maxBoost} = getBoostsTerm({recentListens});
+
+  const query = {
+    index: "song-lyric-songs",
+    body: {
+      "query": {
+        "function_score": {
+          "query": {
+            "function_score": {
+              "functions": boosts,
+              "score_mode": "sum",
+              "boost_mode": "replace",
+              "min_score": 1.9
+            }
+          },
+          "functions": [
+            {
+              "filter": {
+                "bool": {
+                  "must_not": {
+                    "ids": {
+                      "values": impressions || []
+                    }
+                  }
+                }
+              },
+              "weight": maxBoost
+            }
+          ],
+          "score_mode": "sum",
+          "boost_mode": "sum",
+        },
+      },
+      "aggs": {
+        "group_by_passageSentiments": {
+          "filters": {
+            "filters": VALID_SENTIMENTS.reduce((
+              acc: {[key: string]: {term: {passageSentiments: string}}},
+              sentiment
+            ) => {
+              acc[sentiment] = { "term": { "passageSentiments": sentiment } };
+              return acc;
+            }, {}),
+          },
+          "aggs": {
+            "total_score": {
+              "sum": {
+                "script": "_score"
+              }
+            }
+          }
+        }
+      },
+    }
+  }
+
+  const results = await searchClient.search(query);
+
+  console.log(`took ${results.body.took}ms to get sentiment scores`);
+
+  const buckets: {
+    [sentiment: string]: {
+      doc_count: number,
+      total_score: {value: number},
+    }
+  } = results.body.aggregations.group_by_passageSentiments.buckets;
+
+  return Object.entries(buckets).map(([sentiment, {doc_count, total_score}]) => {
+    return {
+      sentiment,
+      count: doc_count,
+      score: total_score.value,
+    }
+  });
+};
+
 // *** PRIVATE HELPERS ***
-const getBoostsTermFromRecentListens = (
+const getBoostsTerm = (
   {recentListens} : 
-  {recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>}
+  {
+    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+  }
 ) => {
   // first get lists of songs and artists at all time scales
   const songsYesterday = recentListens.yesterday?.songs || [];
@@ -270,13 +390,31 @@ const getBoostsTermFromRecentListens = (
     ...artistRecencyFilters,
   ].filter((f) => f != null)
 
-  return sortedBoostFilters.map((filter, index) => {
+  const recentListenFilters = sortedBoostFilters.map((filter, index) => {
     return {
       filter,
       // 2^x ensures that two lower-tier boosts cannot outweigh a higher-tier boost
       weight: Math.pow(2, sortedBoostFilters.length - index)
     }
-  });  
+  });
+
+  // popularity boost will be a value between 0 and ~2, small enough to not outweigh any of the
+  // other boosts but large enough to break ties
+  const popularityBoost = {
+    "filter" : {
+      "match_all": {}
+    },
+    "field_value_factor": {
+      "field": "popularity",
+      "modifier": "log1p",
+      "missing": 0
+    },
+  }
+
+  return {
+    boosts: [...recentListenFilters, popularityBoost],
+    maxBoost: Math.pow(2, recentListenFilters.length + 1),
+  }
 }
 
 const selectOptimalPassage = ((

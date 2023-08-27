@@ -8,7 +8,7 @@
 // of PassageItem or any component nested beneath PassageItem, where N is the
 // number of passage groups and M is the number of passages in each
 
-import React, {memo, useRef, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import SongInfo from './SongInfo';
 import PassageLyrics from './PassageLyrics';
@@ -28,6 +28,7 @@ export type PassageItemProps = {
   };
   passage: PassageType;
   passageTheme: ThemeType;
+  captureViewShot: (callback: (uri: string) => void) => void;
 };
 
 const PassageItem = (props: PassageItemProps) => {
@@ -39,7 +40,7 @@ const PassageItem = (props: PassageItemProps) => {
   const containerRef = useRef<View>(null);
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const {passage, passageTheme, passageItemKey} = props;
+  const {passage, passageTheme, passageItemKey, captureViewShot} = props;
   const {lyrics, tags, song} = passage;
 
   return (
@@ -62,6 +63,7 @@ const PassageItem = (props: PassageItemProps) => {
           viewRef={passageLyricsRef}
         />
         <ActionBar
+          passage={passage}
           tags={tags}
           theme={passageTheme}
           passageItemKey={passageItemKey}
@@ -74,6 +76,7 @@ const PassageItem = (props: PassageItemProps) => {
               parentYPosition: lyricsYPosition || 0,
             });
           }}
+          captureViewShot={captureViewShot}
         />
       </View>
     </ItemContainer>
@@ -93,12 +96,4 @@ const styles = StyleSheet.create({
   },
 });
 
-const MemoPassageItem = memo(
-  PassageItem,
-  (prev: PassageItemProps, next: PassageItemProps) => {
-    // only re-render when the passage theme has been determined
-    return prev.passageTheme != null || next.passageTheme == null;
-  },
-);
-
-export default MemoPassageItem;
+export default PassageItem;

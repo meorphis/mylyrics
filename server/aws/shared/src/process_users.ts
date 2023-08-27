@@ -3,10 +3,11 @@ import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 import { sqs } from "./integrations/aws";
 import { Song, SimplifiedSong, SongListen } from "./utility/types";
 import { 
-  getEnrichedSongs, getTopSongsForArtist, getUserRecentlyPlayedSongs,
+  getEnrichedSongs, getTopArtistsForUser, getTopSongsForArtist, getUserRecentlyPlayedSongs,
 } from "./integrations/spotify/spotify_data";
 import { getFirestoreDb } from "./integrations/firebase";
 import { DocumentData } from "firebase-admin/firestore";
+import { createRefreshUserTask } from "./refresh_user";
 
 // *** CONSTANTS ***
 // when we've never indexed any data for an artist, we add several top tracks (in addition to the
@@ -14,15 +15,7 @@ import { DocumentData } from "firebase-admin/firestore";
 const MAX_SONGS_PER_ARTIST = 5;
 
 // *** PUBLIC INTERFACE ***
-// for each user in the database that matches our "minute" seed, we add some data to db
-// and search depending on the user's recent listening activity
-// notes:
-// - first we check if the user has listened to songs since we last checked; if so, we record
-//    the listens
-// - then for each song that our system hasn't seen before, we add that song to the processing
-//     queue 
-// - we also add the each song's artist's top tracks to the processing queue if we haven't seen the 
-//    artist before
+// for each user in the database that matches our "minute" seed, we run processOneUser
 export const processUsers = async ({minute}: {minute: number}) => {
   if (minute == null || !Number.isInteger(minute) || minute < 0 || minute > 59) {
     throw new Error(`invalid minute: ${minute}`);
@@ -60,8 +53,17 @@ export const processUsers = async ({minute}: {minute: number}) => {
   }
 }
 
-// *** PRIVATE HELPERS ***
-const processOneUser = async ({userId, userData}: {userId: string, userData: DocumentData}) => {  
+// add some data to db and to search depending on the user's recent listening activity
+// - first we check if the user has listened to songs since we last checked; if so, we record
+//    the listens
+// - then for each song that our system hasn't seen before, we add that song to the processing
+//     queue 
+// - we also add the each song's artist's top tracks to the processing queue if we haven't seen the 
+//    artist before
+export const processOneUser = async (
+  {userId, userData, includeTopArtists = false}:
+  {userId: string, userData: DocumentData, includeTopArtists?: boolean}
+) => {  
   console.log(`processing user ${userId}`);
 
   const spotifyResponse = await getFreshSpotifyResponse(userData);
@@ -90,7 +92,7 @@ const processOneUser = async ({userId, userData}: {userId: string, userData: Doc
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const recentListens = await getUserRecentlyPlayedSongs({
     spotifyAccessToken,
-    lastCheckedRecentPlaysAt: userData.lastCheckedRecentPlaysAt,
+    lastCheckedRecentPlaysAt,
   });
 
   const newLastCheckedRecentPlaysAt = (
@@ -107,7 +109,12 @@ const processOneUser = async ({userId, userData}: {userId: string, userData: Doc
     return;
   }
 
-  const allArtistIds = Array.from(new Set(recentListens.map((l) => l.song.primaryArtist.id)));
+  const topArtists = includeTopArtists ? await getTopArtistsForUser({spotifyAccessToken}) : [];
+
+  const allArtistIds = Array.from(new Set([
+    ...recentListens.map((l) => l.song.primaryArtist.id),
+    ...topArtists.map((a) => a.id),
+  ]));
   const allArtists = [];
   for (const artistId of allArtistIds) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -172,8 +179,29 @@ const processOneUser = async ({userId, userData}: {userId: string, userData: Doc
   });
 
   await createProcessSongTasks({songs: enrichedSongsToProcess});
+
+  const db = await getFirestoreDb();
+  const userRecommendations = (
+    await db.collection("user-recommendations").doc(userId).get()
+  ).data();
+
+  const lastRefreshedAt = userRecommendations?.lastRefreshedAt;
+  if (lastRefreshedAt != null) {
+
+    // if we haven't refreshed recommendations in the last ~24 hours, do so
+    if (Date.now() - lastRefreshedAt > 1000 * 60 * 60 * 23.5) {
+      await createRefreshUserTask({
+        userId,
+
+        // add a delay so that ideally some of the songs we just added to the queue will be
+        // processed before we refresh recommendations
+        delaySeconds: 5 * 60,
+      })
+    }
+  }
 }
 
+// *** PRIVATE HELPERS ***
 const assertEnvironmentVariables = () => {
   if (process.env.PROCESSSONGQUEUE_QUEUE_URL == null) {
     throw new Error("PROCESSSONGQUEUE_QUEUE_URL is not defined in the environment");

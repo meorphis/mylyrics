@@ -1,6 +1,7 @@
 import {ImageColorsResult} from 'react-native-image-colors';
 
 export type RawSongType = {
+  id: string;
   album: {
     name: string;
     image: string;
@@ -13,6 +14,7 @@ export type RawSongType = {
 };
 
 export type SongType = {
+  id: string;
   album: {
     name: string;
     image: {

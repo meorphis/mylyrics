@@ -1,5 +1,4 @@
 import React from 'react';
-import PassageItem from '../passageItem/PassageItem';
 import {
   PassageItemScreenProps,
   RootStackParamList,
@@ -11,6 +10,7 @@ import {CAROUSEL_MARGIN_TOP} from '../recommendations/PassageGroupCarousel';
 import BottomBar from '../common/BottomBar';
 import {ThemeProvider} from '../../utility/theme';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
+import ViewShotPassageItem from './ViewShotPassageItem';
 
 const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   const {passage, theme} = route.params;
@@ -24,7 +24,7 @@ const PassageItemScreen = ({route}: PassageItemScreenProps) => {
       <ThemeBackground theme={theme}>
         <SafeAreaView style={{...styles.safearea}}>
           <View style={{...styles.container, width, maxHeight}}>
-            <PassageItem passage={passage} passageTheme={theme} />
+            <ViewShotPassageItem passage={passage} passageTheme={theme} />
           </View>
           <BottomBar
             activeGroupKey={null}
