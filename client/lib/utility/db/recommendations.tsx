@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {useDeviceId} from '../device_id';
 import db from './firestore';
-import {doc, collection, getDoc} from '@firebase/firestore';
+import {doc, collection, getDoc, runTransaction} from '@firebase/firestore';
 import {RequestType} from '../../types/request';
 import {useDispatch} from 'react-redux';
 import {
@@ -13,6 +13,9 @@ import {setActivePassage} from '../redux/active_passage';
 import {PassageGroupsType, RawPassageType} from '../../types/passage';
 import {useCacheImageDataForUrls} from '../images';
 import {setHoroscope} from '../redux/horoscope';
+import {getPassageId} from '../passage_id';
+import {setLikes} from '../redux/likes';
+import {setSentimentGroups} from '../redux/sentiment_groups';
 
 // Returns a function to get make a request along with the result of that request;
 // the request gets the user's recommendations from the database fetches image data
@@ -39,21 +42,39 @@ export const useRecommendationsRequest = () => {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const sentiments = data.sentiments as string[];
+        const sentimentGroups = data.sentiments as {
+          group: string;
+          sentiments: string[];
+        }[];
+        const flatSentiments = sentimentGroups
+          .map(({sentiments}) => sentiments)
+          .flat();
+
+        console.log(flatSentiments);
         const flatRecommendations = data.recommendations as RawPassageType[];
         const horoscope = data.horoscope as string;
-        const activeGroupKey = sentiments[0];
+        const likes = (data.likes || {}) as {[passageId: string]: boolean};
+        const inferredLikes = flatRecommendations.map(r => {
+          const passageId = getPassageId(r);
+          return {
+            [passageId]: likes[passageId] ?? false,
+          };
+        });
 
-        const recommendations = unflattenRecommendations(
-          flatRecommendations,
-          sentiments,
-        );
+        const activeGroupKey = flatSentiments[0];
 
+        updateImpressions({deviceId, passages: flatRecommendations});
         await cacheImageDataForUrls(
           flatRecommendations.map(({song}) => song.album.image),
         );
 
-        dispatch(initPassageGroups(sentiments));
+        const recommendations = unflattenRecommendations(
+          flatRecommendations,
+          flatSentiments,
+        );
+
+        dispatch(initPassageGroups(flatSentiments));
+        dispatch(setSentimentGroups(sentimentGroups));
 
         dispatch(applyLoadedPassageGroups(recommendations));
 
@@ -64,7 +85,9 @@ export const useRecommendationsRequest = () => {
           }),
         );
 
-        dispatch(setHoroscope(horoscope));
+        dispatch(setHoroscope(horoscope || ''));
+
+        dispatch(setLikes(Object.assign({}, ...inferredLikes)));
 
         setRecommendationsRequest({
           status: 'loaded',
@@ -77,6 +100,7 @@ export const useRecommendationsRequest = () => {
         });
       }
     } catch (e) {
+      console.error(e);
       setRecommendationsRequest({
         status: 'error',
         error: errorToString(e),
@@ -126,4 +150,33 @@ export const unflattenRecommendations = (
     });
   });
   return recommendations;
+};
+
+export const updateImpressions = async ({
+  deviceId,
+  passages,
+}: {
+  deviceId: string;
+  passages: RawPassageType[];
+}) => {
+  const docRef = doc(collection(db, 'user-impressions-today'), deviceId);
+  await runTransaction(db, async transaction => {
+    const docSnap = await transaction.get(docRef);
+    const data = docSnap.data();
+    const impressions = data?.impressions ?? {};
+    passages.forEach(rec => {
+      const songId = rec.song.id;
+      const sentiments = rec.tags.map(({sentiment}) => sentiment);
+      sentiments.forEach(sentiment => {
+        if (impressions[sentiment] == null) {
+          impressions[sentiment] = [];
+        }
+        if (impressions[sentiment].includes(songId)) {
+          return;
+        }
+        impressions[sentiment].push(songId);
+      });
+    });
+    transaction.set(docRef, {value: impressions}, {merge: true});
+  });
 };

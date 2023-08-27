@@ -67,6 +67,58 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       VisibilityTimeout: 60
+  RefreshUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./handlers
+      Handler: refresh_user_function.handler
+      Runtime: nodejs18.x
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          OPENSEARCH_URL: !Sub "https://${OpenSearchServiceDomain.DomainEndpoint}/"
+          REFRESHUSERQUEUE_QUEUE_URL: !Ref RefreshUserQueue
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt RefreshUserQueue.QueueName
+        - Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:*
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'es:ESHttp*'
+            Resource: 
+              Fn::Join:
+                - ''
+                - - 'arn:aws:es:'
+                  - !Ref 'AWS::Region'
+                  - ':'
+                  - !Ref 'AWS::AccountId'
+                  - ':domain/'
+                  - !Ref OpenSearchServiceDomain
+                  - '/*'
+      Events:
+        addUserToRefreshQueue:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt RefreshUserQueue.Arn
+            BatchSize: 1
+      Layers:
+        - !Ref CommonLayer
+  RefreshUserQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RefreshUserDeadLetterQueue.Arn
+        maxReceiveCount: 3
+  RefreshUserDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 60
   ProcessUsersFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -78,9 +130,12 @@ Resources:
       Environment:
         Variables:
           PROCESSSONGQUEUE_QUEUE_URL: !Ref ProcessSongQueue
+          REFRESHUSERQUEUE_QUEUE_URL: !Ref RefreshUserQueue
       Policies:
         - SQSSendMessagePolicy:
             QueueName: !GetAtt ProcessSongQueue.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt RefreshUserQueue.QueueName
         - Statement:
           - Effect: Allow
             Action: secretsmanager:GetSecretValue

@@ -1,4 +1,14 @@
 {
   "name": "MyLyrics",
-  "displayName": "MyLyrics"
+  "displayName": "MyLyrics",
+  "expo": {
+    "ios": {
+      "bundleIdentifier": "com.mylyrics.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9f10108c-729e-4e2d-97e0-9cf2b8b06ff4"
+      }
+    }
+  }
 }

@@ -1,5 +1,8 @@
-type UserType = {
+export type UserType = {
   hasSpotifyAuth: boolean;
+  hasExpoPushToken: boolean;
 };
 
-export default UserType;
+export type SetUserType = {
+  expoPushToken?: string;
+};

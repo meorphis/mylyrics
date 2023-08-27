@@ -28,20 +28,28 @@ const GroupSelectorBottomSheet = (props: Props) => {
     (state: RootState) => state.recommendations.map(({groupKey: gk}) => gk),
     _.isEqual,
   );
-  const groupsToShow = Object.keys(groups).filter(group =>
-    groups[group as GroupType].some(s => allSentiments.includes(s)),
+  const groupsToShow = useSelector((state: RootState) => state.sentimentGroups);
+  const groupsAsMap = groupsToShow.reduce(
+    (acc, {group, sentiments}) => ({
+      ...acc,
+      [group]: sentiments,
+    }),
+    {} as {[group: string]: string[]},
   );
+  console.log(groupsAsMap);
   const theme = useTheme();
 
   const backgroundColor = theme.backgroundColor;
   const textColor = getLyricsColor({theme});
   const groupBackgroundColor = getContrastingBackgroundColor(backgroundColor);
   const selectedGroup = activeGroupKey
-    ? (Object.keys(groups).find(group =>
-        (groups[group as GroupType] as SentimentEnumType[]).includes(
-          activeGroupKey as SentimentEnumType,
-        ),
-      ) as GroupType)
+    ? groupsToShow
+        .map(({group}) => group)
+        .find(group =>
+          (groupsAsMap[group] as SentimentEnumType[]).includes(
+            activeGroupKey as SentimentEnumType,
+          ),
+        )
     : null;
 
   const snapPoints = useMemo(() => ['65%'], []);
@@ -60,7 +68,10 @@ const GroupSelectorBottomSheet = (props: Props) => {
           ✨ your recent vibes ✨
         </Text>
 
-        {putAtFrontOfArray(groupsToShow, selectedGroup).map(group => (
+        {putAtFrontOfArray(
+          groupsToShow.map(({group}) => group),
+          selectedGroup,
+        ).map(group => (
           <View
             style={{...styles.group, backgroundColor: groupBackgroundColor}}
             key={group}>
@@ -68,14 +79,12 @@ const GroupSelectorBottomSheet = (props: Props) => {
               <Text style={{...styles.groupLabelText, color: textColor}}>
                 {group}
               </Text>
-              <Text style={styles.groupLabelEmoji}>
-                {groupEmojis[group as GroupType]}
-              </Text>
+              <Text style={styles.groupLabelEmoji}>{groupEmojis[group]}</Text>
             </View>
             <View style={styles.tagsContainer}>
               {(
                 putAtFrontOfArray(
-                  groups[group as GroupType].filter(s =>
+                  groupsAsMap[group].filter(s =>
                     allSentiments.includes(s),
                   ) as SentimentEnumType[],
                   activeGroupKey,
@@ -179,82 +188,7 @@ const styles = StyleSheet.create({
   },
 });
 
-type GroupType =
-  | 'heart'
-  | 'body'
-  | 'skin'
-  | 'eyes'
-  | 'mind'
-  | 'soul'
-  | 'gut'
-  | 'spine';
-
-const groups: {[key in GroupType]: SentimentEnumType[]} = {
-  body: [
-    'celebratory',
-    'energetic',
-    'excited',
-    'liberating',
-    'reckless',
-    'violent',
-  ],
-  eyes: [
-    'alienated',
-    'dreamy',
-    'enigmatic',
-    'hopeful',
-    'lonely',
-    'nostalgic',
-    'optimistic',
-  ],
-  gut: [
-    'betrayed',
-    'bittersweet',
-    'desperate',
-    'frustrated',
-    'melancholic',
-    'vulnerable',
-  ],
-  heart: [
-    'affectionate',
-    'appreciative',
-    'heartbroken',
-    'intimate',
-    'loyal',
-    'romantic',
-    'passionate',
-  ],
-  mind: [
-    'chaotic',
-    'conflicted',
-    'determined',
-    'disillusioned',
-    'introspective',
-    'obsessive',
-    'philosophical',
-    'regretful',
-  ],
-  skin: [
-    'flirtatious',
-    'lustful',
-    'playful',
-    'provocative',
-    'seductive',
-    'sensual',
-  ],
-  soul: [
-    'carefree',
-    'euphoric',
-    'joyful',
-    'peaceful',
-    'rebellious',
-    'spiritual',
-    'surreal',
-  ],
-  spine: ['angry', 'empowered', 'fearful', 'resilient', 'triumphant'],
-};
-
-const groupEmojis: {[key in GroupType]: string} = {
+const groupEmojis: {[key: string]: string} = {
   body: '🤸‍♂️',
   eyes: '👁️',
   gut: '🤢',

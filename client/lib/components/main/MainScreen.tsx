@@ -1,4 +1,4 @@
-import {useUserRequest} from '../../utility/db/user';
+import {useGetUserRequest, useSetUserRequest} from '../../utility/db/user';
 import React, {useEffect, useRef, useState} from 'react';
 import Recommendations from '../recommendations/Recommendations';
 import SpotifyLogin from '../nux/SpotifyLogin';
@@ -12,16 +12,30 @@ import AppearingView from '../common/AppearingView';
 import {AppState, StyleSheet} from 'react-native';
 
 const MainScreen = () => {
-  const {userRequest, makeUserRequest} = useUserRequest();
+  const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
+  const setUserRequest = useSetUserRequest();
   const {recommendationsRequest, makeRecommendationsRequest} =
     useRecommendationsRequest();
-  const notificationStatus = useNotifications();
+  const {notificationStatus, expoPushToken} = useNotifications();
   const [spotifyAuthStatus, handleSpotifyLogin] = useSpotifyAuthentication();
 
   useEffect(() => {
     makeRecommendationsRequest();
-    makeUserRequest();
+    makeGetUserRequest();
   }, []);
+
+  useEffect(() => {
+    console.log('expoPushToken', expoPushToken);
+    console.log('getUserRequest', getUserRequest);
+
+    if (
+      getUserRequest.status === 'loaded' &&
+      expoPushToken &&
+      getUserRequest.data?.hasExpoPushToken !== true
+    ) {
+      setUserRequest({expoPushToken});
+    }
+  }, [getUserRequest.status, expoPushToken]);
 
   const appState = useRef(AppState.currentState);
   const [_, setAppStateVisible] = useState(appState.current);
@@ -46,7 +60,7 @@ const MainScreen = () => {
 
   if (
     recommendationsRequest.status === 'error' ||
-    userRequest.status === 'error'
+    getUserRequest.status === 'error'
   ) {
     return <ErrorComponent />;
   }
@@ -54,8 +68,8 @@ const MainScreen = () => {
   if (
     recommendationsRequest.status === 'loading' ||
     recommendationsRequest.status === 'init' ||
-    userRequest.status === 'loading' ||
-    userRequest.status === 'init' ||
+    getUserRequest.status === 'loading' ||
+    getUserRequest.status === 'init' ||
     spotifyAuthStatus === 'pending'
   ) {
     return (
@@ -67,7 +81,10 @@ const MainScreen = () => {
 
   console.log(spotifyAuthStatus);
 
-  if (!userRequest.data?.hasSpotifyAuth && spotifyAuthStatus !== 'succeeded') {
+  if (
+    !getUserRequest.data?.hasSpotifyAuth &&
+    spotifyAuthStatus !== 'succeeded'
+  ) {
     return <SpotifyLogin handleSpotifyLogin={handleSpotifyLogin} />;
   }
 

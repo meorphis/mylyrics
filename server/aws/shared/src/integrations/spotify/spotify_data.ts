@@ -1,6 +1,6 @@
 import SpotifyWebApi from "spotify-web-api-node";
 import { uuidForArtist, uuidForSong } from "../../utility/uuid";
-import { Song, SimplifiedSong, SongListen } from "../../utility/types";
+import { Song, SimplifiedSong, SongListen, Artist } from "../../utility/types";
 
 // *** PUBLIC INTERFACE ***
 // takes a spotify access token and the time at which we last checked and
@@ -152,6 +152,22 @@ export const getTopSongsForArtist = async (
       }
     }
   })    
+}
+
+export const getTopArtistsForUser = async (
+  {spotifyAccessToken}: {spotifyAccessToken: string}
+): Promise<Artist[]> => {
+  const sp = getSpotifyClient(spotifyAccessToken);
+  const topArtistsResponse = await sp.getMyTopArtists({limit: 20, time_range: "short_term"});
+
+  return topArtistsResponse.body.items.map((artist) => {
+    return {
+      id: uuidForArtist({artistName: artist.name}),
+      name: artist.name,
+      popularity: artist.popularity,
+      spotifyId: artist.id,
+    }
+  });
 }
 
 // client for Spotify
