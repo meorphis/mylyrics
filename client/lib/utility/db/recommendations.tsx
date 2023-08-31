@@ -1,11 +1,19 @@
 import {useState} from 'react';
 import {useDeviceId} from '../device_id';
 import db from './firestore';
-import {doc, collection, getDoc, runTransaction} from '@firebase/firestore';
+import {
+  doc,
+  collection,
+  getDoc,
+  runTransaction,
+  onSnapshot,
+  DocumentSnapshot,
+  DocumentData,
+} from '@firebase/firestore';
 import {RequestType} from '../../types/request';
 import {useDispatch} from 'react-redux';
 import {
-  applyLoadedPassageGroups,
+  addLoadedPassageGroups,
   initPassageGroups,
 } from '../redux/recommendations';
 import {errorToString} from '../error';
@@ -14,7 +22,7 @@ import {PassageGroupsType, RawPassageType} from '../../types/passage';
 import {useCacheImageDataForUrls} from '../images';
 import {setHoroscope} from '../redux/horoscope';
 import {getPassageId} from '../passage_id';
-import {setLikes} from '../redux/likes';
+import {initLikes, addLikes} from '../redux/likes';
 import {setSentimentGroups} from '../redux/sentiment_groups';
 
 // Returns a function to get make a request along with the result of that request;
@@ -23,89 +31,50 @@ import {setSentimentGroups} from '../redux/sentiment_groups';
 // recommendationsRequest.data is true if recommendations were found, false otherwise
 export const useRecommendationsRequest = () => {
   const [recommendationsRequest, setRecommendationsRequest] = useState<
-    RequestType<boolean>
+    RequestType<number>
   >({
     status: 'init',
   });
 
   const deviceId = useDeviceId();
-  const dispatch = useDispatch();
-  const cacheImageDataForUrls = useCacheImageDataForUrls();
+  const setupRecommendations = useSetupRecommendations({deviceId});
 
   const makeRecommendationsRequest = async () => {
-    setRecommendationsRequest({status: 'loading'});
+    // keep the user's settings up to date
+    onSnapshot(doc(collection(db, 'user-recommendations'), deviceId), d => {
+      if (
+        recommendationsRequest.status === 'loaded' &&
+        d.data()?.lastRefreshedAt !== recommendationsRequest.data
+      ) {
+        // TODO: if the app is open, show a banner prompting the user to refresh
+        makeRequest();
+      }
+    });
 
-    try {
-      const docSnap = await getDoc(
-        doc(collection(db, 'user-recommendations'), deviceId),
-      );
+    const makeRequest = async () => {
+      setRecommendationsRequest({status: 'loading'});
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const sentimentGroups = data.sentiments as {
-          group: string;
-          sentiments: string[];
-        }[];
-        const flatSentiments = sentimentGroups
-          .map(({sentiments}) => sentiments)
-          .flat();
-
-        console.log(flatSentiments);
-        const flatRecommendations = data.recommendations as RawPassageType[];
-        const horoscope = data.horoscope as string;
-        const likes = (data.likes || {}) as {[passageId: string]: boolean};
-        const inferredLikes = flatRecommendations.map(r => {
-          const passageId = getPassageId(r);
-          return {
-            [passageId]: likes[passageId] ?? false,
-          };
-        });
-
-        const activeGroupKey = flatSentiments[0];
-
-        updateImpressions({deviceId, passages: flatRecommendations});
-        await cacheImageDataForUrls(
-          flatRecommendations.map(({song}) => song.album.image),
+      try {
+        const docSnap = await getDoc(
+          doc(collection(db, 'user-recommendations'), deviceId),
         );
 
-        const recommendations = unflattenRecommendations(
-          flatRecommendations,
-          flatSentiments,
-        );
-
-        dispatch(initPassageGroups(flatSentiments));
-        dispatch(setSentimentGroups(sentimentGroups));
-
-        dispatch(applyLoadedPassageGroups(recommendations));
-
-        dispatch(
-          setActivePassage({
-            groupKey: activeGroupKey,
-            passageKey: flatRecommendations[0].song.name,
-          }),
-        );
-
-        dispatch(setHoroscope(horoscope || ''));
-
-        dispatch(setLikes(Object.assign({}, ...inferredLikes)));
+        const recommendationsExist = await setupRecommendations({docSnap});
 
         setRecommendationsRequest({
           status: 'loaded',
-          data: true,
+          data: recommendationsExist ? docSnap.data()?.lastRefreshedAt : null,
         });
-      } else {
+      } catch (e) {
+        console.error(e);
         setRecommendationsRequest({
-          status: 'loaded',
-          data: false,
+          status: 'error',
+          error: errorToString(e),
         });
       }
-    } catch (e) {
-      console.error(e);
-      setRecommendationsRequest({
-        status: 'error',
-        error: errorToString(e),
-      });
-    }
+    };
+
+    makeRequest();
   };
 
   return {
@@ -144,7 +113,7 @@ export const unflattenRecommendations = (
       }
 
       passageGroup.push({
-        passageKey: cleanedRec.song.name,
+        passageKey: getPassageId(cleanedRec),
         passage: cleanedRec,
       });
     });
@@ -179,4 +148,71 @@ export const updateImpressions = async ({
     });
     transaction.set(docRef, {value: impressions}, {merge: true});
   });
+};
+
+const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
+  const dispatch = useDispatch();
+  const cacheImageDataForUrls = useCacheImageDataForUrls();
+
+  const setupRecommendations = async ({
+    docSnap,
+  }: {
+    docSnap: DocumentSnapshot<DocumentData, DocumentData>;
+  }) => {
+    if (!docSnap.exists()) {
+      return false;
+    }
+
+    const data = docSnap.data();
+    const sentimentGroups = data.sentiments as {
+      group: string;
+      sentiments: string[];
+    }[];
+    const flatSentiments = sentimentGroups
+      .map(({sentiments}) => sentiments)
+      .flat();
+
+    const flatRecommendations = data.recommendations as RawPassageType[];
+    const horoscope = data.horoscope as string;
+    const likes = (data.likes || {}) as {[passageId: string]: boolean};
+    const inferredLikes = flatRecommendations.map(r => {
+      const passageId = getPassageId(r);
+      return {
+        [passageId]: likes[passageId] ?? false,
+      };
+    });
+
+    const activeGroupKey = flatSentiments[0];
+
+    updateImpressions({deviceId, passages: flatRecommendations});
+    await cacheImageDataForUrls(
+      flatRecommendations.map(({song}) => song.album.image),
+    );
+
+    const recommendations = unflattenRecommendations(
+      flatRecommendations,
+      flatSentiments,
+    );
+
+    dispatch(initPassageGroups(flatSentiments));
+    dispatch(addLoadedPassageGroups(recommendations));
+
+    dispatch(setSentimentGroups(sentimentGroups));
+
+    dispatch(
+      setActivePassage({
+        groupKey: activeGroupKey,
+        passageKey: getPassageId(flatRecommendations[0]),
+      }),
+    );
+
+    dispatch(setHoroscope(horoscope || ''));
+
+    dispatch(initLikes());
+    dispatch(addLikes(Object.assign({}, ...inferredLikes)));
+
+    return true;
+  };
+
+  return setupRecommendations;
 };

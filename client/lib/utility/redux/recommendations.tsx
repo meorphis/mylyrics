@@ -67,8 +67,10 @@ export const recommendationsSlice = createSlice({
       state: PassageGroupRequestsType,
       action: PayloadAction<string[]>,
     ) => {
+      const newState: PassageGroupRequestsType = [];
+
       action.payload.forEach(groupKey => {
-        state.push({
+        newState.push({
           groupKey,
           passageGroupRequest: {
             data: [],
@@ -76,8 +78,10 @@ export const recommendationsSlice = createSlice({
           },
         });
       });
+
+      return newState;
     },
-    applyLoadedPassageGroups: (
+    addLoadedPassageGroups: (
       state: PassageGroupRequestsType,
       action: PayloadAction<PassageGroupsType>,
     ) => {
@@ -120,7 +124,7 @@ export const {
   markPassageGroupAsLoading,
   markPassageGroupAsError,
   initPassageGroups,
-  applyLoadedPassageGroups,
+  addLoadedPassageGroups,
 } = recommendationsSlice.actions;
 
 export default recommendationsSlice.reducer as Reducer<PassageGroupRequestsType>;

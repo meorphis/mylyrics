@@ -49,9 +49,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   bottomBar: {
-    position: 'absolute',
     alignSelf: 'center',
     bottom: 0,
+    marginTop: 12,
   },
 });
 

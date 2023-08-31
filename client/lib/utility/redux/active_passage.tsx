@@ -15,6 +15,10 @@ export const activePassageSlice = createSlice({
         passageKey?: string | null;
       }>,
     ) => {
+      console.log(
+        `set active passage key ${action.payload.groupKey} ${action.payload.passageKey}`,
+      );
+
       if (action.payload.groupKey) {
         state.groupKey = action.payload.groupKey;
       }

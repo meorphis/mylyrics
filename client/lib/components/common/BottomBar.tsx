@@ -86,9 +86,6 @@ const AnimatedButtonLinearGradient = (props: {
 };
 
 const styles = StyleSheet.create({
-  safearea: {
-    flex: 1,
-  },
   menuRow: {
     flexDirection: 'row',
     justifyContent: 'center',

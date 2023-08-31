@@ -2,6 +2,7 @@ import { VALID_SENTIMENTS } from "../utility/sentiments";
 import { LabeledPassage, Recommendation, Song, SongWithLyrics } from "../utility/types";
 import { getSearchClient } from "./aws";
 import { getFirestoreDb } from "./firebase";
+import { vectorizeSearchTerm } from "./open_ai/open_ai_integration";
 
 // *** PUBLIC INTERFACE ***
 // for a given user, we find the most relevant passages to show them for a given sentiment
@@ -127,6 +128,113 @@ export const getRecommendationsForSentiment = async (
 
   // get the top N
   const passages = sortedParsedResults.slice(0, limit);
+
+  return passages.map(({song, passage, score}) => {
+    return {
+      lyrics: passage.lyrics,
+      song: {
+        id: song.id,
+        album: {
+          name: song.album.name,
+          image: song.album.image.url,
+        },
+        artists: song.artists.map((artist) => {
+          return {
+            id: artist.id,
+            name: artist.name,
+          }
+        }),
+        name: song.name,
+        lyrics: song.lyrics,
+      },
+      tags: passage.sentiments.map((sentiment) => {
+        return {
+          type: "sentiment",
+          sentiment,
+        }
+      }),
+      score,
+    }
+  });
+}
+
+export const getSemanticMatchesForTerm = async (
+  {userId, term, limit}:
+  { 
+    userId: string,
+    term: string,
+    limit: number
+  }
+): Promise<Recommendation[]> => {
+  const db = await getFirestoreDb();
+  const recentListensSnap = await db.collection("user-recent-listens").doc(userId).get()
+  const recentListens = recentListensSnap.data() || {};
+
+  const searchClient = getSearchClient();
+  const vector = await vectorizeSearchTerm({term});
+
+  const songs = await getRecentSongs({recentListens});
+
+  const query = {
+    index: "song-lyric-passages",
+    body: {
+      "query": {
+        "script_score": {
+          "query": {
+            "bool": {
+              "filter": [                  
+                {"terms": {"song.id": songs}},
+                {
+                  "range": {
+                    "metadata.numEffectiveLines": {
+                      "gt": 1
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "script": {
+            "lang": "knn",
+            "source": "knn_score",
+            "params": {
+              "field": "lyricsVector",
+              "query_value": vector,
+              "space_type": "l2"
+            }
+          }
+        }
+      },
+      "_source": {
+        "excludes": ["lyricsVector"]
+      },
+      "size": limit,
+    }
+  };
+
+  const results = await searchClient.search(query);
+
+  type Result = {
+    _id: string,
+    _score: number,
+    _source: {song: Song} & LabeledPassage
+  }
+
+  // unpack search results
+  const passages: {
+    song: SongWithLyrics, passage: LabeledPassage, score: number
+  }[] = results.body.hits.hits.map((hit: Result) => {
+    const {_score: score, _source: {song, ...passage}} = hit;
+    return {
+      song,
+      // select the passage most suitable for display
+      passage: {
+        ...passage,
+        sentiments: passage.sentiments.filter((s) => VALID_SENTIMENTS.includes(s)),
+      },
+      score,
+    }
+  });
 
   return passages.map(({song, passage, score}) => {
     return {
@@ -415,6 +523,27 @@ const getBoostsTerm = (
     boosts: [...recentListenFilters, popularityBoost],
     maxBoost: Math.pow(2, recentListenFilters.length + 1),
   }
+}
+
+const getRecentSongs = async (
+  {recentListens} : 
+  {
+    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+  }
+) => {
+  const songsYesterday = recentListens.yesterday?.songs || [];
+  const songsLastWeek = [2, 3, 4, 5, 6, 7, 8].map((daysAgo) => {
+    return recentListens[`daysago-${daysAgo}`]?.songs || [];
+  }).flat();
+  const songsLongerAgo = recentListens.longerAgo?.songs || [];
+  
+  const songs = [
+    ...songsYesterday,
+    ...songsLastWeek,
+    ...songsLongerAgo,
+  ];
+
+  return songs;
 }
 
 const selectOptimalPassage = ((

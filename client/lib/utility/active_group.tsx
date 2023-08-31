@@ -2,7 +2,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {RootState} from './redux';
 import {setActivePassage} from './redux/active_passage';
 import {
-  applyLoadedPassageGroups,
+  addLoadedPassageGroups,
   markPassageGroupAsError,
   markPassageGroupAsLoading,
 } from './redux/recommendations';
@@ -33,6 +33,9 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
       state.recommendations.find(({groupKey}) => groupKey === passage.groupKey)
         ?.passageGroupRequest.status === 'init',
   );
+  const activeGroupKey = useSelector(
+    (state: RootState) => state.activePassage?.groupKey,
+  );
   const allSentiments = useSelector(
     (state: RootState) => state.recommendations.map(({groupKey}) => groupKey),
     _.isEqual,
@@ -43,7 +46,7 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
   );
 
   useEffect(() => {
-    if (passage.passageKey == null) {
+    if (activeGroupKey === passage.groupKey && passage.passageKey == null) {
       if (firstPassageKey) {
         dispatch(setActivePassage({passageKey: firstPassageKey}));
       }
@@ -85,7 +88,7 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
           flatRecommendations,
           allSentiments,
         );
-        dispatch(applyLoadedPassageGroups(recommendations));
+        dispatch(addLoadedPassageGroups(recommendations));
       } catch (e) {
         dispatch(
           markPassageGroupAsError({

@@ -87,6 +87,20 @@ export const vectorizePassages = async (
   }));
 };
 
+// takes in a term and returns the vector
+export const vectorizeSearchTerm = async (
+  {term}: {term: string}
+): Promise<number[]> => {
+  const openai = await getOpenAIClient();
+
+  const vectorResponse = await openai.createEmbedding({
+    model: "text-embedding-ada-002",
+    input: term,
+  });
+
+  return vectorResponse.data.data[0].embedding;
+}
+
 // *** PRIVATE HELPERS ***
 // client for the OpenAI API
 const _getOpenAIClient = async () => {
