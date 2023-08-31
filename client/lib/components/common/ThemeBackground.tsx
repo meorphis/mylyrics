@@ -22,8 +22,8 @@ const ThemeBackground = (props: Props) => {
       start={{x: 0, y: 0}}
       end={{x: 0, y: 1.0}}
       colors={[
-        addColorOpacity(theme.backgroundColor, 0.7),
-        addColorOpacity(theme.backgroundColor, 0.4),
+        addColorOpacity(theme.backgroundColor, 0.5),
+        addColorOpacity(theme.backgroundColor, 0.3),
       ]}>
       {children}
     </AnimatedLinearGradient>
@@ -34,7 +34,6 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
     flexDirection: 'row',
-    padding: 6,
   },
 });
 

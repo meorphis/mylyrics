@@ -1,5 +1,9 @@
-import React, {useMemo} from 'react';
-import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
+import React, {useCallback, useMemo} from 'react';
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
 import {StyleSheet, Text, View} from 'react-native';
 import {useTheme} from '../../utility/theme';
 import {
@@ -54,18 +58,31 @@ const GroupSelectorBottomSheet = (props: Props) => {
 
   const snapPoints = useMemo(() => ['65%'], []);
 
+  const renderBackdrop = useCallback(
+    (p: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...p}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.8}
+      />
+    ),
+    [],
+  );
+
   return (
     <BottomSheet
       ref={bottomSheetRef}
       index={-1}
       snapPoints={snapPoints}
+      backdropComponent={renderBackdrop}
       enablePanDownToClose
       backgroundStyle={{
         backgroundColor: addColorOpacity(theme.backgroundColor, 0.95),
       }}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
         <Text style={{...styles.titleText, color: textColor}}>
-          ✨ your recent vibes ✨
+          ✨ your daily vibes ✨
         </Text>
 
         {putAtFrontOfArray(
@@ -73,7 +90,11 @@ const GroupSelectorBottomSheet = (props: Props) => {
           selectedGroup,
         ).map(group => (
           <View
-            style={{...styles.group, backgroundColor: groupBackgroundColor}}
+            style={{
+              ...styles.group,
+              backgroundColor: groupBackgroundColor,
+              borderColor: textColor,
+            }}
             key={group}>
             <View style={styles.groupLabel}>
               <Text style={{...styles.groupLabelText, color: textColor}}>
@@ -159,10 +180,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     marginBottom: 12,
-    // shadowColor: '#000',
-    // shadowOffset: {width: 0, height: 2},
-    // shadowOpacity: 0.1,
-    // shadowRadius: 5,
+    borderWidth: 0.2,
   },
   groupLabel: {
     flexDirection: 'row',

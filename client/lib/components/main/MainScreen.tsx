@@ -25,9 +25,6 @@ const MainScreen = () => {
   }, []);
 
   useEffect(() => {
-    console.log('expoPushToken', expoPushToken);
-    console.log('getUserRequest', getUserRequest);
-
     if (
       getUserRequest.status === 'loaded' &&
       expoPushToken &&
@@ -79,8 +76,6 @@ const MainScreen = () => {
     );
   }
 
-  console.log(spotifyAuthStatus);
-
   if (
     !getUserRequest.data?.hasSpotifyAuth &&
     spotifyAuthStatus !== 'succeeded'
@@ -88,7 +83,7 @@ const MainScreen = () => {
     return <SpotifyLogin handleSpotifyLogin={handleSpotifyLogin} />;
   }
 
-  if (recommendationsRequest.data === false) {
+  if (recommendationsRequest.data == null) {
     return <PendingRecommendations notificationStatus={notificationStatus} />;
   }
 

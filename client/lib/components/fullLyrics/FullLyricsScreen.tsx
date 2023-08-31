@@ -112,8 +112,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
         const scrollTo =
           topOfInitiallyHighlightedLyricsPosition +
           safeAreaHeight -
-          innerScrollViewPaddingTop -
-          6;
+          innerScrollViewPaddingTop;
 
         scrollView.current?.scrollTo({
           y: scrollTo,

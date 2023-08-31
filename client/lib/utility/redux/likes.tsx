@@ -4,7 +4,10 @@ export const likesSlice = createSlice({
   name: 'likes',
   initialState: {},
   reducers: {
-    setLikes: (
+    initLikes: () => {
+      return {};
+    },
+    addLikes: (
       state: {[passageId: string]: boolean},
       action: PayloadAction<{[passageId: string]: boolean}>,
     ) => {
@@ -16,6 +19,6 @@ export const likesSlice = createSlice({
   },
 });
 
-export const {setLikes} = likesSlice.actions;
+export const {initLikes, addLikes} = likesSlice.actions;
 
 export default likesSlice.reducer as Reducer<{[passageId: string]: boolean}>;
