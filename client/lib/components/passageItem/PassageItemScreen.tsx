@@ -6,11 +6,11 @@ import {
 import ThemeBackground from '../common/ThemeBackground';
 import {Dimensions, StyleSheet, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {CAROUSEL_MARGIN_TOP} from '../recommendations/PassageGroupCarousel';
 import BottomBar from '../common/BottomBar';
 import {ThemeProvider} from '../../utility/theme';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import ViewShotPassageItem from './ViewShotPassageItem';
+import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
 
 const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   const {passage, theme} = route.params;

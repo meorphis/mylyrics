@@ -1,23 +1,18 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import Tag from './Tag';
 import TagType from '../../types/tag';
 import ThemeType from '../../types/theme';
 import {RootState} from '../../utility/redux';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import {PassageType} from '../../types/passage';
 import {useLikeRequest} from '../../utility/db/likes';
 import Share from 'react-native-share';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import ActionBarButton from './ActionBarButton';
+import {getPassageId} from '../../utility/passage_id';
+import {addCard, removeCard} from '../../utility/redux/prophecy';
 
 type Props = {
   passage: PassageType;
@@ -35,6 +30,31 @@ const ActionBar = (props: Props) => {
   console.log(`rendering ActionBar ${props.passageItemKey?.groupKey}`);
 
   const {passage, tags, theme, passageItemKey, navigateToFullLyrics} = props;
+
+  const isActivePassage = useSelector(
+    (state: RootState) =>
+      state.activePassage.passageKey === passageItemKey?.passageKey &&
+      state.activePassage.groupKey === passageItemKey?.groupKey,
+    (a, b) => a === b,
+  );
+
+  const isDrawn = useSelector(
+    (state: RootState) =>
+      state.prophecy.cards.findIndex(
+        card => getPassageId(card) === getPassageId(passage),
+      ) !== -1,
+    (a, b) => a === b,
+  );
+
+  const canDraw = useSelector(
+    (state: RootState) => state.prophecy.cards.length < 3,
+  );
+
+  const canUndraw = useSelector(
+    (state: RootState) => state.prophecy.prophecy == null,
+  );
+
+  const dispatch = useDispatch();
 
   const {request: likeRequest, toggleLike} = useLikeRequest(passage);
 
@@ -71,10 +91,55 @@ const ActionBar = (props: Props) => {
 
             toggleLike();
           }}
-          icon={likeRequest.data ? 'heart' : 'heart-outline'}
+          icon="heart-outline"
           IconClass={Ionicon}
-          text={likeRequest.data ? 'liked' : 'like'}
+          text="like"
           theme={theme}
+          walkthroughStep={
+            isActivePassage
+              ? {
+                  step: 'like',
+                  text: 'like a lyric card to save it to your favorites',
+                }
+              : undefined
+          }
+          activeState={{
+            initialIsActive: likeRequest.data,
+            activeText: 'liked',
+            activeIcon: 'heart',
+          }}
+        />
+        <ActionBarButton
+          onPress={() => {
+            if (isDrawn) {
+              dispatch(removeCard(passage));
+              return;
+            }
+
+            if (!canDraw) {
+              return;
+            }
+
+            dispatch(addCard(passage));
+          }}
+          icon="add-circle-outline"
+          IconClass={Ionicon}
+          text="draw"
+          theme={theme}
+          isDisabled={(!isDrawn && !canDraw) || (isDrawn && !canUndraw)}
+          walkthroughStep={
+            isActivePassage
+              ? {
+                  step: 'draw',
+                  text: 'draw a lyric card to include it in your prophecy',
+                }
+              : undefined
+          }
+          activeState={{
+            initialIsActive: isDrawn,
+            activeText: 'drawn',
+            activeIcon: 'add-circle',
+          }}
         />
         <ActionBarButton
           onPress={() => {
@@ -106,49 +171,17 @@ const ActionBar = (props: Props) => {
           IconClass={MaterialIcon}
           text="full lyrics"
           theme={theme}
+          walkthroughStep={
+            isActivePassage
+              ? {
+                  step: 'full_lyrics',
+                  text: 'view the full lyrics for this song and select a different passage to like, share or draw',
+                }
+              : undefined
+          }
         />
       </View>
     </View>
-  );
-};
-
-const ActionBarButton = (props: {
-  onPress: () => void;
-  icon: string;
-  IconClass: React.ComponentType<any>;
-  text: string;
-  theme: ThemeType;
-}) => {
-  const {onPress, icon, IconClass, text, theme} = props;
-
-  const scale = useSharedValue(1);
-  const style = useAnimatedStyle(() => {
-    return {
-      ...styles.actionButton,
-      transform: [
-        {
-          scale: scale.value,
-        },
-      ],
-    };
-  });
-
-  return (
-    <AnimatedPressable
-      style={style}
-      onPress={() => {
-        onPress();
-        scale.value = withSpring(
-          1.1,
-          {duration: 50},
-          () => (scale.value = withTiming(1, {duration: 200})),
-        );
-      }}>
-      <IconClass name={icon} size={24} color={theme.detailColor} />
-      <Text style={{...styles.actionText, color: theme.detailColor}}>
-        {text}
-      </Text>
-    </AnimatedPressable>
   );
 };
 
@@ -190,7 +223,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-around',
     marginTop: 8,
   },
   actionButton: {

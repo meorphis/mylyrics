@@ -56,7 +56,7 @@ const GroupSelectorBottomSheet = (props: Props) => {
         )
     : null;
 
-  const snapPoints = useMemo(() => ['65%'], []);
+  const snapPoints = useMemo(() => ['85%'], []);
 
   const renderBackdrop = useCallback(
     (p: BottomSheetBackdropProps) => (

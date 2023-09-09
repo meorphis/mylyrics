@@ -4,33 +4,31 @@
 // - which passage is currently active
 // and then rendering the appropriate PassageItems accordingly
 import React, {memo} from 'react';
-import Carousel from '../../forks/react-native-snap-carousel';
-import {Dimensions, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {setActivePassage} from '../../utility/redux/active_passage';
 import {RootState} from '../../utility/redux';
 import _ from 'lodash';
-import ThemedPassageItem from './ThemedPassageItem';
-import {RawPassageType} from '../../types/passage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ThemedLoadingIndicator from './ThemedLoadingIndicator';
-
-export const CAROUSEL_MARGIN_TOP = 12;
-
-type PassageGroupItem = {
-  passageKey: string;
-  passage: RawPassageType;
-};
+import {useUpdateSequentialWalkthroughStep} from '../../utility/walkthrough';
+import PassageItemCarousel from '../passageItem/PassageItemCarousel';
+import {RawPassageType} from '../../types/passage';
+import ImageDataPassageItem from './ImageDataPassageItem';
 
 type Props = {
   passageGroupKey: string;
 };
 
-const PassageGroupCarousel = (props: Props) => {
+type PassageCarouselItem = {
+  passageKey: string;
+  passage: RawPassageType;
+};
+
+const RecommendationsGroupCarousel = (props: Props) => {
   console.log(`rendering PassageGroupCarousel ${props.passageGroupKey}`);
 
   const {passageGroupKey} = props;
-  const [scrollEnabled, setScrollEnabled] = React.useState(true);
 
   // get all of the passages to show in this carousel
   const passageGroupRequest = useSelector(
@@ -49,6 +47,8 @@ const PassageGroupCarousel = (props: Props) => {
 
   const dispatch = useDispatch();
 
+  const updateSequentialWalkthroughStep = useUpdateSequentialWalkthroughStep();
+
   const data = passageGroupRequest.data;
 
   const isLoading = passageGroupRequest.status === 'loading';
@@ -60,51 +60,39 @@ const PassageGroupCarousel = (props: Props) => {
 
   return (
     <View style={styles.container}>
-      <Carousel
-        containerCustomStyle={styles.carouselContainer}
-        contentContainerCustomStyle={styles.contentContainer}
-        slideStyle={styles.slideStyle}
-        loop
-        loopClonesPerSide={2}
-        data={data}
-        itemHeight={Dimensions.get('window').height * 0.75}
-        sliderHeight={Dimensions.get('window').height * 0.75}
-        layout="stack"
-        vertical
-        activeAnimationType="decay"
-        firstItem={activeIndex}
-        keyExtractor={(item: PassageGroupItem, index: number) =>
-          `${item.passageKey}:${index}`
-        }
-        onBeforeSnapToItem={(slideIndex: number) => {
-          dispatch(
-            setActivePassage({
-              passageKey: data[slideIndex].passageKey,
-            }),
-          );
+      {data.length > 0 && (
+        <PassageItemCarousel
+          data={data}
+          renderItem={({item}: {item: PassageCarouselItem; index: number}) => {
+            return (
+              <ImageDataPassageItem
+                passage={item.passage}
+                passageIsActive={item.passageKey === activePassageKey}
+              />
+            );
+          }}
+          keyExtractor={(item: PassageCarouselItem, index: number) =>
+            `${item.passageKey}:${index}`
+          }
+          firstItem={activeIndex}
+          onBeforeSnapToItem={(slideIndex: number) => {
+            dispatch(
+              setActivePassage({
+                passageKey: data[slideIndex].passageKey,
+              }),
+            );
 
-          // prevent unnecessarily fast scrolling due to performance limitations
-          setScrollEnabled(false);
-          setTimeout(() => {
-            setScrollEnabled(true);
-          }, 250);
-        }}
-        scrollEnabled={
-          scrollEnabled && ((!isLoading && !isErrored) || data.length > 1)
-        }
-        renderItem={({item}: {item: PassageGroupItem; index: number}) => {
-          return (
-            <ThemedPassageItem
-              passage={item.passage}
-              passageItemKey={{
-                groupKey: passageGroupKey,
-                passageKey: item.passageKey || '',
-              }}
-            />
-          );
-        }}
-      />
-      {isLoading && <ThemedLoadingIndicator />}
+            setTimeout(() => {
+              updateSequentialWalkthroughStep();
+            }, 250);
+          }}
+        />
+      )}
+      {isLoading && (
+        <ThemedLoadingIndicator
+          noun={`${data.length > 0 ? 'more' : passageGroupKey} passages`}
+        />
+      )}
       {isErrored && (
         <View style={styles.errorContainer}>
           <Icon name="alert-circle-outline" size={24} color="darkred" />
@@ -130,16 +118,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     color: 'darkred',
   },
-  carouselContainer: {
-    marginHorizontal: 24,
-    marginTop: CAROUSEL_MARGIN_TOP,
-  },
-  contentContainer: {},
-  slideStyle: {
-    borderRadius: 10,
-  },
 });
 
-export default memo(PassageGroupCarousel, () => {
+export default memo(RecommendationsGroupCarousel, () => {
   return true;
 });

@@ -6,7 +6,11 @@ import {ButtonColorChoice, addColorOpacity} from '../../utility/color';
 import BottomSheet from '@gorhom/bottom-sheet';
 import AnimatedLinearGradient from './AnimatedLinearGradient';
 import GroupSelectorBottomSheet from './GroupSelectorBottomSheet';
-import HoroscopeBottomSheet from './HoroscopeBottomSheet';
+import ProphecyBottomSheet from './ProphecyBottomSheet/ProphecyBottomSheet';
+import WalkthroughStepComponent from './WalkthroughStep';
+import {useWalkthroughStep} from '../../utility/walkthrough';
+import {useDispatch} from 'react-redux';
+import {setActivePassage} from '../../utility/redux/active_passage';
 
 type Props = {
   activeGroupKey: string | null;
@@ -18,22 +22,53 @@ const BottomBar = (props: Props) => {
   const {activeGroupKey, onGroupSelected, style} = props;
 
   const groupSelectorBottomSheetRef = React.useRef<BottomSheet>(null);
-  const horoscopeBottomSheetRef = React.useRef<BottomSheet>(null);
+  const prophecyBottomSheetRef = React.useRef<BottomSheet>(null);
 
   const theme = useTheme();
+  const dispatch = useDispatch();
+
+  const {walkthroughStepStatus, setWalkthroughStepAsCompleted} =
+    useWalkthroughStep('explore');
 
   return (
     <React.Fragment>
       <View style={{...styles.menuRow, ...style}}>
+        <WalkthroughStepComponent
+          walkthroughStepStatus={walkthroughStepStatus}
+          setWalkthroughStepAsCompleted={setWalkthroughStepAsCompleted}
+          text="explore lyrics from your favorite songs grouped by emotional themes">
+          <ThemeButton
+            text={
+              activeGroupKey && activeGroupKey !== 'likes' ? activeGroupKey : ''
+            }
+            theme={theme}
+            colorChoice={
+              activeGroupKey && activeGroupKey !== 'likes'
+                ? ButtonColorChoice.detailSaturated
+                : ButtonColorChoice.detailUnsaturated
+            }
+            onPress={() => {
+              setWalkthroughStepAsCompleted();
+              groupSelectorBottomSheetRef?.current?.expand();
+            }}
+            Container={AnimatedButtonLinearGradient}
+            iconName="grid-outline"
+            textStyle={styles.gridButtonText}
+            style={styles.button}
+          />
+        </WalkthroughStepComponent>
         <ThemeButton
-          text={activeGroupKey || ''}
           theme={theme}
-          colorChoice={ButtonColorChoice.detailUnsaturated}
+          colorChoice={
+            activeGroupKey === 'likes'
+              ? ButtonColorChoice.detailSaturated
+              : ButtonColorChoice.detailUnsaturated
+          }
           onPress={() => {
-            groupSelectorBottomSheetRef?.current?.expand();
+            dispatch(setActivePassage({passageKey: null, groupKey: 'likes'}));
           }}
           Container={AnimatedButtonLinearGradient}
-          iconName="grid-outline"
+          iconName="heart-outline"
           textStyle={styles.gridButtonText}
           style={styles.button}
         />
@@ -41,29 +76,20 @@ const BottomBar = (props: Props) => {
           theme={theme}
           colorChoice={ButtonColorChoice.detailUnsaturated}
           onPress={() => {
-            horoscopeBottomSheetRef.current?.expand();
+            prophecyBottomSheetRef.current?.expand();
           }}
           Container={AnimatedButtonLinearGradient}
           iconName="eye-outline"
           textStyle={styles.gridButtonText}
           style={styles.button}
         />
-        {/* <ThemeButton
-          theme={theme}
-          colorChoice={ButtonColorChoice.detailUnsaturated}
-          onPress={() => {}}
-          Container={AnimatedButtonLinearGradient}
-          iconName="person-outline"
-          textStyle={styles.gridButtonText}
-          style={styles.button}
-        /> */}
       </View>
       <GroupSelectorBottomSheet
         activeGroupKey={activeGroupKey}
         bottomSheetRef={groupSelectorBottomSheetRef}
         onGroupSelected={onGroupSelected}
       />
-      <HoroscopeBottomSheet bottomSheetRef={horoscopeBottomSheetRef} />
+      <ProphecyBottomSheet bottomSheetRef={prophecyBottomSheetRef} />
     </React.Fragment>
   );
 };
@@ -93,14 +119,20 @@ const styles = StyleSheet.create({
     alignContent: 'center',
     padding: 0,
     borderRadius: 16,
+    marginBottom: 8,
   },
   gridButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
   },
   button: {
     padding: 0,
     borderRadius: 5,
+  },
+  tooltipText: {
+    flex: 1,
+    flexGrow: 1,
+    fontSize: 14,
   },
   linearGradient: {
     flexDirection: 'row',

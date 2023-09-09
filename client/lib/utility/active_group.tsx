@@ -21,13 +21,18 @@ import {API_HOST} from './api';
 import {useCacheImageDataForUrls} from './images';
 import {useEffect} from 'react';
 import _ from 'lodash';
+import {useNavigation} from '@react-navigation/native';
 
-const findFirstPassgeKey = (gk: string, passages: PassageGroupRequestsType) => {
+const findFirstPassageKey = (
+  gk: string,
+  passages: PassageGroupRequestsType,
+) => {
   return passages.find(({groupKey}) => gk === groupKey)?.passageGroupRequest
     .data[0]?.passageKey;
 };
 
 export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
+  const navigation = useNavigation();
   const passageGroupKeyIsUninitialized = useSelector(
     (state: RootState) =>
       state.recommendations.find(({groupKey}) => groupKey === passage.groupKey)
@@ -42,11 +47,16 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
   );
 
   const firstPassageKey = useSelector((state: RootState) =>
-    findFirstPassgeKey(passage.groupKey, state.recommendations),
+    findFirstPassageKey(passage.groupKey, state.recommendations),
   );
 
   useEffect(() => {
-    if (activeGroupKey === passage.groupKey && passage.passageKey == null) {
+    if (
+      navigation.getId() === 'Main' &&
+      activeGroupKey === passage.groupKey &&
+      passage.passageKey == null
+    ) {
+      console.log(`set active passage ${activeGroupKey}, ${firstPassageKey}`);
       if (firstPassageKey) {
         dispatch(setActivePassage({passageKey: firstPassageKey}));
       }
@@ -80,7 +90,7 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
 
         updateImpressions({deviceId, passages: flatRecommendations});
 
-        cacheImageDataForUrls(
+        await cacheImageDataForUrls(
           flatRecommendations.map(({song}) => song.album.image),
         );
 

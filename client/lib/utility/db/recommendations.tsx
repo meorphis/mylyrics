@@ -20,9 +20,8 @@ import {errorToString} from '../error';
 import {setActivePassage} from '../redux/active_passage';
 import {PassageGroupsType, RawPassageType} from '../../types/passage';
 import {useCacheImageDataForUrls} from '../images';
-import {setHoroscope} from '../redux/horoscope';
+import {setProphecy} from '../redux/prophecy';
 import {getPassageId} from '../passage_id';
-import {initLikes, addLikes} from '../redux/likes';
 import {setSentimentGroups} from '../redux/sentiment_groups';
 
 // Returns a function to get make a request along with the result of that request;
@@ -173,15 +172,7 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
       .flat();
 
     const flatRecommendations = data.recommendations as RawPassageType[];
-    const horoscope = data.horoscope as string;
-    const likes = (data.likes || {}) as {[passageId: string]: boolean};
-    const inferredLikes = flatRecommendations.map(r => {
-      const passageId = getPassageId(r);
-      return {
-        [passageId]: likes[passageId] ?? false,
-      };
-    });
-
+    const prophecy = data.prophecy as string;
     const activeGroupKey = flatSentiments[0];
 
     updateImpressions({deviceId, passages: flatRecommendations});
@@ -206,10 +197,7 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
       }),
     );
 
-    dispatch(setHoroscope(horoscope || ''));
-
-    dispatch(initLikes());
-    dispatch(addLikes(Object.assign({}, ...inferredLikes)));
+    dispatch(setProphecy(prophecy ?? null));
 
     return true;
   };

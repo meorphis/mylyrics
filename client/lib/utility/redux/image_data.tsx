@@ -1,11 +1,6 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
 import {ImageColorsResult} from 'react-native-image-colors';
-
-type ImageDataType = {
-  url: string;
-  blob: string;
-  colors: ImageColorsResult;
-};
+import {ImageDataType} from '../../types/image_data';
 
 export const imageDataSlice = createSlice({
   name: 'image_data',
