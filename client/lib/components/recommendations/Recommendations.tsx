@@ -1,8 +1,8 @@
-import React, {useRef} from 'react';
+import React from 'react';
 import {SafeAreaView, StyleSheet, View} from 'react-native';
-import PassageGroupsCarousel from './PassageGroupsCarousel';
+import RecommendationsCarousel from './RecommendationsCarousel';
 import {ThemeProvider} from '../../utility/theme';
-import DefaultThemeBackground from './DefaultThemeBackground';
+import DefaultThemeBackground from '../common/DefaultThemeBackground';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import BottomBar from '../common/BottomBar';
@@ -12,14 +12,12 @@ const Recommendations = () => {
     (state: RootState) => state.activePassage?.groupKey,
   );
 
-  const containerRef = useRef<View>(null);
-
   return (
     <ThemeProvider>
       <View style={styles.container}>
         <DefaultThemeBackground>
-          <SafeAreaView style={styles.safearea} ref={containerRef}>
-            <PassageGroupsCarousel activeGroupKey={activeGroupKey} />
+          <SafeAreaView style={styles.safearea}>
+            <RecommendationsCarousel activeGroupKey={activeGroupKey} />
             <BottomBar activeGroupKey={activeGroupKey} />
           </SafeAreaView>
         </DefaultThemeBackground>

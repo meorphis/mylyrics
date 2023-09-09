@@ -19,15 +19,15 @@ import {RootStackParamList} from '../../types/navigation';
 import {uuidv4} from '@firebase/util';
 import ItemContainer from '../common/ItemContainer';
 import {PassageType} from '../../types/passage';
-import {CAROUSEL_MARGIN_TOP} from '../recommendations/PassageGroupCarousel';
+import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
 
 export type PassageItemProps = {
+  passage: PassageType;
+  passageTheme: ThemeType;
   passageItemKey?: {
     passageKey: string;
     groupKey: string;
   };
-  passage: PassageType;
-  passageTheme: ThemeType;
   captureViewShot: (callback: (uri: string) => void) => void;
 };
 

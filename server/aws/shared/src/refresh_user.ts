@@ -311,7 +311,7 @@ const getRecommendedSentiments = async (
       }
       return acc;
     }, {} as Record<string, number>);
-    const sentiments = multiWeightedRandomChoice(options, 5);
+    const sentiments = multiWeightedRandomChoice(options, 3);
     return {
       group,
       sentiments,

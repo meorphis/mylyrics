@@ -19,16 +19,33 @@ export const getRecommendationsForSentiment = async (
   }
 ): Promise<Recommendation[]> => {
   const db = await getFirestoreDb();
+
+  console.log("getting impressions and recent listens");
+
   const [impressionsSnap, recentListensSnap] = await Promise.all([
     db.collection("user-impressions").doc(`${userId}-${sentiment}`).get(),
     db.collection("user-recent-listens").doc(userId).get()
   ]);
+
+  console.log("got impressions and recent listens");
+
   const impressions = impressionsSnap.data()?.value || [];
+
+  console.log("got impressions data");
+
   const recentListens = recentListensSnap.data() || {};
+
+  console.log("got recent listens data");
+
+  console.log("getting search client");
 
   const searchClient = getSearchClient();
 
+  console.log("getting boosts");
+
   const {boosts, maxBoost} = getBoostsTerm({recentListens});
+
+  console.log("constructing opensearch query");
 
   const query = {
     index: "song-lyric-songs",
@@ -92,7 +109,11 @@ export const getRecommendationsForSentiment = async (
     }
   };
 
+  console.log("running opensearch query")
+
   const results = await searchClient.search(query);
+
+  console.log(`query took ${results.body.took}ms`);
 
   type Result = {
     _id: string,
@@ -389,45 +410,52 @@ const getBoostsTerm = (
     ...artistsLastWeek,
     ...artistsLongerAgo,
   ];
-      
-  // songs that have been played many times
+
+  const songFrequency = new Map();
+
+  // Count the frequency of each songId
+  for (const songId of allSongs) {
+    songFrequency.set(songId, (songFrequency.get(songId) || 0) + 1);
+  }
+  
+  // Filter out the songs that appear more than 10 times
   const veryFrequentSongs = allSongs.filter((songId) => {
-    return allSongs.filter((s) => s === songId).length > 10;
+    return songFrequency.get(songId) > 10;
   });
       
   // songs that have been played several times, but that are not veryFrequentSongs
   const veryFrequentSongsSet = new Set(veryFrequentSongs);
   const frequentSongs = allSongs.filter((songId) => {
-    return allSongs.filter((s) => s === songId && !veryFrequentSongsSet.has(songId)).length > 3;
+    return !veryFrequentSongsSet.has(songId) && songFrequency.get(songId) > 3;
   });
-
 
   // songs that have been played multiple times, but that are not veryFrequentSongs or frequentSongs
   const frequentSongsSet = new Set([...frequentSongs, ...veryFrequentSongs]);
   const slightlyFrequentSongs = allSongs.filter((songId) => {
-    return allSongs.filter((s) => s === songId && !frequentSongsSet.has(songId)).length > 1;
+    return !frequentSongsSet.has(songId) && songFrequency.get(songId) > 1;
   });
       
+  const artistFrequency = new Map();
+  for (const artistId of allArtists) {
+    artistFrequency.set(artistId, (artistFrequency.get(artistId) || 0) + 1);
+  }
+
   // artists that have been played many times
   const veryFrequentArtists = allArtists.filter((artistId) => {
-    return allArtists.filter((a) => a === artistId).length > 25;
+    return artistFrequency.get(artistId) > 25;
   });
       
   // artists that have been played several times, but that are not veryFrequentArtists
   const veryFrequentArtistsSet = new Set(veryFrequentArtists);
   const frequentArtists = allArtists.filter((artistId) => {
-    return allArtists.filter(
-      (a) => a === artistId && !veryFrequentArtistsSet.has(artistId)
-    ).length > 10;
+    return !veryFrequentArtistsSet.has(artistId) && artistFrequency.get(artistId) > 10;
   });
 
   // artists that have been played multiple times, but that are not veryFrequentArtists or
   // frequentArtists
   const frequentArtistsSet = new Set([...frequentArtists, ...veryFrequentArtists]);
   const slightlyFrequentArtists = allArtists.filter((artistId) => {
-    return allArtists.filter(
-      (a) => a === artistId && !frequentArtistsSet.has(artistId)
-    ).length > 5;
+    return !frequentArtistsSet.has(artistId) && artistFrequency.get(artistId) > 5;
   });
 
   // format the lists of songs and artists into filters for the search query

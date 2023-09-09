@@ -1,6 +1,6 @@
 import React from 'react';
 import {useTheme} from '../../utility/theme';
-import ThemeBackground from '../common/ThemeBackground';
+import ThemeBackground from './ThemeBackground';
 
 type Props = {
   children: React.ReactNode;

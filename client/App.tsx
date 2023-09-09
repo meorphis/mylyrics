@@ -52,7 +52,6 @@ function App(): JSX.Element {
                   component={MainScreen}
                   options={{
                     headerShown: false,
-                    cardStyleInterpolator: forFade,
                   }}
                 />
                 <Stack.Screen
@@ -60,7 +59,6 @@ function App(): JSX.Element {
                   component={PassageItemScreen}
                   options={{
                     headerShown: false,
-                    cardStyleInterpolator: forFade,
                   }}
                 />
                 <Stack.Screen
@@ -68,7 +66,6 @@ function App(): JSX.Element {
                   component={FullLyrics}
                   options={{
                     headerShown: false,
-                    cardStyleInterpolator: forFade,
                   }}
                   sharedElements={(route, otherRoute, showing) => {
                     if (route.name !== 'FullLyrics' || !showing) {

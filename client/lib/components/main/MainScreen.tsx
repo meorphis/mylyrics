@@ -10,18 +10,22 @@ import {useNotifications} from '../../utility/notifications';
 import {useSpotifyAuthentication} from '../../utility/spotify_auth';
 import AppearingView from '../common/AppearingView';
 import {AppState, StyleSheet} from 'react-native';
+import {useRecentLikesRequest} from '../../utility/db/likes';
 
 const MainScreen = () => {
   const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
   const setUserRequest = useSetUserRequest();
   const {recommendationsRequest, makeRecommendationsRequest} =
     useRecommendationsRequest();
+  const {request: recentLikesRequest, makeRequest: makeRecentLikesRequest} =
+    useRecentLikesRequest();
   const {notificationStatus, expoPushToken} = useNotifications();
   const [spotifyAuthStatus, handleSpotifyLogin] = useSpotifyAuthentication();
 
   useEffect(() => {
     makeRecommendationsRequest();
     makeGetUserRequest();
+    makeRecentLikesRequest();
   }, []);
 
   useEffect(() => {
@@ -57,7 +61,8 @@ const MainScreen = () => {
 
   if (
     recommendationsRequest.status === 'error' ||
-    getUserRequest.status === 'error'
+    getUserRequest.status === 'error' ||
+    recentLikesRequest.status === 'error'
   ) {
     return <ErrorComponent />;
   }
@@ -67,6 +72,8 @@ const MainScreen = () => {
     recommendationsRequest.status === 'init' ||
     getUserRequest.status === 'loading' ||
     getUserRequest.status === 'init' ||
+    recentLikesRequest.status === 'loading' ||
+    recentLikesRequest.status === 'init' ||
     spotifyAuthStatus === 'pending'
   ) {
     return (

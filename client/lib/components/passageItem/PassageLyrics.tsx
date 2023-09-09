@@ -9,6 +9,7 @@ import {
 } from '../../utility/lyrics';
 import {SharedElement} from 'react-navigation-shared-element';
 import {SongType} from '../../types/song';
+import {ScrollView} from 'react-native-gesture-handler';
 
 type Props = {
   song: SongType;
@@ -28,41 +29,43 @@ const PassageLyrics = (props: Props) => {
   });
 
   return (
-    <View style={styles.container} onLayout={onLayout} ref={viewRef}>
-      {splitLyrics
-        .map(({lineText, passageLine}, index) => {
-          if (passageLine == null) {
-            return null;
-          }
+    <ScrollView bounces={false}>
+      <View style={styles.container} onLayout={onLayout} ref={viewRef}>
+        {splitLyrics
+          .map(({lineText, passageLine}, index) => {
+            if (passageLine == null) {
+              return null;
+            }
 
-          return (
-            <SharedElement
-              key={index}
-              id={`${sharedTransitionKey}:lyrics:${index}`}>
-              <Text
-                style={{
-                  ...textStyleCommon,
-                  ...styles.lyricsLine,
-                  color: getLyricsColor({theme}),
-                }}>
-                {lineText}
-              </Text>
-            </SharedElement>
-          );
-        })
-        .filter(line => line !== null)}
-    </View>
+            return (
+              <SharedElement
+                key={index}
+                id={`${sharedTransitionKey}:lyrics:${index}`}>
+                <Text
+                  style={{
+                    ...textStyleCommon,
+                    ...styles.lyricsLine,
+                    color: getLyricsColor({theme}),
+                  }}>
+                  {lineText}
+                </Text>
+              </SharedElement>
+            );
+          })
+          .filter(line => line !== null)}
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    overflow: 'hidden',
   },
   lyricsLine: {
     fontSize: 18,
     color: 'lightgrey',
-    overflow: 'hidden',
   },
 });
 

@@ -1,4 +1,4 @@
-// container to wrap either a PassageItem or NonLoadedPassageItem, ensuring
+// container to wrap either a PassageItem or scroll view in a FullLyricsScreen, ensuring
 // we have a consistent look for both
 
 import React from 'react';

@@ -1,7 +1,8 @@
 import React from 'react';
 import {useEffect} from 'react';
 import ShortUniqueId from 'short-unique-id';
-import {MMKVLoader, useMMKVStorage} from 'react-native-mmkv-storage';
+import {useMMKVStorage} from 'react-native-mmkv-storage';
+import {mmkvStorage} from './local_storage';
 
 // *** PUBLIC INTERFACE ***
 
@@ -15,7 +16,7 @@ export const DeviceIdProvider = (props: {
 }) => {
   const [deviceId, setDeviceId] = useMMKVStorage(
     'deviceId',
-    storage,
+    mmkvStorage,
     undefined,
   );
 
@@ -49,8 +50,6 @@ export const useDeviceId = () => {
 };
 
 // *** PRIVATE HELPERS ***
-const storage = new MMKVLoader().initialize();
-
 const DeviceIdContext = React.createContext<{
   deviceId?: string;
 }>({});

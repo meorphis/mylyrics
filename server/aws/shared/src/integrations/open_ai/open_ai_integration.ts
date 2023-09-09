@@ -1,5 +1,14 @@
-import {ASSISTANT_EXAMPLE_MESSAGE, SYSTEM_MESSAGE, USER_EXAMPLE_MESSAGE} from "./open_ai_prompt";
-import { LabeledPassage, LabelingMetadata, VectorizedAndLabeledPassage } from "../../utility/types";
+import {
+  GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE,
+  GET_PROPHECY_SYSTEM_MESSAGE,
+  GET_PROPHECY_USER_EXAMPLE_MESSAGE,
+  LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE,
+  LABEL_PASSAGES_SYSTEM_MESSAGE,
+  LABEL_PASSAGES_USER_EXAMPLE_MESSAGE
+} from "./open_ai_prompt";
+import { 
+  LabeledPassage, LabelingMetadata, Recommendation, VectorizedAndLabeledPassage
+} from "../../utility/types";
 import { getSecretString } from "../aws";
 import { Configuration, OpenAIApi } from "openai";
 import { cachedFunction } from "../../utility/cache";
@@ -28,9 +37,9 @@ export const labelPassages = async (
 
   const completionObject = await openai.createChatCompletion({
     messages: [
-      {role: "system", content: SYSTEM_MESSAGE},
-      {role: "user", content: USER_EXAMPLE_MESSAGE},
-      {role: "assistant", content: ASSISTANT_EXAMPLE_MESSAGE},
+      {role: "system", content: LABEL_PASSAGES_SYSTEM_MESSAGE},
+      {role: "user", content: LABEL_PASSAGES_USER_EXAMPLE_MESSAGE},
+      {role: "assistant", content: LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE},
       {role: "user", content: lyrics},
     ],
     ...OPEN_AI_PARAMS,
@@ -101,6 +110,26 @@ export const vectorizeSearchTerm = async (
   return vectorResponse.data.data[0].embedding;
 }
 
+// takes as input a list of passage recommendations and returns a "prophecy"
+// string from the GPT API
+export const computeProphecy = async (
+  {passages} : {passages: Recommendation[]}) => {
+  const openai = await getOpenAIClient();
+
+  const completionObject = await openai.createChatCompletion({
+    messages: [
+      {role: "system", content: GET_PROPHECY_SYSTEM_MESSAGE},
+      {role: "user", content: GET_PROPHECY_USER_EXAMPLE_MESSAGE},
+      {role: "assistant", content: GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE},
+      {role: "user", content: passagesToText(passages)},
+    ],
+    ...OPEN_AI_PARAMS,
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return completionObject.data.choices[0].message!.content!;  
+}
+
 // *** PRIVATE HELPERS ***
 // client for the OpenAI API
 const _getOpenAIClient = async () => {
@@ -138,4 +167,14 @@ const addMetadataToPassages = (passages: {
         numEffectiveLines,
       }
     }});
+}
+
+const passagesToText = (passages: Recommendation[]): string => {
+  return passages.map(passageToText).join("\n\n");
+}
+
+const passageToText = (passage: Recommendation): string => {
+  return `Artist: ${passage.song.artists[0].name}
+Lyrics: ${passage.song.lyrics}
+Sentiments: ${passage.tags.map((tag) => tag.sentiment).join(", ")}`;
 }

@@ -1,6 +1,6 @@
 import React, {memo} from 'react';
 import {useRef} from 'react';
-import {Image} from 'react-native';
+import {Image, StyleSheet} from 'react-native';
 import ViewShot, {captureScreen} from 'react-native-view-shot';
 import PassageItem, {PassageItemProps} from './PassageItem';
 
@@ -35,13 +35,19 @@ const ViewShotPassageItem = (props: ViewShotPassageItemProps) => {
 
   return (
     <ViewShot
-      style={{flex: 1}}
+      style={styles.container}
       ref={viewShotRef}
       options={{format: 'jpg', quality: 0.9}}>
       <PassageItem {...props} captureViewShot={captureViewShot} />
     </ViewShot>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
 
 const MemoPassageItem = memo(
   ViewShotPassageItem,

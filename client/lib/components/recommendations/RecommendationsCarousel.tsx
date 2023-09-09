@@ -4,17 +4,18 @@
 
 import React, {useLayoutEffect, useRef} from 'react';
 import {Dimensions} from 'react-native';
-import Carousel from '../../forks/react-native-snap-carousel';
+import Carousel from '../../forks/react-native-snap-carousel/src';
 import {RootState} from '../../utility/redux';
 import {useSelector} from 'react-redux';
-import PassageGroupCarousel from './PassageGroupCarousel';
+import RecommendationsGroupCarousel from './RecommendationsGroupCarousel';
 import {createSelector} from '@reduxjs/toolkit';
+import LikesCarousel from './LikesCarousel';
 
 type Props = {
   activeGroupKey: string;
 };
 
-const PassageGroupsCarousel = (props: Props) => {
+const RecommendationsCarousel = (props: Props) => {
   console.log('rendering PassageGroupsCarousel');
 
   const {activeGroupKey} = props;
@@ -33,7 +34,7 @@ const PassageGroupsCarousel = (props: Props) => {
     (joinedGroupKeys: string) => joinedGroupKeys.split(','),
   );
 
-  const passageGroupKeys = useSelector(passageGroupKeysSelector);
+  const passageGroupKeys = [...useSelector(passageGroupKeysSelector), 'likes'];
 
   const [localActiveGroupKey, setLocalActiveGroupKey] =
     React.useState<string>(activeGroupKey);
@@ -77,8 +78,11 @@ const PassageGroupsCarousel = (props: Props) => {
       useScrollView
       keyExtractor={(item: string) => 'carousel-item-' + item}
       renderItem={({item: passageGroupKey}: {item: string}) => {
+        if (passageGroupKey === 'likes') {
+          return <LikesCarousel />;
+        }
         return (
-          <PassageGroupCarousel
+          <RecommendationsGroupCarousel
             key={passageGroupKey}
             passageGroupKey={passageGroupKey}
           />
@@ -88,4 +92,4 @@ const PassageGroupsCarousel = (props: Props) => {
   );
 };
 
-export default PassageGroupsCarousel;
+export default RecommendationsCarousel;

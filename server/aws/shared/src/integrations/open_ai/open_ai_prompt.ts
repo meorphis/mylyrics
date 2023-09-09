@@ -3,7 +3,7 @@ import { VALID_SENTIMENTS } from "../../utility/sentiments";
 
 // we refer to sentiments as "floopters" in our prompt in order to steer the LLM away from
 // its preconceived notions about what a sentiment is and instead select from our curated list
-export const SYSTEM_MESSAGE = `The following adjectives are considered "floopters": ${VALID_SENTIMENTS.join(", ")}.
+export const LABEL_PASSAGES_SYSTEM_MESSAGE = `The following adjectives are considered "floopters": ${VALID_SENTIMENTS.join(", ")}.
 
 You analyze song lyrics by selecting the most iconic passages and describing them using floopters.
 
@@ -25,7 +25,7 @@ Remember:
 - Generally passages should not be longer than five lines. Longer passages should be divided up.
 - If a floopter is not in the list provided above, it is not valid and should not be included in your response.`;
 
-export const USER_EXAMPLE_MESSAGE = `[Intro]
+export const LABEL_PASSAGES_USER_EXAMPLE_MESSAGE = `[Intro]
 I feel the rush
 Addicted to your touch
 
@@ -79,4 +79,27 @@ Addicted to your touch
 Oh, I feel the rush
 It's so good, it's so good`
 
-export const ASSISTANT_EXAMPLE_MESSAGE = "{\"floopters\":[\"passionate\",\"energetic\",\"lustful\"],\"passages\":[{\"lyrics\":\"I feel the rush\\nAddicted to your touch\\nOh, I feel the rush\\nIt's so good, it's so good\",\"sentiments\":[\"passionate\",\"energetic\",\"euphoric\"]},{\"lyrics\":\"Big communication, tell me what you want\\nTranslate your vibration, let your body talk to me\\nBaby love, if you wanna show me what\\nYou've been schemin' up, if you wanna (Let go)\",\"sentiments\":[\"flirtatious\",\"seductive\"]},{\"lyrics\":\"You got my heartbeat racin'\\nMy body blazin'\",\"sentiments\":[\"excited\",\"lustful\"]},{\"lyrics\":\"So good when we slow gravity, so good\\nIt's so good, it's so good\\nBreathe one, two, three, take all of me, so good\\nIt's so good, it's so good\",\"sentiments\":[\"passionate\",\"intimate\"]},{\"lyrics\":\"Pass your boy the heatwave, recreate the sun\\nTake me to the feeling, boy, you know the one\\nKiss it when you're done, man, this shit is so much fun\\nPocket rocket gun\",\"sentiments\":[\"energetic\",\"playful\",\"lustful\"]}]}"
+export const LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE = "{\"floopters\":[\"passionate\",\"energetic\",\"lustful\"],\"passages\":[{\"lyrics\":\"I feel the rush\\nAddicted to your touch\\nOh, I feel the rush\\nIt's so good, it's so good\",\"sentiments\":[\"passionate\",\"energetic\",\"euphoric\"]},{\"lyrics\":\"Big communication, tell me what you want\\nTranslate your vibration, let your body talk to me\\nBaby love, if you wanna show me what\\nYou've been schemin' up, if you wanna (Let go)\",\"sentiments\":[\"flirtatious\",\"seductive\"]},{\"lyrics\":\"You got my heartbeat racin'\\nMy body blazin'\",\"sentiments\":[\"excited\",\"lustful\"]},{\"lyrics\":\"So good when we slow gravity, so good\\nIt's so good, it's so good\\nBreathe one, two, three, take all of me, so good\\nIt's so good, it's so good\",\"sentiments\":[\"passionate\",\"intimate\"]},{\"lyrics\":\"Pass your boy the heatwave, recreate the sun\\nTake me to the feeling, boy, you know the one\\nKiss it when you're done, man, this shit is so much fun\\nPocket rocket gun\",\"sentiments\":[\"energetic\",\"playful\",\"lustful\"]}]}"
+
+export const GET_PROPHECY_SYSTEM_MESSAGE = "Based on song lyrics that a user has drawn from a deck of lyrics, you provide a new age-y prophecy for the user, along the lines of a horoscope or tarot reading. The prophecy should be brief, no more than three or four sentences. Only provide the prophecy as raw text (do not prefix it)."
+
+export const GET_PROPHECY_USER_EXAMPLE_MESSAGE = `Artist: Radiohead
+Lyrics: Just 'cause you feel it
+Doesn't mean it's there
+(Someone on your shoulder)
+(Someone on your shoulder)
+Sentiments: conflicted
+
+Artist: Alex G
+Lyrics: Load it up, know your trigger like the back of my hand
+Load it up, know your trigger like the back of my hand
+Sentiments: conflicted
+
+Artist: Troye Sivan
+Lyrics: Pass your boy the heatwave, recreate the sun
+Take me to the feeling, boy, you know the one
+Kiss it when you're done, man, this shit is so much fun
+Pocket rocket gun
+Sentiments: playful, lustful`;
+
+export const GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE = "You are torn between what you feel and what you perceive, but remember that perception does not always align with reality. Trust your instincts and listen to the voices of guidance that linger on your shoulder. Embrace the conflicting emotions within you as they will lead to a deeper understanding. Seek joy and pleasure in the moments of playfulness and lust, for they hold the power to ignite transformation and recreate your own personal sun."

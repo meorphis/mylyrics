@@ -206,6 +206,27 @@ Resources:
             Method: GET
       Layers:
         - !Ref CommonLayer
+  GetProphecy:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./handlers
+      Handler: get_prophecy.handler
+      Runtime: nodejs18.x
+      MemorySize: 256
+      Timeout: 60
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:us-east-2:448639809803:secret:*
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /get_prophecy
+            Method: POST
+      Layers:
+        - !Ref CommonLayer
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
