@@ -29,8 +29,8 @@ const ProphecyCard = (props: Props) => {
         }}>
         <Text
           style={{
-            ...styles.placeholderText,
             ...textStyleCommon,
+            ...styles.placeholderText,
             color: textColor,
           }}>
           {index + 1}
@@ -49,7 +49,7 @@ const ProphecyCard = (props: Props) => {
         borderColor: textColor,
       }}>
       <Image source={{uri: song.album.image.blob}} style={styles.albumImage} />
-      <Text style={{...styles.lyrics, ...textStyleCommon, color: textColor}}>
+      <Text style={{...textStyleCommon, ...styles.lyrics, color: textColor}}>
         {lyrics}
       </Text>
       <Pressable
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     alignSelf: 'center',
-    fontSize: 16,
+    fontSize: 18,
   },
 });
 

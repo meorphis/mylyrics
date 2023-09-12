@@ -9,7 +9,6 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import {PassageType} from '../../types/passage';
 import {useLikeRequest} from '../../utility/db/likes';
-import Share from 'react-native-share';
 import ActionBarButton from './ActionBarButton';
 import {getPassageId} from '../../utility/passage_id';
 import {addCard, removeCard} from '../../utility/redux/prophecy';
@@ -23,13 +22,20 @@ type Props = {
     groupKey: string;
   };
   navigateToFullLyrics: () => void;
-  captureViewShot: (callback: (uri: string) => void) => void;
+  onSharePress: () => void;
 };
 
 const ActionBar = (props: Props) => {
   console.log(`rendering ActionBar ${props.passageItemKey?.groupKey}`);
 
-  const {passage, tags, theme, passageItemKey, navigateToFullLyrics} = props;
+  const {
+    passage,
+    tags,
+    theme,
+    passageItemKey,
+    navigateToFullLyrics,
+    onSharePress,
+  } = props;
 
   const isActivePassage = useSelector(
     (state: RootState) =>
@@ -143,20 +149,7 @@ const ActionBar = (props: Props) => {
         />
         <ActionBarButton
           onPress={() => {
-            props.captureViewShot(uri => {
-              Share.open({
-                url: uri,
-                type: 'image/jpeg',
-                title: 'Share',
-                failOnCancel: false,
-              })
-                .then(res => {
-                  console.log(res);
-                })
-                .catch(err => {
-                  err && console.log(err);
-                });
-            });
+            onSharePress();
           }}
           icon="share-outline"
           IconClass={Ionicon}

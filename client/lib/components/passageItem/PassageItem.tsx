@@ -20,6 +20,8 @@ import {uuidv4} from '@firebase/util';
 import ItemContainer from '../common/ItemContainer';
 import {PassageType} from '../../types/passage';
 import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
+import {useSharablePassageUpdate} from '../../utility/shareable_passage';
+import {useScale, useSetContentHeightForScale} from '../../utility/max_size';
 
 export type PassageItemProps = {
   passage: PassageType;
@@ -28,7 +30,9 @@ export type PassageItemProps = {
     passageKey: string;
     groupKey: string;
   };
-  captureViewShot: (callback: (uri: string) => void) => void;
+  omitActionBar?: boolean;
+  ignoreFlex?: boolean;
+  onPassageLyricsContainerLayout?: (event: any) => void;
 };
 
 const PassageItem = (props: PassageItemProps) => {
@@ -36,23 +40,118 @@ const PassageItem = (props: PassageItemProps) => {
 
   const sharedTransitionKey = useRef<string>(uuidv4()).current;
   const [lyricsYPosition, setLyricsYPosition] = useState<number | null>(null);
-  const passageLyricsRef = useRef<View>(null);
   const containerRef = useRef<View>(null);
+  const setSharablePassage = useSharablePassageUpdate();
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const {passage, passageTheme, passageItemKey, captureViewShot} = props;
+  const {
+    passage,
+    passageTheme,
+    passageItemKey,
+    omitActionBar,
+    ignoreFlex,
+    onPassageLyricsContainerLayout,
+  } = props;
   const {lyrics, tags, song} = passage;
 
   return (
-    <ItemContainer theme={passageTheme} containerRef={containerRef}>
-      <View style={{...styles.container}}>
-        <SongInfo song={song} passageTheme={passageTheme} />
+    <ItemContainer
+      theme={passageTheme}
+      containerRef={containerRef}
+      ignoreFlex={ignoreFlex}>
+      <View
+        // eslint-disable-next-line react-native/no-inline-styles
+        style={{...styles.container, flex: ignoreFlex ? 0 : 1}}>
+        <View
+          // eslint-disable-next-line react-native/no-inline-styles
+          style={{
+            ...styles.passageContainer,
+            flex: ignoreFlex ? 0 : 1,
+          }}>
+          <PassageContainer
+            passage={passage}
+            passageTheme={passageTheme}
+            sharedTransitionKey={sharedTransitionKey}
+            onPassageLyricsContainerLayout={onPassageLyricsContainerLayout}
+            setLyricsYPosition={setLyricsYPosition}
+            containerRef={containerRef}
+            ignoreFlex={ignoreFlex}
+          />
+        </View>
+        {!omitActionBar && (
+          <View style={styles.actionBar}>
+            <ActionBar
+              passage={passage}
+              tags={tags}
+              theme={passageTheme}
+              passageItemKey={passageItemKey}
+              navigateToFullLyrics={() => {
+                navigation.navigate('FullLyrics', {
+                  theme: passageTheme,
+                  song: song,
+                  sharedTransitionKey: sharedTransitionKey,
+                  initiallyHighlightedPassageLyrics: lyrics,
+                  parentYPosition: lyricsYPosition || 0,
+                });
+              }}
+              onSharePress={() => {
+                setSharablePassage(passage);
+              }}
+            />
+          </View>
+        )}
+      </View>
+    </ItemContainer>
+  );
+};
+
+type PassageContainerProps = {
+  passage: PassageType;
+  passageTheme: ThemeType;
+  sharedTransitionKey: string;
+  setLyricsYPosition: (y: number) => void;
+  containerRef: React.RefObject<View>;
+  onPassageLyricsContainerLayout?: (event: any) => void;
+  ignoreFlex?: boolean;
+};
+
+const PassageContainer = (props: PassageContainerProps) => {
+  const {
+    passage,
+    passageTheme,
+    sharedTransitionKey,
+    setLyricsYPosition,
+    containerRef,
+    onPassageLyricsContainerLayout,
+    ignoreFlex,
+  } = props;
+  const {song} = passage;
+
+  const setContentHeightForScale = useSetContentHeightForScale();
+  const passageLyricsRef = useRef<View>(null);
+  const scale = useScale();
+
+  return (
+    <React.Fragment>
+      <SongInfo song={song} passageTheme={passageTheme} scale={scale} />
+      <View
+        // eslint-disable-next-line react-native/no-inline-styles
+        style={{...styles.passageLyricsContainer, flex: ignoreFlex ? 0 : 1}}
+        onLayout={event => {
+          if (onPassageLyricsContainerLayout) {
+            onPassageLyricsContainerLayout(event);
+          }
+        }}>
         <PassageLyrics
           song={song}
-          lyrics={lyrics}
+          lyrics={passage.lyrics}
           theme={passageTheme}
+          scale={scale}
           sharedTransitionKey={sharedTransitionKey}
-          onLayout={() => {
+          onLayout={event => {
+            const {height} = event.nativeEvent.layout;
+            setContentHeightForScale({height, scaleIndex: scale.index});
+
             passageLyricsRef.current!.measureLayout(
               containerRef.current!,
               (_, y) => {
@@ -62,34 +161,27 @@ const PassageItem = (props: PassageItemProps) => {
           }}
           viewRef={passageLyricsRef}
         />
-        <ActionBar
-          passage={passage}
-          tags={tags}
-          theme={passageTheme}
-          passageItemKey={passageItemKey}
-          navigateToFullLyrics={() => {
-            navigation.navigate('FullLyrics', {
-              theme: passageTheme,
-              song: song,
-              sharedTransitionKey: sharedTransitionKey,
-              initiallyHighlightedPassageLyrics: lyrics,
-              parentYPosition: lyricsYPosition || 0,
-            });
-          }}
-          captureViewShot={captureViewShot}
-        />
       </View>
-    </ItemContainer>
+    </React.Fragment>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     margin: 20,
     padding: 16,
-    flex: 1,
     flexDirection: 'column',
     justifyContent: 'flex-start',
+  },
+  passageContainer: {
+    flex: 1,
+  },
+  passageLyricsContainer: {
+    flex: 1,
+  },
+  actionBar: {
+    justifyContent: 'flex-end',
   },
   hidden: {
     opacity: 0,

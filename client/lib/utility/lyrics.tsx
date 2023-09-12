@@ -1,5 +1,5 @@
 import ThemeType from '../types/theme';
-import {colorDistance} from './color';
+import {colorDistance, ensureColorContrast, isColorLight} from './color';
 
 export const splitLyricsWithPassages = ({
   songLyrics,
@@ -63,12 +63,37 @@ export const cleanLyrics = (lyrics: string) => {
 export const getLyricsColor = ({theme}: {theme: ThemeType}) => {
   // choose the one furthest in distance from the background color
   const colors = [theme.primaryColor, theme.secondaryColor, theme.detailColor];
-  const distances = colors.map(color =>
-    colorDistance(color, theme.backgroundColor),
-  );
+  return getFurthestColor({subject: theme.backgroundColor, options: colors});
+};
+
+export const getFurthestColor = ({
+  subject,
+  options,
+  ensureContrast,
+}: {
+  subject: string;
+  options: string[];
+  ensureContrast?: boolean;
+}) => {
+  const distances = options.map(option => colorDistance(option, subject));
   const maxDistance = Math.max(...distances);
   const maxIndex = distances.indexOf(maxDistance);
-  return colors[maxIndex];
+  const proposedColor = options[maxIndex];
+
+  if (!ensureContrast) {
+    return proposedColor;
+  }
+
+  // if the contrast ratio is too low, we'll need to lighten or darken the color
+  const contrastedColors = ensureColorContrast({
+    lightenable: isColorLight(subject) ? subject : proposedColor,
+    darkenable: isColorLight(subject) ? proposedColor : subject,
+    preference: isColorLight(subject) ? 'darken' : 'lighten',
+  });
+
+  return isColorLight(subject)
+    ? contrastedColors.darkenable
+    : contrastedColors.lightenable;
 };
 
 const splitWithIndexes = (str: string, delimiter: string) => {

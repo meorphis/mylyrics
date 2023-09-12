@@ -52,14 +52,22 @@ const ThemeButton = (props: Props) => {
   ].includes(colorChoice);
 
   const baseColor = buttonColorsForTheme(theme, colorChoice);
-  const buttonColor = addColorOpacity(baseColor, isDisabled ? 0.2 : 1);
+  const isButtonColorLight = isColorLight(baseColor);
 
-  const isButtonColorLight = isColorLight(buttonColor);
-  const textColor = isButtonColorLight ? '#000000' : '#FFFFFF';
+  const buttonColor = addColorOpacity(
+    baseColor,
+    isDisabled ? (isButtonColorLight ? 0.3 : 0.1) : 1,
+  );
+
+  const textColor = addColorOpacity(
+    isButtonColorLight ? '#000000' : '#FFFFFF',
+    isDisabled ? 0.5 : 1,
+  );
   const borderColor = useSaturatedColor
-    ? isButtonColorLight
-      ? '#444444'
-      : '#CCCCCC'
+    ? addColorOpacity(
+        isButtonColorLight ? '#444444' : '#CCCCCC',
+        isDisabled ? 0.2 : 1,
+      )
     : undefined;
 
   const ContainerComponent = Container || Fragment;
@@ -112,11 +120,6 @@ const styles = StyleSheet.create({
   },
   saturated: {
     borderWidth: 2,
-    shadowColor: '#000', // Adding a subtle drop shadow
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 2,
   },
   text: {
     alignSelf: 'center',

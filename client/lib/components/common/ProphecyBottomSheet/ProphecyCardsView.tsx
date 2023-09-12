@@ -23,14 +23,14 @@ const ProphecyCardsView = (props: Props) => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={{...styles.titleText, ...textStyleCommon, color: textColor}}>
+      <Text style={{...textStyleCommon, ...styles.titleText, color: textColor}}>
         🔮 your prophecy cards 🔮
       </Text>
       {cards.length < 3 && (
         <Text
           style={{
-            ...styles.descriptionText,
             ...textStyleCommon,
+            ...styles.descriptionText,
             color: textColor,
           }}>
           draw three lyric cards to have your prophecy read
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   descriptionText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '200',
     paddingBottom: 24,
     textAlign: 'center',
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     padding: 8,
   },
 });

@@ -7,16 +7,28 @@ import React from 'react';
 import {SongType} from '../../types/song';
 import ThemeType from '../../types/theme';
 import {textStyleCommon} from '../../utility/text';
+import {ScaleType} from '../../utility/max_size';
 
 type Props = {
   song: SongType;
   passageTheme: ThemeType;
+  scale: ScaleType;
 };
 
 const SongInfo = (props: Props) => {
   console.log(`rendering SongInfo ${props.song.name}`);
 
-  const {song, passageTheme} = props;
+  const {song, passageTheme, scale} = props;
+
+  const {
+    songNameSize,
+    artistNameSize,
+    albumNameSize,
+    albumImageSize,
+    contentReady,
+  } = scale;
+
+  const opacity = {opacity: contentReady ? 1 : 0};
 
   const {
     primaryColor: songNameColor,
@@ -25,26 +37,47 @@ const SongInfo = (props: Props) => {
   } = passageTheme;
 
   return (
-    <View style={styles.metadataRow}>
-      <Image source={{uri: song.album.image.blob}} style={styles.albumImage} />
+    <View style={{...styles.metadataRow, paddingBottom: songNameSize}}>
+      <Image
+        source={{uri: song.album.image.blob}}
+        style={{
+          ...{
+            width: albumImageSize,
+            height: albumImageSize,
+          },
+          ...opacity,
+        }}
+      />
       <View style={styles.metadataText}>
         <Text
           numberOfLines={2}
           style={{
             ...textStyleCommon,
             ...styles.songName,
+            ...opacity,
+            fontSize: songNameSize,
             color: songNameColor,
           }}>
           {song.name}
         </Text>
         <Text
           numberOfLines={1}
-          style={{...styles.artistName, color: artistNameColor}}>
+          style={{
+            ...textStyleCommon,
+            ...opacity,
+            fontSize: artistNameSize,
+            color: artistNameColor,
+          }}>
           {song.artists.map(({name}) => name).join(', ')}
         </Text>
         <Text
           numberOfLines={1}
-          style={{...styles.albumName, color: albumNameColor}}>
+          style={{
+            ...textStyleCommon,
+            ...opacity,
+            fontSize: albumNameSize,
+            color: albumNameColor,
+          }}>
           {song.album.name}
         </Text>
       </View>
@@ -53,16 +86,11 @@ const SongInfo = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
-  albumImage: {
-    width: 100,
-    height: 100,
-  },
   metadataRow: {
     flexDirection: 'row',
     padding: 0,
     flex: 0,
     paddingBottom: 16,
-    paddingTop: 12,
   },
   metadataText: {
     flexDirection: 'column',
@@ -70,14 +98,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   songName: {
-    fontSize: 16,
     fontWeight: 'bold',
-  },
-  artistName: {
-    fontSize: 14,
-  },
-  albumName: {
-    fontSize: 13,
   },
 });
 

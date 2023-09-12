@@ -1,40 +1,37 @@
 import React from 'react';
-import {
-  PassageItemScreenProps,
-  RootStackParamList,
-} from '../../types/navigation';
+import {PassageItemScreenProps} from '../../types/navigation';
 import ThemeBackground from '../common/ThemeBackground';
 import {Dimensions, StyleSheet, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import BottomBar from '../common/BottomBar';
 import {ThemeProvider} from '../../utility/theme';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
-import ViewShotPassageItem from './ViewShotPassageItem';
 import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
+import {SharablePassageProvider} from '../../utility/shareable_passage';
+import ShareBottomSheet from './ShareBottomSheet';
+import ScaleProviderPassageItem from './ScaleProviderPassageItem';
 
 const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   const {passage, theme} = route.params;
 
   const width = Dimensions.get('window').width * 0.85;
   const maxHeight = Dimensions.get('window').height * 0.85;
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   return (
     <ThemeProvider initialTheme={theme}>
-      <ThemeBackground theme={theme}>
-        <SafeAreaView style={{...styles.safearea}}>
-          <View style={{...styles.container, width, maxHeight}}>
-            <ViewShotPassageItem passage={passage} passageTheme={theme} />
-          </View>
-          <BottomBar
-            activeGroupKey={null}
-            onGroupSelected={() => {
-              navigation.navigate('Main');
-            }}
-            style={styles.bottomBar}
-          />
-        </SafeAreaView>
-      </ThemeBackground>
+      <SharablePassageProvider>
+        <ThemeBackground theme={theme}>
+          <SafeAreaView style={{...styles.safearea}}>
+            <View style={{...styles.container, width, maxHeight}}>
+              <ScaleProviderPassageItem
+                passage={passage}
+                passageTheme={theme}
+              />
+            </View>
+            <BottomBar activeGroupKey={null} style={styles.bottomBar} />
+          </SafeAreaView>
+          <ShareBottomSheet />
+        </ThemeBackground>
+      </SharablePassageProvider>
     </ThemeProvider>
   );
 };

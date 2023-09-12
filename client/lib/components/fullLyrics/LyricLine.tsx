@@ -21,7 +21,7 @@ import {SharedElement} from 'react-navigation-shared-element';
 type Props = {
   lineText: string;
   index: number;
-  passageLineIndex: number | null;
+  isAppearingText: boolean;
   shouldShowAppearingText: boolean;
   theme: ThemeType;
   sharedTransitionKey: string;
@@ -35,7 +35,7 @@ const LyricLine = (props: Props) => {
   const {
     lineText,
     index,
-    passageLineIndex,
+    isAppearingText,
     shouldShowAppearingText,
     theme,
     sharedTransitionKey,
@@ -84,17 +84,13 @@ const LyricLine = (props: Props) => {
     </SharedElement>
   );
 
-  if (passageLineIndex != null) {
+  if (!isAppearingText) {
     return <View onLayout={onLayout}>{innerComponent}</View>;
   }
 
-  return (
-    shouldShowAppearingText && (
-      <AppearingView delay={50} duration={750}>
-        {innerComponent}
-      </AppearingView>
-    )
-  );
+  return shouldShowAppearingText ? (
+    <AppearingView duration={750}>{innerComponent}</AppearingView>
+  ) : null;
 };
 
 const styles = StyleSheet.create({
