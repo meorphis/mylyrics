@@ -9,7 +9,6 @@ import Animated, {
 
 type AppearingComponentProps = {
   Component: React.ComponentType<any>;
-  delay: number;
   duration: number;
   style?: TextStyle;
   onLayout?: (event: LayoutChangeEvent) => void;
@@ -17,7 +16,7 @@ type AppearingComponentProps = {
 };
 
 const AppearingComponent = (props: AppearingComponentProps) => {
-  const {Component, delay, duration, style, onLayout, children} = props;
+  const {Component, duration, style, onLayout, children} = props;
   const opacity = useSharedValue(0);
 
   const animatedStyles = useAnimatedStyle(() => {
@@ -28,7 +27,7 @@ const AppearingComponent = (props: AppearingComponentProps) => {
   });
 
   useEffect(() => {
-    setTimeout(() => (opacity.value = withTiming(1, {duration})), delay);
+    opacity.value = withTiming(1, {duration});
   }, []);
 
   return (

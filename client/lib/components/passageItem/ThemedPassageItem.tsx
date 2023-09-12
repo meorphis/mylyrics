@@ -5,10 +5,9 @@ import {memo, useEffect} from 'react';
 import {useThemeUpdate} from '../../utility/theme';
 import React from 'react';
 import {PassageType} from '../../types/passage';
-import ViewShotPassageItem, {
-  ViewShotPassageItemProps,
-} from './ViewShotPassageItem';
 import {getPassageId} from '../../utility/passage_id';
+import {PassageItemProps} from './PassageItem';
+import ScaleProviderPassageItem from './ScaleProviderPassageItem';
 
 export type WithPassageThemeProps = {
   passage: PassageType;
@@ -20,9 +19,9 @@ export type WithPassageThemeProps = {
 };
 
 const WithPassageTheme = (
-  WrappedComponent: React.ComponentType<ViewShotPassageItemProps>,
+  WrappedComponent: React.ComponentType<PassageItemProps>,
 ) => {
-  const ThemedPassageItem: React.FC<WithPassageThemeProps> = props => {
+  const ThemedPassageItem = (props: WithPassageThemeProps) => {
     console.log(`rendering ThemedPassageItem ${getPassageId(props.passage)}`);
 
     const {passage, passageIsActive} = props;
@@ -64,7 +63,7 @@ const WithPassageTheme = (
 };
 
 const ThemedPassageItem = memo(
-  WithPassageTheme(ViewShotPassageItem),
+  WithPassageTheme(ScaleProviderPassageItem),
   (prevProps, nextProps) => {
     // only re-render if passage goes in or out of active state and global theme needs to be updated
     return prevProps.passageIsActive === nextProps.passageIsActive;

@@ -18,15 +18,18 @@ import {RootState} from '../../utility/redux';
 import _ from 'lodash';
 import tinycolor from 'tinycolor2';
 import {getLyricsColor} from '../../utility/lyrics';
+import {textStyleCommon} from '../../utility/text';
+import {NavigationProp, useNavigation} from '@react-navigation/native';
+import {RootStackParamList} from '../../types/navigation';
 
 type Props = {
   activeGroupKey: string | null;
   bottomSheetRef: React.RefObject<BottomSheet>;
-  onGroupSelected?: () => void;
 };
 
 const GroupSelectorBottomSheet = (props: Props) => {
-  const {activeGroupKey, bottomSheetRef, onGroupSelected} = props;
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const {activeGroupKey, bottomSheetRef} = props;
   const {passageKey} = useSelector((state: RootState) => state.activePassage)!;
   const allSentiments = useSelector(
     (state: RootState) => state.recommendations.map(({groupKey: gk}) => gk),
@@ -81,7 +84,8 @@ const GroupSelectorBottomSheet = (props: Props) => {
         backgroundColor: addColorOpacity(theme.backgroundColor, 0.95),
       }}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
-        <Text style={{...styles.titleText, color: textColor}}>
+        <Text
+          style={{...textStyleCommon, ...styles.titleText, color: textColor}}>
           ✨ your daily vibes ✨
         </Text>
 
@@ -97,7 +101,12 @@ const GroupSelectorBottomSheet = (props: Props) => {
             }}
             key={group}>
             <View style={styles.groupLabel}>
-              <Text style={{...styles.groupLabelText, color: textColor}}>
+              <Text
+                style={{
+                  ...textStyleCommon,
+                  ...styles.groupLabelText,
+                  color: textColor,
+                }}>
                 {group}
               </Text>
               <Text style={styles.groupLabelEmoji}>{groupEmojis[group]}</Text>
@@ -124,9 +133,10 @@ const GroupSelectorBottomSheet = (props: Props) => {
                     }
                     onPress={() => {
                       bottomSheetRef.current?.close();
-                      if (onGroupSelected) {
-                        onGroupSelected();
-                      }
+
+                      setTimeout(() => {
+                        navigation.navigate('Main');
+                      }, 100);
                     }}
                   />
                 </View>
@@ -189,7 +199,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   groupLabelText: {
-    fontSize: 18,
+    fontSize: 20,
     paddingRight: 8,
     fontWeight: 'bold',
   },

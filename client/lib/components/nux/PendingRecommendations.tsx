@@ -2,7 +2,7 @@ import React from 'react';
 import {Linking, StyleSheet, Text, View} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {textStyleCommon} from '../../utility/text';
-import IconBadge from './IconBadge';
+import IconBadge from '../common/IconButton';
 import AppearingView from '../common/AppearingView';
 import TextLink from 'react-native-text-link';
 

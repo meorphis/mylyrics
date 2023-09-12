@@ -35,7 +35,7 @@ const LyricLines = (props: Props) => {
           key={index}
           index={index}
           lineText={lineText}
-          passageLineIndex={passageLine}
+          isAppearingText={passageLine == null}
           shouldShowAppearingText={shouldShowAppearingText}
           theme={theme}
           sharedTransitionKey={sharedTransitionKey}

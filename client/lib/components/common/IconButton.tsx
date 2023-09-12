@@ -5,7 +5,7 @@ import {Text} from 'react-native';
 import {textStyleCommon} from '../../utility/text';
 
 type Props = {
-  text: string;
+  text?: string;
   icon: React.ReactNode;
   onPress?: () => void;
   style?: ViewStyle;
@@ -20,7 +20,9 @@ const IconButton = (props: Props) => {
       onPress={onPress}
       disabled={!onPress}>
       {icon}
-      <Text style={{...textStyleCommon, ...styles.textStyle}}>{text}</Text>
+      {text == null ? null : (
+        <Text style={{...textStyleCommon, ...styles.textStyle}}>{text}</Text>
+      )}
     </TouchableOpacity>
   );
 };

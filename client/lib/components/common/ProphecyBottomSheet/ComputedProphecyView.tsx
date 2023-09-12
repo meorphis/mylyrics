@@ -13,7 +13,7 @@ const ComputedProphecyView = (props: Props) => {
 
   return (
     <View>
-      <Text style={{...styles.titleText, ...textStyleCommon, color: textColor}}>
+      <Text style={{...textStyleCommon, ...styles.titleText, color: textColor}}>
         🔮 your prophecy 🔮
       </Text>
       <View
@@ -23,8 +23,8 @@ const ComputedProphecyView = (props: Props) => {
         }}>
         <Text
           style={{
-            ...styles.prophecyText,
             ...textStyleCommon,
+            ...styles.prophecyText,
             color: textColor,
           }}>
           {prophecy}

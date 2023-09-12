@@ -14,12 +14,11 @@ import {setActivePassage} from '../../utility/redux/active_passage';
 
 type Props = {
   activeGroupKey: string | null;
-  onGroupSelected?: () => void;
   style?: ViewStyle;
 };
 
 const BottomBar = (props: Props) => {
-  const {activeGroupKey, onGroupSelected, style} = props;
+  const {activeGroupKey, style} = props;
 
   const groupSelectorBottomSheetRef = React.useRef<BottomSheet>(null);
   const prophecyBottomSheetRef = React.useRef<BottomSheet>(null);
@@ -87,7 +86,6 @@ const BottomBar = (props: Props) => {
       <GroupSelectorBottomSheet
         activeGroupKey={activeGroupKey}
         bottomSheetRef={groupSelectorBottomSheetRef}
-        onGroupSelected={onGroupSelected}
       />
       <ProphecyBottomSheet bottomSheetRef={prophecyBottomSheetRef} />
     </React.Fragment>
@@ -118,7 +116,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 36,
     alignContent: 'center',
     padding: 0,
-    borderRadius: 16,
     marginBottom: 8,
   },
   gridButtonText: {
@@ -127,7 +124,7 @@ const styles = StyleSheet.create({
   },
   button: {
     padding: 0,
-    borderRadius: 5,
+    borderRadius: 8,
   },
   tooltipText: {
     flex: 1,
@@ -136,8 +133,9 @@ const styles = StyleSheet.create({
   },
   linearGradient: {
     flexDirection: 'row',
-    padding: 8,
-    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    borderRadius: 6,
   },
 });
 

@@ -140,7 +140,7 @@ export const ensureColorContrast = ({
   lightenable,
   darkenable,
   preference,
-  minDistance = 30, // CIEDE2000 color distance
+  minDistance = 4.5, // CIEDE2000 color distance
   maxLightness = 0.9, // lightness when converted to HSL
   minLightness = 0.1, // lightness when converted to HSL
 }: {
@@ -155,7 +155,7 @@ export const ensureColorContrast = ({
   let hslDarkenable = tinycolor(darkenable).toHsl();
 
   // Check color distance
-  while (colorDistanceHsl(hslLightenable, hslDarkenable) < minDistance) {
+  while (getContrastRatio(hslLightenable, hslDarkenable) < minDistance) {
     const canLighten = hslLightenable.l < maxLightness;
     const canDarken = hslDarkenable.l > minLightness;
 
@@ -208,4 +208,14 @@ export const colorToGreyscale = (color: string) => {
   let grayColor = `#${grayHex}${grayHex}${grayHex}`;
 
   return grayColor;
+};
+
+const getContrastRatio = (
+  color1: ColorFormats.HSLA,
+  color2: ColorFormats.HSLA,
+) => {
+  const l1 = color1.l + 0.05;
+  const l2 = color2.l + 0.05;
+
+  return l1 > l2 ? l1 / l2 : l2 / l1;
 };

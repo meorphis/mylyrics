@@ -6,6 +6,7 @@ import {useSetAsActiveGroup} from '../../utility/active_group';
 import ThemeButton from '../common/ThemeButton';
 import ThemeType from '../../types/theme';
 import {ButtonColorChoice} from '../../utility/color';
+import {StyleSheet} from 'react-native';
 
 type Props = {
   tag: TagType;
@@ -30,6 +31,8 @@ const Tag = (props: Props) => {
     <ThemeButton
       text={tag.sentiment}
       theme={theme}
+      style={styles.button}
+      textStyle={styles.buttonText}
       colorChoice={
         isActiveGroup
           ? ButtonColorChoice.detailSaturated
@@ -44,5 +47,15 @@ const Tag = (props: Props) => {
     />
   );
 };
+
+const styles = StyleSheet.create({
+  button: {
+    padding: 16,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+});
 
 export default Tag;
