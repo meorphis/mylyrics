@@ -13,8 +13,9 @@ type Props = {
   setHighlightedIndexes: React.Dispatch<React.SetStateAction<number[]>>;
   onLayoutInitiallyHighlightedLyrics: (yPosition: number) => void;
   theme: ThemeType;
-  sharedTransitionKey: string;
+  sharedTransitionKey?: string;
   shouldShowAppearingText: boolean;
+  skipAnimation?: boolean;
 };
 
 const LyricLines = (props: Props) => {
@@ -26,6 +27,7 @@ const LyricLines = (props: Props) => {
     theme,
     sharedTransitionKey,
     shouldShowAppearingText,
+    skipAnimation,
   } = props;
 
   return (
@@ -35,7 +37,7 @@ const LyricLines = (props: Props) => {
           key={index}
           index={index}
           lineText={lineText}
-          isAppearingText={passageLine == null}
+          isAppearingText={passageLine == null && !skipAnimation}
           shouldShowAppearingText={shouldShowAppearingText}
           theme={theme}
           sharedTransitionKey={sharedTransitionKey}

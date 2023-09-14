@@ -58,7 +58,7 @@ export const colorDistance = (color1: string, color2: string) => {
   return colorDistanceHsl(tinycolor(color1).toHsl(), tinycolor(color2).toHsl());
 };
 
-const colorDistanceHsl = (
+export const colorDistanceHsl = (
   color1: ColorFormats.HSLA,
   color2: ColorFormats.HSLA,
 ) => {
@@ -140,9 +140,10 @@ export const ensureColorContrast = ({
   lightenable,
   darkenable,
   preference,
-  minDistance = 4.5, // CIEDE2000 color distance
+  minDistance = 4.5, // contrast ratio
   maxLightness = 0.9, // lightness when converted to HSL
   minLightness = 0.1, // lightness when converted to HSL
+  distanceFn = getContrastRatio,
 }: {
   lightenable: string;
   darkenable: string;
@@ -150,12 +151,13 @@ export const ensureColorContrast = ({
   minDistance?: number;
   maxLightness?: number;
   minLightness?: number;
+  distanceFn?: (color1: ColorFormats.HSLA, color2: ColorFormats.HSLA) => number;
 }) => {
   let hslLightenable = tinycolor(lightenable).toHsl();
   let hslDarkenable = tinycolor(darkenable).toHsl();
 
   // Check color distance
-  while (getContrastRatio(hslLightenable, hslDarkenable) < minDistance) {
+  while (distanceFn(hslLightenable, hslDarkenable) < minDistance) {
     const canLighten = hslLightenable.l < maxLightness;
     const canDarken = hslDarkenable.l > minLightness;
 
@@ -178,6 +180,42 @@ export const ensureColorContrast = ({
   darkenable = tinycolor(hslDarkenable).toHexString();
 
   return {lightenable, darkenable};
+};
+
+// similar to ensureColorContrast, but will pre-select which color to lighten/darken, and then
+// decide which to do based on the shouldDarkenFn
+export const ensureColorContrast2 = ({
+  changeable,
+  unchangeable,
+  shouldDarkenFn,
+  minDistance = 4.5,
+  distanceFn,
+}: {
+  changeable: string;
+  unchangeable: string;
+  shouldDarkenFn: ({
+    changeable,
+    unchangeable,
+  }: {
+    changeable: string;
+    unchangeable: string;
+  }) => boolean;
+  minDistance?: number;
+  distanceFn?: (color1: ColorFormats.HSLA, color2: ColorFormats.HSLA) => number;
+}) => {
+  const shouldDarken = shouldDarkenFn({changeable, unchangeable});
+
+  const contrastedColors = ensureColorContrast({
+    lightenable: shouldDarken ? unchangeable : changeable,
+    darkenable: shouldDarken ? changeable : unchangeable,
+    preference: shouldDarken ? 'darken' : 'lighten',
+    minDistance,
+    distanceFn,
+  });
+
+  return shouldDarken
+    ? contrastedColors.darkenable
+    : contrastedColors.lightenable;
 };
 
 // converts a color to greyscale using the classic formula

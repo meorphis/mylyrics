@@ -8,6 +8,11 @@ import {PassageType} from '../../types/passage';
 import {getPassageId} from '../../utility/passage_id';
 import {PassageItemProps} from './PassageItem';
 import ScaleProviderPassageItem from './ScaleProviderPassageItem';
+import {
+  colorDistanceHsl,
+  ensureColorContrast2,
+  isColorLight,
+} from '../../utility/color';
 
 export type WithPassageThemeProps = {
   passage: PassageType;
@@ -29,6 +34,11 @@ const WithPassageTheme = (
 
     const updateGlobalTheme = useThemeUpdate();
 
+    const backgroundColor =
+      imageData.colors.platform === 'ios'
+        ? imageData.colors.background
+        : imageData.colors.muted;
+
     // albumColors behaves different on iOS and Android, so we need to normalize
     const theme = {
       primaryColor:
@@ -39,14 +49,18 @@ const WithPassageTheme = (
         imageData.colors.platform === 'ios'
           ? imageData.colors.secondary
           : imageData.colors.darkVibrant,
-      backgroundColor:
-        imageData.colors.platform === 'ios'
-          ? imageData.colors.background
-          : imageData.colors.muted,
+      backgroundColor,
       detailColor:
         imageData.colors.platform === 'ios'
           ? imageData.colors.detail
           : imageData.colors.darkMuted,
+      backgroundContrastColor: ensureColorContrast2({
+        changeable: backgroundColor,
+        unchangeable: backgroundColor,
+        shouldDarkenFn: ({changeable}) => isColorLight(changeable),
+        minDistance: 20,
+        distanceFn: colorDistanceHsl,
+      }),
     };
 
     // update the global theme is the passage has become active

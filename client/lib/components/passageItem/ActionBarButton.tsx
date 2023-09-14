@@ -103,7 +103,7 @@ const ActionBarButtonInner = (props: Props) => {
       }}>
       <IconClass
         name={isActive ? activeState?.activeIcon : icon}
-        size={36}
+        size={40}
         color={theme.detailColor}
       />
       <Text style={{...styles.actionText, color: theme.detailColor}}>

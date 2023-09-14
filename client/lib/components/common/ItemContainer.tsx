@@ -3,7 +3,6 @@
 
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
-import {addColorOpacity} from '../../utility/color';
 import ThemeType from '../../types/theme';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -11,22 +10,31 @@ type Props = {
   theme?: ThemeType;
   containerRef?: React.RefObject<View>;
   ignoreFlex?: boolean;
+  omitBorder?: boolean;
   children: React.ReactNode;
 };
 
 const ItemContainer = (props: Props) => {
   const {theme, containerRef, ignoreFlex} = props;
   const {backgroundColor} = theme || {backgroundColor: 'lightgrey'};
+  const borderWidth = props.omitBorder ? 0 : 0.5;
 
   return (
     <View
       // eslint-disable-next-line react-native/no-inline-styles
-      style={{...styles.itemContainer, flex: ignoreFlex ? 0 : 1}}
+      style={{
+        ...styles.itemContainer,
+        flex: ignoreFlex ? 0 : 1,
+        borderWidth: borderWidth,
+      }}
       ref={containerRef}>
       <LinearGradient
         // eslint-disable-next-line react-native/no-inline-styles
-        style={{...styles.linearGradient, flex: ignoreFlex ? 0 : 1}}
-        colors={[addColorOpacity(backgroundColor, 0.75), backgroundColor]}
+        style={{
+          flex: ignoreFlex ? 0 : 1,
+          borderRadius: 24 - borderWidth,
+        }}
+        colors={[backgroundColor, backgroundColor]}
         start={{x: 0, y: 0.0}}
         end={{x: 0, y: 1}}>
         {props.children}
@@ -37,13 +45,8 @@ const ItemContainer = (props: Props) => {
 
 const styles = StyleSheet.create({
   itemContainer: {
-    backgroundColor: 'lightgrey',
     borderRadius: 24,
     borderColor: 'rgba(0, 0, 0, 0.5)',
-    borderWidth: 1,
-  },
-  linearGradient: {
-    borderRadius: 24,
   },
 });
 

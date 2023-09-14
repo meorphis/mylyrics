@@ -24,7 +24,7 @@ type Props = {
   isAppearingText: boolean;
   shouldShowAppearingText: boolean;
   theme: ThemeType;
-  sharedTransitionKey: string;
+  sharedTransitionKey?: string;
   isHighlighted: boolean;
   adjacentLineIsHighlighted: boolean;
   setAsHighlighted: () => void;
@@ -77,19 +77,25 @@ const LyricLine = (props: Props) => {
   };
 
   const innerComponent = (
+    <Pressable onPress={setAsHighlighted} style={pressableStyle}>
+      <Text style={textStyle}>{lineText}</Text>
+    </Pressable>
+  );
+
+  const innerSharedComponent = sharedTransitionKey ? (
     <SharedElement id={`${sharedTransitionKey}:lyrics:${index}`}>
-      <Pressable onPress={setAsHighlighted} style={pressableStyle}>
-        <Text style={textStyle}>{lineText}</Text>
-      </Pressable>
+      {innerComponent}
     </SharedElement>
+  ) : (
+    innerComponent
   );
 
   if (!isAppearingText) {
-    return <View onLayout={onLayout}>{innerComponent}</View>;
+    return <View onLayout={onLayout}>{innerSharedComponent}</View>;
   }
 
   return shouldShowAppearingText ? (
-    <AppearingView duration={750}>{innerComponent}</AppearingView>
+    <AppearingView duration={750}>{innerSharedComponent}</AppearingView>
   ) : null;
 };
 
