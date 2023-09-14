@@ -1,6 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import ViewShot from 'react-native-view-shot';
-import {addColorOpacity} from '../../utility/color';
 import Share from 'react-native-share';
 import React from 'react';
 import tinycolor from 'tinycolor2';
@@ -8,7 +7,7 @@ import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import {Image, StyleSheet, View} from 'react-native';
+import {Dimensions, StyleSheet, View} from 'react-native';
 import {useTheme} from '../../utility/theme';
 import {
   SharablePassage,
@@ -18,10 +17,16 @@ import {getPassageId} from '../../utility/passage_id';
 import PassageItem from './PassageItem';
 import ThemeType from '../../types/theme';
 import {TouchableOpacity} from 'react-native-gesture-handler';
-import {getFurthestColor} from '../../utility/lyrics';
+import {getFurthestColor, getLyricsColor} from '../../utility/lyrics';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaleProvider, useScale} from '../../utility/max_size';
-import IconButton from '../common/IconButton';
+import {
+  addColorOpacity,
+  colorDistanceHsl,
+  ensureColorContrast2,
+  isColorLight,
+} from '../../utility/color';
+import ShareButton from './ShareButton';
 
 const ShareBottomSheet = () => {
   console.log('rendering ShareBottomSheet');
@@ -29,15 +34,6 @@ const ShareBottomSheet = () => {
   const bottomSheetRef = useRef<BottomSheet>(null);
 
   const sharablePassage = useSharablePassage();
-
-  // useEffect(() => {
-  //   if (sharablePassage != null) {
-  //     bottomSheetRef.current?.expand();
-  //   }
-  // }, [
-  //   sharablePassage &&
-  //     `${getPassageId(sharablePassage.passage)}-${sharablePassage.counter}`,
-  // ]);
 
   const defaultTheme = useTheme();
 
@@ -51,9 +47,9 @@ const ShareBottomSheet = () => {
     defaultTheme.primaryColor,
     defaultTheme.secondaryColor,
     defaultTheme.detailColor,
-  ].map(color => {
+  ].map(backgroundColor => {
     const contrastColor = getFurthestColor({
-      subject: color,
+      subject: backgroundColor,
       options: [
         defaultTheme.primaryColor,
         defaultTheme.secondaryColor,
@@ -64,7 +60,8 @@ const ShareBottomSheet = () => {
     });
 
     return {
-      backgroundColor: color,
+      backgroundColor,
+      contrastColor,
       primaryColor: contrastColor,
       secondaryColor: contrastColor,
       detailColor: contrastColor,
@@ -86,9 +83,18 @@ const ShareBottomSheet = () => {
     [],
   );
 
+  const {height: windowHeight} = Dimensions.get('window');
+  const insets = useSafeAreaInsets();
+
+  // subtract 40 to ensure a bit of buffer at the top to make it easy to close the bottom sheet
+  const maxBottomSheetHeight = windowHeight - insets.top - 40;
+
   const setHeight = useCallback(
     (height: number) => {
-      const newSnapPoint = Math.min(height + 200, 800);
+      // 180 is sort of a magic number to make sure the bottom sheet has room for the
+      // color changer and share buttons
+      const newSnapPoint = height + insets.bottom + 180;
+
       if (newSnapPoint !== snapPoint) {
         setSnapPoint(newSnapPoint);
         // slight delay because the animation is smoother if the snap points
@@ -103,7 +109,19 @@ const ShareBottomSheet = () => {
     [setSnapPoint],
   );
 
-  const insets = useSafeAreaInsets();
+  // yet another magic number - 350 should be enough room for the rest of the passage
+  // item as well as the color changer and share buttons
+  const maxLyricsSize = maxBottomSheetHeight - insets.bottom - 350;
+
+  let backgroundColorTc = tinycolor(passageTheme.backgroundColor).toHsl();
+
+  if (backgroundColorTc.l > 0.8) {
+    backgroundColorTc.l -= 0.1;
+  } else {
+    backgroundColorTc.l = Math.min((backgroundColorTc.l + 1) / 2, 0.9);
+  }
+
+  const backgroundColor = getContrastLayer(passageTheme.backgroundColor);
 
   return (
     <BottomSheet
@@ -112,12 +130,15 @@ const ShareBottomSheet = () => {
       snapPoints={[snapPoint]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
+      backgroundStyle={{
+        backgroundColor: backgroundColor,
+      }}
       containerStyle={{...styles.container, paddingBottom: insets.bottom}}>
       <View style={styles.passageEditor}>
         {sharablePassage && (
           <ScaleProvider
             key={getPassageId(sharablePassage.passage)}
-            maxSize={500}>
+            maxSize={maxLyricsSize}>
             <SharableComponent
               sharablePassage={sharablePassage}
               passageTheme={passageTheme}
@@ -127,14 +148,21 @@ const ShareBottomSheet = () => {
           </ScaleProvider>
         )}
         <View style={styles.themeOptions}>
-          {[defaultTheme, ...altThemes].map((theme, index) => (
+          {[
+            {
+              ...defaultTheme,
+              contrastColor: getLyricsColor({theme: defaultTheme}),
+            },
+            ...altThemes,
+          ].map((theme, index) => (
             <TouchableOpacity
-              // eslint-disable-next-line react-native/no-inline-styles
               style={{
                 ...styles.themeOption,
                 backgroundColor: theme.backgroundColor,
-                borderWidth:
-                  tinycolor(theme.backgroundColor).getLuminance() > 0.8 ? 1 : 0,
+                borderColor: addColorOpacity(
+                  isColorLight(backgroundColor) ? '#000000' : '#ffffff',
+                  0.5,
+                ),
               }}
               key={index}
               onPress={() => setPassageTheme(theme)}>
@@ -142,7 +170,7 @@ const ShareBottomSheet = () => {
                 <View
                   style={{
                     ...styles.selectedIndicator,
-                    backgroundColor: theme.primaryColor,
+                    backgroundColor: theme.contrastColor,
                   }}
                 />
               )}
@@ -151,39 +179,29 @@ const ShareBottomSheet = () => {
         </View>
       </View>
       <View style={styles.shareButtons}>
-        <IconButton
-          style={styles.instaButton}
-          onPress={() => {
-            if (viewShotRef.current && viewShotRef.current.capture) {
-              viewShotRef.current.capture().then(res => {
-                // https://developers.facebook.com/docs/instagram/sharing-to-stories/#sharing-to-stories
-                const shareOptions = {
-                  stickerImage: res,
-                  backgroundBottomColor: tinycolor(
-                    addColorOpacity(passageTheme.backgroundColor, 0.5),
-                  ).toHexString(),
-                  backgroundTopColor: tinycolor(
-                    addColorOpacity(passageTheme.backgroundColor, 0.5),
-                  ).toHexString(),
-                  // attributionURL: 'http://deep-link-to-app', //in beta
-                  social: Share.Social.INSTAGRAM_STORIES as any,
-                  appId: '279012348258138',
-                };
-
-                Share.shareSingle(shareOptions);
-              });
-            }
-          }}
-          icon={
-            <Image
-              source={require('../../assets/insta_icon.png')}
-              style={styles.instaIcon}
-            />
-          }
+        <ShareButton
+          shareType={Share.Social.INSTAGRAM_STORIES}
+          backgroundColor={backgroundColor}
+          viewShotRef={viewShotRef}
+        />
+        <ShareButton
+          shareType={'other'}
+          backgroundColor={backgroundColor}
+          viewShotRef={viewShotRef}
         />
       </View>
     </BottomSheet>
   );
+};
+
+const getContrastLayer = (color: string) => {
+  return ensureColorContrast2({
+    changeable: color,
+    unchangeable: color,
+    shouldDarkenFn: ({changeable}) => isColorLight(changeable),
+    minDistance: 20,
+    distanceFn: colorDistanceHsl,
+  });
 };
 
 type SharableComponentProps = {
@@ -231,6 +249,7 @@ const SharableComponent = (props: SharableComponentProps) => {
             passageTheme={passageTheme}
             omitActionBar
             ignoreFlex
+            omitBorder
           />
         )}
       </ViewShot>
@@ -239,9 +258,12 @@ const SharableComponent = (props: SharableComponentProps) => {
 };
 
 const styles = StyleSheet.create({
-  container: {},
+  container: {
+    flexDirection: 'column',
+  },
   passageEditor: {
     alignSelf: 'center',
+    borderRadius: 32,
   },
   sharableComponent: {
     alignSelf: 'center',
@@ -252,7 +274,7 @@ const styles = StyleSheet.create({
   themeOptions: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
-    marginTop: 12,
+    marginTop: 16,
     borderColor: 'gray',
   },
   themeOption: {
@@ -261,6 +283,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
   },
   selectedIndicator: {
     height: 12,
@@ -269,25 +292,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'white', // or another contrasting color
   },
   shareButtons: {
-    backgroundColor: 'lightgrey',
-    position: 'absolute',
+    marginTop: 16,
+    paddingTop: 16,
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    bottom: 32,
-    left: 32,
-    borderColor: 'gray',
-    borderRadius: 8,
-    padding: 8,
-  },
-  instaIcon: {
-    width: 40,
-    height: 40,
-  },
-  instaButton: {
-    flexDirection: 'column',
-  },
-  instaButtonText: {
-    color: 'black',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    backgroundColor: '#ffffffa0',
+    overflow: 'visible',
+    paddingBottom: 200,
   },
 });
 

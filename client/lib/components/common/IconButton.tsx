@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, ViewStyle} from 'react-native';
+import {StyleSheet, TextStyle, ViewStyle} from 'react-native';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import {Text} from 'react-native';
 import {textStyleCommon} from '../../utility/text';
@@ -9,10 +9,11 @@ type Props = {
   icon: React.ReactNode;
   onPress?: () => void;
   style?: ViewStyle;
+  textStyle?: TextStyle;
 };
 
 const IconButton = (props: Props) => {
-  const {text, icon, onPress, style} = props;
+  const {text, icon, onPress, style, textStyle} = props;
 
   return (
     <TouchableOpacity
@@ -21,7 +22,9 @@ const IconButton = (props: Props) => {
       disabled={!onPress}>
       {icon}
       {text == null ? null : (
-        <Text style={{...textStyleCommon, ...styles.textStyle}}>{text}</Text>
+        <Text style={{...textStyleCommon, ...styles.textStyle, ...textStyle}}>
+          {text}
+        </Text>
       )}
     </TouchableOpacity>
   );
@@ -32,8 +35,6 @@ const styles = StyleSheet.create({
     height: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 24,
     borderRadius: 24,
   },
   button: {

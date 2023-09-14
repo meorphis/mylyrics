@@ -77,7 +77,7 @@ const MainScreen = () => {
     spotifyAuthStatus === 'pending'
   ) {
     return (
-      <AppearingView delay={0} duration={500} style={styles.container}>
+      <AppearingView duration={500} style={styles.container}>
         <LoadingComponent size="large" />
       </AppearingView>
     );

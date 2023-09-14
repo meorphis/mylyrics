@@ -36,6 +36,8 @@ const styles = StyleSheet.create({
   },
   spotifyButton: {
     backgroundColor: '#1DB954',
+    paddingLeft: 16,
+    paddingRight: 24,
   },
   spotifyIcon: {
     width: 24,

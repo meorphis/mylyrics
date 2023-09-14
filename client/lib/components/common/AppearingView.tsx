@@ -12,12 +12,13 @@ type AppearingComponentProps = {
   duration: number;
   style?: TextStyle;
   onLayout?: (event: LayoutChangeEvent) => void;
+  skipAnimation?: boolean;
   children: React.ReactNode;
 };
 
 const AppearingComponent = (props: AppearingComponentProps) => {
-  const {Component, duration, style, onLayout, children} = props;
-  const opacity = useSharedValue(0);
+  const {Component, duration, style, onLayout, skipAnimation, children} = props;
+  const opacity = useSharedValue(skipAnimation ? 1 : 0);
 
   const animatedStyles = useAnimatedStyle(() => {
     return {

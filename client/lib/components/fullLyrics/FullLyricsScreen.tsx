@@ -3,10 +3,9 @@ import {
   StyleSheet,
   Text,
   Dimensions,
-  SafeAreaView,
   LayoutChangeEvent,
 } from 'react-native';
-import React, {useLayoutEffect, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useState} from 'react';
 import {
   FullLyricsScreenProps,
   RootStackParamList,
@@ -27,6 +26,8 @@ import LyricLines from './LyricLines';
 import {useNavigation} from '@react-navigation/native';
 import BackButton from './BackButton';
 import {StackNavigationProp} from '@react-navigation/stack';
+import {SongType} from '../../types/song';
+import ThemeType from '../../types/theme';
 
 // shows the full lyrics for a song. a lot of the logic here is to ensure that
 // the animation from the passage item to the full lyrics is smooth
@@ -46,7 +47,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   // *** y-axis positions ***
   // scroll view position
   const innerScrollViewPaddingTop = 24;
-  const scrollView = useRef<Animated.ScrollView>(null);
+  // const scrollView = useRef<Animated.ScrollView>(null);
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
@@ -83,27 +84,11 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   // scrolled these spacers out of view, we remove them so that the user cannot
   // scroll past the start/end of the lyrics
   const [showSpacer, setShowSpacer] = React.useState(true);
-  const removeSpacers = () => {
-    if (
-      showSpacer &&
-      topOfInitiallyHighlightedLyricsPosition != null &&
-      innerScrollViewLayoutAfterAppearingTextIsRendered != null
-    ) {
-      scrollView.current?.scrollTo({
-        y:
-          scrollY.value -
-          innerScrollViewLayoutAfterAppearingTextIsRendered.start,
-        animated: false,
-      });
-      setShowSpacer(false);
-    }
-  };
 
-  // we briefly hide the non-highlighted lyrics when the page first loads, to
-  // make it easier to ensure that the highlighted lyrics show up in a specific
-  // spot - but once the highlighted lyrics are in the right spot, we fade in
-  // the rest of the lyrics
-  const [showAppearingText, setShowAppearingText] = React.useState(false);
+  const [scrollViewOffset, setScrollViewOffset] = React.useState<{
+    initial: number;
+    scrollTo: number | null;
+  } | null>(null);
 
   // the highlighted lyrics will be at the top of their parent component
   // on first render, but once the appearing lyrics are rendered, they'll
@@ -111,30 +96,30 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   useLayoutEffect(() => {
     if (
       topOfInitiallyHighlightedLyricsPosition != null &&
-      innerScrollViewLayoutAfterAppearingTextIsRendered != null
+      innerScrollViewLayoutAfterAppearingTextIsRendered != null &&
+      setScrollViewHeight != null
     ) {
       // topOfInitiallyHighlightedLyricsPosition (controlling for safe area and padding) is
       // the extent to which adding the appearing lyrics pushes the highlighted lyrics down,
       // so we need to scroll by that amount to avoid a visible jump
       const scrollTo =
-        topOfInitiallyHighlightedLyricsPosition +
-        safeAreaHeight -
-        innerScrollViewPaddingTop;
+        topOfInitiallyHighlightedLyricsPosition - innerScrollViewPaddingTop;
+
+      console.log(
+        scrollTo,
+        innerScrollViewLayoutAfterAppearingTextIsRendered,
+        scrollViewHeight,
+      );
 
       // in this case the top spacer is in view; we will first do a non-animated scroll to
       // account for the appearing lyrics, then an animated scroll to scroll the spacer out
       // of view (the onMomentumScrollEnd handler will remove the spacers)
       if (scrollTo < innerScrollViewLayoutAfterAppearingTextIsRendered!.start) {
-        scrollView.current?.scrollTo({
-          y: scrollTo,
-          animated: false,
+        console.log('top spacer in view');
+        setScrollViewOffset({
+          initial: scrollTo,
+          scrollTo: innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
         });
-
-        setTimeout(() => {
-          scrollView.current?.scrollTo({
-            y: innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
-          });
-        }, 2000);
       }
       // very similar to the above case - in this case the bottom spacer is in view, so we
       // will first do a non-animated scroll to account for the appearing lyrics, then an
@@ -143,34 +128,32 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
         scrollTo + scrollViewHeight! >
         innerScrollViewLayoutAfterAppearingTextIsRendered!.end
       ) {
-        scrollView.current?.scrollTo({
-          y: scrollTo,
-          animated: false,
+        console.log('bottom spacer in view');
+        setScrollViewOffset({
+          initial: scrollTo,
+          scrollTo: Math.max(
+            innerScrollViewLayoutAfterAppearingTextIsRendered!.end -
+              scrollViewHeight!,
+            innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
+          ),
         });
-
-        setTimeout(() => {
-          scrollView.current?.scrollTo({
-            y: Math.max(
-              innerScrollViewLayoutAfterAppearingTextIsRendered!.end -
-                scrollViewHeight!,
-              innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
-            ),
-          });
-        }, 2000);
       } else {
+        console.log('no spacers in view');
         // in this case the spacers are not in view, so we can just do a non-animated scroll
         // to account for both the appearing lyrics and the spacers and manually remove the
         // spacers synchronously
-        scrollView.current?.scrollTo({
-          y: scrollTo - innerScrollViewLayoutAfterAppearingTextIsRendered.start,
-          animated: false,
+        setScrollViewOffset({
+          initial:
+            scrollTo - innerScrollViewLayoutAfterAppearingTextIsRendered.start,
+          scrollTo: null,
         });
         setShowSpacer(false);
       }
     }
   }, [
     topOfInitiallyHighlightedLyricsPosition != null &&
-      innerScrollViewLayoutAfterAppearingTextIsRendered != null,
+      innerScrollViewLayoutAfterAppearingTextIsRendered != null &&
+      scrollViewHeight != null,
   ]);
 
   const {width, height} = Dimensions.get('window');
@@ -194,31 +177,6 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
     initiallyHighlightedIndexes,
   );
 
-  // const [shouldHide, setShouldHide] = React.useState(false);
-
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     setShouldHide(false);
-  //     return () => {
-  //       setTimeout(() => {
-  //         setShouldHide(true);
-  //         setShowAppearingText(false);
-  //         setShowSpacer(true);
-  //         setTopOfInitiallyHighlightedLyricsPosition(null);
-  //         setLyricsLayout(null);
-  //         scrollView.current?.scrollTo({
-  //           y: 0,
-  //           animated: false,
-  //         });
-  //       }, 500);
-  //     };
-  //   }, []),
-  // );
-
-  // if (shouldHide) {
-  //   return null;
-  // }
-
   return (
     <ThemeBackground theme={theme}>
       <View
@@ -228,90 +186,84 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
           height: (height - safeAreaHeight) * 0.95,
         }}>
         <ItemContainer theme={theme}>
-          <Animated.ScrollView
-            ref={scrollView}
-            style={styles.scrollView}
-            onLayout={(event: LayoutChangeEvent) => {
-              setScrollViewHeight(event.nativeEvent.layout.height);
-            }}
-            scrollEventThrottle={16}
-            onScroll={onScroll}
-            onMomentumScrollEnd={removeSpacers}>
-            {showSpacer && (
-              <View style={{height: parentYPosition + safeAreaHeight}} />
-            )}
-            <View
-              style={{
-                ...styles.innerScrollView,
-                paddingTop: innerScrollViewPaddingTop,
-              }}
-              onLayout={event => {
-                if (showAppearingText) {
-                  setInnerScrollViewLayoutAfterAppearingTextIsRendered({
-                    start: event.nativeEvent.layout.y,
-                    end:
-                      event.nativeEvent.layout.y +
-                      event.nativeEvent.layout.height,
-                  });
-                }
-              }}>
-              {showAppearingText && (
-                <AppearingView
-                  duration={750}
-                  // eslint-disable-next-line react-native/no-inline-styles
-                  style={{
-                    ...styles.metadataColumn,
-                    borderBottomColor: isColorLight(theme.backgroundColor)
-                      ? 'rgba(0, 0, 0, 0.5)'
-                      : 'rgba(255, 255, 255, 0.5)',
-                  }}>
-                  <Text
-                    style={{
-                      ...textStyleCommon,
-                      ...styles.songNameText,
-                      color: theme.primaryColor,
-                    }}>
-                    {song.name}
-                  </Text>
-                  <Text
-                    style={{
-                      ...textStyleCommon,
-                      ...styles.artistNameText,
-                      color: theme.secondaryColor,
-                    }}>
-                    {song.artists.map(artist => artist.name).join(', ')}
-                  </Text>
-                  <Text
-                    style={{
-                      ...textStyleCommon,
-                      ...styles.albumNameText,
-                      color: theme.detailColor,
-                    }}>
-                    {song.album.name}
-                  </Text>
-                </AppearingView>
-              )}
-              <LyricLines
+          {scrollViewOffset == null ? (
+            <React.Fragment>
+              <SwapableScrollView
+                key="initial"
+                isInitialVersion={true}
+                innerScrollViewPaddingTop={innerScrollViewPaddingTop}
+                showSpacer={true}
+                topSpacerHeight={parentYPosition}
+                song={song}
                 splitLyrics={splitLyrics}
                 highlightedIndexes={highlightedIndexes}
                 setHighlightedIndexes={setHighlightedIndexes}
-                onLayoutInitiallyHighlightedLyrics={yPosition => {
-                  if (showAppearingText) {
-                    setTopOfInitiallyHighlightedLyricsPosition(yPosition);
-                  } else {
-                    // very brief delay to ensure the page is entirely laid out before
-                    // we show the appearing text
-                    setTimeout(() => setShowAppearingText(true), 1000);
-                  }
-                }}
                 theme={theme}
                 sharedTransitionKey={sharedTransitionKey}
-                shouldShowAppearingText={showAppearingText}
               />
-            </View>
-            {showSpacer && <View style={{height}} />}
-          </Animated.ScrollView>
-          <View style={styles.buttonContainer}>
+              <View style={styles.invisibleScrollView}>
+                <SwapableScrollView
+                  key="hidden"
+                  isInitialVersion={false}
+                  onScroll={onScroll}
+                  onInnerViewLayout={
+                    setInnerScrollViewLayoutAfterAppearingTextIsRendered
+                  }
+                  onLayoutInitiallyHighlightedLyrics={
+                    setTopOfInitiallyHighlightedLyricsPosition
+                  }
+                  innerScrollViewPaddingTop={innerScrollViewPaddingTop}
+                  showSpacer={showSpacer}
+                  topSpacerHeight={parentYPosition}
+                  song={song}
+                  splitLyrics={splitLyrics}
+                  highlightedIndexes={highlightedIndexes}
+                  setHighlightedIndexes={setHighlightedIndexes}
+                  theme={theme}
+                />
+              </View>
+            </React.Fragment>
+          ) : showSpacer ? (
+            <SwapableScrollView
+              key="intermediate"
+              isInitialVersion={false}
+              verticalOffset={scrollViewOffset.initial}
+              scrollTo={scrollViewOffset.scrollTo ?? undefined}
+              onMomentumScrollEnd={() => setShowSpacer(false)}
+              innerScrollViewPaddingTop={innerScrollViewPaddingTop}
+              showSpacer={showSpacer}
+              topSpacerHeight={parentYPosition}
+              song={song}
+              splitLyrics={splitLyrics}
+              highlightedIndexes={highlightedIndexes}
+              setHighlightedIndexes={setHighlightedIndexes}
+              theme={theme}
+            />
+          ) : (
+            <SwapableScrollView
+              key="final"
+              isInitialVersion={false}
+              skipAnimation={scrollViewOffset.scrollTo != null}
+              verticalOffset={
+                scrollViewOffset.scrollTo != null
+                  ? scrollViewOffset.scrollTo - parentYPosition
+                  : scrollViewOffset.initial
+              }
+              innerScrollViewPaddingTop={innerScrollViewPaddingTop}
+              showSpacer={showSpacer}
+              topSpacerHeight={parentYPosition}
+              song={song}
+              splitLyrics={splitLyrics}
+              highlightedIndexes={highlightedIndexes}
+              setHighlightedIndexes={setHighlightedIndexes}
+              theme={theme}
+            />
+          )}
+          <View
+            style={styles.buttonContainer}
+            onLayout={event => {
+              setScrollViewHeight(event.nativeEvent.layout.y);
+            }}>
             <BackButton theme={theme} onPress={() => navigation.goBack()} />
             <SelectionButton
               highlightedIndexes={highlightedIndexes}
@@ -336,9 +288,158 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   );
 };
 
+type SwapableScrollViewProps = {
+  isInitialVersion: boolean;
+  verticalOffset?: number;
+  scrollTo?: number;
+  skipAnimation?: boolean;
+  onScroll?: (event: any) => void;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  onInnerViewLayout?: ({start, end}: {start: number; end: number}) => void;
+  onLayoutInitiallyHighlightedLyrics?: (y: number) => void;
+  onMomentumScrollEnd?: () => void;
+  innerScrollViewPaddingTop: number;
+  showSpacer: boolean;
+  topSpacerHeight: number;
+  song: SongType;
+  splitLyrics: {
+    lineText: string;
+    passageStart: number | null;
+    passageEnd: number | null;
+    passageLine: number | null;
+  }[];
+  highlightedIndexes: number[];
+  setHighlightedIndexes: React.Dispatch<React.SetStateAction<number[]>>;
+  theme: ThemeType;
+  sharedTransitionKey?: string;
+};
+
+const SwapableScrollView = (props: SwapableScrollViewProps) => {
+  const {
+    isInitialVersion,
+    verticalOffset,
+    scrollTo,
+    skipAnimation,
+    onScroll,
+    onLayout,
+    onInnerViewLayout,
+    onLayoutInitiallyHighlightedLyrics,
+    onMomentumScrollEnd,
+    innerScrollViewPaddingTop,
+    showSpacer,
+    topSpacerHeight,
+    song,
+    splitLyrics,
+    highlightedIndexes,
+    setHighlightedIndexes,
+    theme,
+    sharedTransitionKey,
+  } = props;
+
+  const ref = React.useRef<Animated.ScrollView>(null);
+
+  useEffect(() => {
+    if (scrollTo != null) {
+      setTimeout(() => {
+        ref.current?.scrollTo({
+          y: scrollTo,
+          animated: true,
+        });
+      }, 250);
+    }
+  }, []);
+
+  const {height} = Dimensions.get('window');
+
+  return (
+    <Animated.ScrollView
+      ref={ref}
+      contentOffset={{x: 0, y: verticalOffset ?? 0}}
+      onScroll={onScroll}
+      style={styles.scrollView}
+      onLayout={onLayout}
+      scrollEventThrottle={16}
+      onMomentumScrollEnd={onMomentumScrollEnd}>
+      {showSpacer && <View style={{height: topSpacerHeight}} />}
+      <View
+        style={{
+          ...styles.innerScrollView,
+          paddingTop: innerScrollViewPaddingTop,
+        }}
+        onLayout={event => {
+          if (onInnerViewLayout) {
+            onInnerViewLayout({
+              start: event.nativeEvent.layout.y,
+              end: event.nativeEvent.layout.y + event.nativeEvent.layout.height,
+            });
+          }
+        }}>
+        {isInitialVersion ? null : (
+          <AppearingView
+            duration={750}
+            // eslint-disable-next-line react-native/no-inline-styles
+            style={{
+              ...styles.metadataColumn,
+              borderBottomColor: isColorLight(theme.backgroundColor)
+                ? 'rgba(0, 0, 0, 0.5)'
+                : 'rgba(255, 255, 255, 0.5)',
+            }}
+            skipAnimation={skipAnimation}>
+            <Text
+              style={{
+                ...textStyleCommon,
+                ...styles.songNameText,
+                color: theme.primaryColor,
+              }}>
+              {song.name}
+            </Text>
+            <Text
+              style={{
+                ...textStyleCommon,
+                ...styles.artistNameText,
+                color: theme.secondaryColor,
+              }}>
+              {song.artists.map(artist => artist.name).join(', ')}
+            </Text>
+            <Text
+              style={{
+                ...textStyleCommon,
+                ...styles.albumNameText,
+                color: theme.detailColor,
+              }}>
+              {song.album.name}
+            </Text>
+          </AppearingView>
+        )}
+        <LyricLines
+          splitLyrics={splitLyrics}
+          highlightedIndexes={highlightedIndexes}
+          setHighlightedIndexes={setHighlightedIndexes}
+          onLayoutInitiallyHighlightedLyrics={yPosition => {
+            if (onLayoutInitiallyHighlightedLyrics) {
+              onLayoutInitiallyHighlightedLyrics(yPosition);
+            }
+          }}
+          theme={theme}
+          sharedTransitionKey={sharedTransitionKey}
+          shouldShowAppearingText={!isInitialVersion}
+          skipAnimation={skipAnimation}
+        />
+      </View>
+      {showSpacer && <View style={{height}} />}
+    </Animated.ScrollView>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
+  },
+  invisibleScrollView: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    opacity: 0,
   },
   scrollView: {
     flexDirection: 'column',

@@ -32,6 +32,7 @@ export type PassageItemProps = {
   };
   omitActionBar?: boolean;
   ignoreFlex?: boolean;
+  omitBorder?: boolean;
   onPassageLyricsContainerLayout?: (event: any) => void;
 };
 
@@ -50,6 +51,7 @@ const PassageItem = (props: PassageItemProps) => {
     passageItemKey,
     omitActionBar,
     ignoreFlex,
+    omitBorder,
     onPassageLyricsContainerLayout,
   } = props;
   const {lyrics, tags, song} = passage;
@@ -58,7 +60,8 @@ const PassageItem = (props: PassageItemProps) => {
     <ItemContainer
       theme={passageTheme}
       containerRef={containerRef}
-      ignoreFlex={ignoreFlex}>
+      ignoreFlex={ignoreFlex}
+      omitBorder={omitBorder}>
       <View
         // eslint-disable-next-line react-native/no-inline-styles
         style={{...styles.container, flex: ignoreFlex ? 0 : 1}}>
