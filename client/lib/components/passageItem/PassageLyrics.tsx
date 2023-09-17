@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {LayoutChangeEvent, StyleSheet, Text, View} from 'react-native';
 import {textStyleCommon} from '../../utility/text';
 import ThemeType from '../../types/theme';
@@ -9,24 +9,29 @@ import {
 } from '../../utility/lyrics';
 import {SharedElement} from 'react-navigation-shared-element';
 import {SongType} from '../../types/song';
-import {ScaleInfoType} from '../../utility/max_size';
+import _ from 'lodash';
+import {ScaleType} from '../../utility/max_size';
 
 type Props = {
   song: SongType;
   lyrics: string;
   theme: ThemeType;
-  scaleInfo: ScaleInfoType;
+  scale: ScaleType;
+  scaleFinalized: boolean;
   sharedTransitionKey: string;
   onLayout: (event: LayoutChangeEvent) => void;
   viewRef: React.RefObject<View>;
 };
 
 const PassageLyrics = (props: Props) => {
+  console.log(`rendering PassageLyrics ${props.song.name}`);
+
   const {
     song,
     lyrics,
     theme,
-    scaleInfo,
+    scale,
+    scaleFinalized,
     sharedTransitionKey,
     onLayout,
     viewRef,
@@ -36,8 +41,6 @@ const PassageLyrics = (props: Props) => {
     songLyrics: cleanLyrics(song.lyrics),
     passageLyrics: lyrics,
   });
-
-  const {scale, computed: scaleComputed} = scaleInfo;
 
   const {lyricsFontSize} = scale;
 
@@ -60,7 +63,7 @@ const PassageLyrics = (props: Props) => {
                   ...styles.lyricsLine,
                   fontSize: lyricsFontSize,
                   color: getLyricsColor({theme}),
-                  opacity: scaleComputed ? 1 : 0,
+                  opacity: scaleFinalized ? 1 : 0,
                 }}>
                 {lineText}
               </Text>
@@ -81,4 +84,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PassageLyrics;
+export default memo(
+  PassageLyrics,
+  (prev, next) =>
+    _.isEqual(prev.theme, next.theme) &&
+    _.isEqual(prev.scale, next.scale) &&
+    prev.scaleFinalized === next.scaleFinalized,
+);

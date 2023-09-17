@@ -29,7 +29,6 @@ import {cleanLyrics, splitLyricsWithPassages} from './lib/utility/lyrics';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import {Dirs} from 'react-native-file-access';
 import {ShareablePassageProvider} from './lib/utility/shareable_passage';
-import {FontSizeProvider} from './lib/utility/font_size';
 
 const Stack = createSharedElementStackNavigator<RootStackParamList>();
 
@@ -45,86 +44,81 @@ function App(): JSX.Element {
   return (
     <GestureHandlerRootView style={styles.gestureHandler}>
       <ShareablePassageProvider>
-        <FontSizeProvider
-          fontSizes={[
-            20, 18, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
-          ]}>
-          <NavigationContainer>
-            <Provider store={store}>
-              <DeviceIdProvider>
-                <SafeAreaProvider>
-                  <Stack.Navigator>
-                    <Stack.Screen
-                      name="Main"
-                      component={MainScreen}
-                      options={{
-                        headerShown: false,
-                        cardStyleInterpolator: forFade,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="PassageItem"
-                      component={PassageItemScreen}
-                      options={{
-                        headerShown: false,
-                        cardStyleInterpolator: forFade,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="FullLyrics"
-                      component={FullLyrics}
-                      options={{
-                        headerShown: false,
-                        cardStyleInterpolator: forFade,
-                      }}
-                      sharedElements={(route, otherRoute, showing) => {
-                        if (route.name !== 'FullLyrics' || !showing) {
-                          return [];
-                        }
+        <NavigationContainer>
+          <Provider store={store}>
+            <DeviceIdProvider>
+              <SafeAreaProvider>
+                <Stack.Navigator>
+                  <Stack.Screen
+                    name="Main"
+                    component={MainScreen}
+                    options={{
+                      headerShown: false,
+                      cardStyleInterpolator: forFade,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="PassageItem"
+                    component={PassageItemScreen}
+                    options={{
+                      headerShown: false,
+                      cardStyleInterpolator: forFade,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="FullLyrics"
+                    component={FullLyrics}
+                    options={{
+                      headerShown: false,
+                      cardStyleInterpolator: forFade,
+                    }}
+                    sharedElements={(route, otherRoute, showing) => {
+                      if (route.name !== 'FullLyrics' || !showing) {
+                        return [];
+                      }
 
-                        const {
-                          song,
-                          sharedTransitionKey,
-                          initiallyHighlightedPassageLyrics,
-                        } = route.params as {
-                          song: SongType;
-                          sharedTransitionKey: string;
-                          initiallyHighlightedPassageLyrics: string;
-                        };
+                      const {
+                        song,
+                        sharedTransitionKey,
+                        initiallyHighlightedPassageLyrics,
+                      } = route.params as {
+                        song: SongType;
+                        sharedTransitionKey: string;
+                        initiallyHighlightedPassageLyrics: string;
+                      };
 
-                        const splitLyrics = splitLyricsWithPassages({
-                          songLyrics: cleanLyrics(song.lyrics),
-                          passageLyrics: initiallyHighlightedPassageLyrics,
-                        });
+                      const splitLyrics = splitLyricsWithPassages({
+                        songLyrics: cleanLyrics(song.lyrics),
+                        passageLyrics: initiallyHighlightedPassageLyrics,
+                      });
 
-                        return [
-                          ...(splitLyrics
-                            .map(({passageLine}, index) => {
-                              if (passageLine == null) {
-                                return null;
-                              }
+                      return [
+                        ...(splitLyrics
+                          .map(({passageLine}, index) => {
+                            if (passageLine == null) {
+                              return null;
+                            }
 
-                              return {
-                                id: `${sharedTransitionKey}:lyrics:${index}`,
-                                animation: 'fade-in' as SharedElementAnimation,
-                              };
-                            })
-                            .filter(
-                              line => line != null,
-                            ) as SharedElementConfig[]),
-                          {
-                            id: `${sharedTransitionKey}:item_container`,
-                            animation: 'fade-in' as SharedElementAnimation,
-                          },
-                        ];
-                      }}
-                    />
-                  </Stack.Navigator>
-                </SafeAreaProvider>
-              </DeviceIdProvider>
-            </Provider>
-          </NavigationContainer>
-        </FontSizeProvider>
+                            return {
+                              id: `${sharedTransitionKey}:lyrics:${index}`,
+                              animation: 'fade-in' as SharedElementAnimation,
+                            };
+                          })
+                          .filter(
+                            line => line != null,
+                          ) as SharedElementConfig[]),
+                        {
+                          id: `${sharedTransitionKey}:item_container`,
+                          animation: 'fade-in' as SharedElementAnimation,
+                        },
+                      ];
+                    }}
+                  />
+                </Stack.Navigator>
+              </SafeAreaProvider>
+            </DeviceIdProvider>
+          </Provider>
+        </NavigationContainer>
       </ShareablePassageProvider>
     </GestureHandlerRootView>
   );

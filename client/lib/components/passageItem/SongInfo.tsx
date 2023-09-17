@@ -2,29 +2,28 @@
 // album name
 
 import {View, StyleSheet, Text, Image} from 'react-native';
-import React from 'react';
+import React, {memo} from 'react';
 
 import {SongType} from '../../types/song';
 import ThemeType from '../../types/theme';
 import {textStyleCommon} from '../../utility/text';
-import {ScaleInfoType} from '../../utility/max_size';
+import _ from 'lodash';
+import {ScaleType} from '../../utility/max_size';
 
 type Props = {
   song: SongType;
   passageTheme: ThemeType;
-  scaleInfo: ScaleInfoType;
+  scale: ScaleType;
+  scaleFinalized: boolean;
 };
 
 const SongInfo = (props: Props) => {
   console.log(`rendering SongInfo ${props.song.name}`);
 
-  const {song, passageTheme, scaleInfo} = props;
-
-  const {scale, computed: scaleComputed} = scaleInfo;
-
+  const {song, passageTheme, scale, scaleFinalized} = props;
   const {songNameSize, artistNameSize, albumNameSize, albumImageSize} = scale;
 
-  const opacity = {opacity: scaleComputed ? 1 : 0};
+  const opacity = {opacity: scaleFinalized ? 1 : 0};
 
   const textColor = passageTheme.textColors[0];
 
@@ -94,4 +93,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SongInfo;
+export default memo(SongInfo, (prev, next) => {
+  return (
+    _.isEqual(prev.passageTheme, next.passageTheme) &&
+    _.isEqual(prev.scale, next.scale) &&
+    prev.scaleFinalized === next.scaleFinalized
+  );
+});

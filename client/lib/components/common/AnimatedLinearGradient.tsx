@@ -45,18 +45,17 @@ const AnimatedGradientTransition: React.FC<
 
   const sharedPrevColors = useSharedValue(colors);
   const sharedColors = useSharedValue(colors);
-
-  const sharedValue = useSharedValue(0);
+  const sharedAnimationValue = useSharedValue(0);
 
   useEffect(() => {
-    if (!_.isEqual(sharedPrevColors.value, colors)) {
+    if (!_.isEqual(sharedColors.value, colors)) {
       sharedColors.value = colors;
-      sharedValue.value = 0;
-      sharedValue.value = withTiming(
+      sharedAnimationValue.value = 0;
+      sharedAnimationValue.value = withTiming(
         1,
         {
           duration: 250,
-          // easing: Easing.linear,
+          // easing: Easing.bezier(0.25, 0.1, 0.25, 1),
         },
         () => {
           sharedPrevColors.value = sharedColors.value;
@@ -65,10 +64,10 @@ const AnimatedGradientTransition: React.FC<
     }
   }, [colors]);
 
-  const colorProps = useAnimatedProps(() => {
+  const animatedProps = useAnimatedProps(() => {
     const interpolatedColors = sharedPrevColors.value.map((color, index) =>
       interpolateColor(
-        sharedValue.value,
+        sharedAnimationValue.value,
         [0, 1],
         [color, sharedColors.value[index]],
         'RGB',
@@ -81,7 +80,7 @@ const AnimatedGradientTransition: React.FC<
   });
 
   return (
-    <AnimatedLinearGradient {...restProps} animatedProps={colorProps}>
+    <AnimatedLinearGradient {...restProps} animatedProps={animatedProps}>
       {children}
     </AnimatedLinearGradient>
   );

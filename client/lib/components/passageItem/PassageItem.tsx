@@ -8,8 +8,8 @@
 // of PassageItem or any component nested beneath PassageItem, where N is the
 // number of passage groups and M is the number of passages in each
 
-import React, {useEffect, useRef, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import React, {memo, useEffect, useRef} from 'react';
+import {LayoutChangeEvent, StyleSheet, View} from 'react-native';
 import SongInfo from './SongInfo';
 import PassageLyrics from './PassageLyrics';
 import ActionBar from './ActionBar';
@@ -19,12 +19,13 @@ import ItemContainer from '../common/ItemContainer';
 import {PassageType} from '../../types/passage';
 import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
 import {useShareablePassageUpdate} from '../../utility/shareable_passage';
-import {
-  DEFAULT_SCALE,
-  ScaleInfoType,
-  useGetScaleForContainerHeight,
-} from '../../utility/max_size';
 import {StackNavigationProp} from '@react-navigation/stack';
+import {getPassageId} from '../../utility/passage_id';
+import {
+  usePassageItemMeasurement,
+  useSetPassageItemMeasurement,
+} from '../../utility/max_size';
+import _ from 'lodash';
 
 export const PASSAGE_ITEM_PADDING = 36;
 
@@ -45,44 +46,25 @@ export type PassageItemProps = PassageItemPropsWithoutSharedTransitionKey & {
 };
 
 const PassageItem = (props: PassageItemProps) => {
-  console.log(`rendering PassageItem ${props.passage.song.name}`);
-
-  const [lyricsYPosition, setLyricsYPosition] = useState<number | null>(null);
-  const containerRef = useRef<View>(null);
-  const setShareablePassage = useShareablePassageUpdate();
-
-  const getScaleForContainerHeight = useGetScaleForContainerHeight();
-  const [scaleInfo, setScaleInfo] = useState<ScaleInfoType>({
-    scale: DEFAULT_SCALE,
-    computed: false,
-  });
-
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const {
     passage,
     passageItemKey,
     omitActionBar,
     ignoreFlex,
     omitBorder,
-    maxContainerHeight: maxContainerHeightProp,
+    maxContainerHeight,
     sharedTransitionKey,
   } = props;
   const {lyrics, tags, song, theme} = passage;
 
-  useEffect(() => {
-    if (maxContainerHeightProp) {
-      const computedScale = getScaleForContainerHeight({
-        containerHeight: maxContainerHeightProp,
-        numTextLines: lyrics.split('\n').length,
-        actionBarHeight: omitActionBar ? 0 : 48,
-      });
+  const containerRef = useRef<View>(null);
+  const {setBottomSheetTriggered} = useShareablePassageUpdate();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const {lyricsYPosition} = usePassageItemMeasurement();
 
-      setScaleInfo({
-        scale: computedScale,
-        computed: true,
-      });
-    }
-  }, []);
+  console.log(
+    `rendering PassageItem ${props.passage.song.name} ${lyricsYPosition}`,
+  );
 
   return (
     <ItemContainer
@@ -98,27 +80,12 @@ const PassageItem = (props: PassageItemProps) => {
           style={{
             ...styles.passageContainer,
             flex: ignoreFlex ? 0 : 1,
-          }}
-          onLayout={event => {
-            if (!scaleInfo.computed) {
-              const computedScale = getScaleForContainerHeight({
-                containerHeight: event.nativeEvent.layout.height,
-                numTextLines: lyrics.split('\n').length,
-                actionBarHeight: omitActionBar ? 0 : 48,
-              });
-
-              setScaleInfo({
-                scale: computedScale,
-                computed: true,
-              });
-            }
           }}>
           <PassageContainer
             passage={passage}
-            scaleInfo={scaleInfo}
             sharedTransitionKey={sharedTransitionKey}
-            setLyricsYPosition={setLyricsYPosition}
             containerRef={containerRef}
+            maxContainerHeight={maxContainerHeight}
             ignoreFlex={ignoreFlex}
           />
         </View>
@@ -128,18 +95,19 @@ const PassageItem = (props: PassageItemProps) => {
               passage={passage}
               tags={tags}
               passageItemKey={passageItemKey}
-              navigateToFullLyrics={() => {
+              navigateToFullLyrics={(parentYPosition: number) => {
                 navigation.navigate('FullLyrics', {
                   theme,
                   song,
                   sharedTransitionKey: sharedTransitionKey,
                   initiallyHighlightedPassageLyrics: lyrics,
-                  parentYPosition: lyricsYPosition || 0,
+                  parentYPosition,
                   onSelect: 'FULL_PAGE',
                 });
               }}
+              parentYPosition={lyricsYPosition ?? 0}
               onSharePress={() => {
-                setShareablePassage(passage);
+                setBottomSheetTriggered(true);
               }}
             />
           </View>
@@ -151,45 +119,77 @@ const PassageItem = (props: PassageItemProps) => {
 
 type PassageContainerProps = {
   passage: PassageType;
-  scaleInfo: ScaleInfoType;
   sharedTransitionKey: string;
-  setLyricsYPosition: (y: number) => void;
   containerRef: React.RefObject<View>;
+  maxContainerHeight?: number;
   ignoreFlex?: boolean;
 };
 
 const PassageContainer = (props: PassageContainerProps) => {
   const {
     passage,
-    scaleInfo,
     sharedTransitionKey,
-    setLyricsYPosition,
     containerRef,
+    maxContainerHeight: maxContainerHeightProp,
     ignoreFlex,
   } = props;
   const {song, theme} = passage;
-
   const passageLyricsRef = useRef<View>(null);
+
+  const {setContentHeight, setMaxContentHeight, setLyricsYPosition} =
+    useSetPassageItemMeasurement();
+
+  const {scale, scaleFinalized} = usePassageItemMeasurement();
+
+  console.log(`using scale ${JSON.stringify(scale)}`);
+
+  // if the max container height is explicitly provided, we don't need to wait until
+  // the page is laid out to set it
+  useEffect(() => {
+    if (maxContainerHeightProp != null) {
+      setMaxContentHeight(
+        maxContainerHeightProp - scale.albumImageSize - scale.songNameSize,
+      );
+    }
+  }, [maxContainerHeightProp, scale.albumImageSize, scale.songNameSize]);
 
   return (
     <React.Fragment>
-      <SongInfo song={song} passageTheme={theme} scaleInfo={scaleInfo} />
+      <SongInfo
+        song={song}
+        passageTheme={theme}
+        scale={scale}
+        scaleFinalized={scaleFinalized}
+      />
       <View
         // eslint-disable-next-line react-native/no-inline-styles
-        style={{...styles.passageLyricsContainer, flex: ignoreFlex ? 0 : 1}}>
+        style={{...styles.passageLyricsContainer, flex: ignoreFlex ? 0 : 1}}
+        onLayout={event => {
+          if (maxContainerHeightProp == null) {
+            setMaxContentHeight(event.nativeEvent.layout.height);
+          }
+        }}>
         <PassageLyrics
           song={song}
           lyrics={passage.lyrics}
           theme={theme}
-          scaleInfo={scaleInfo}
+          scale={scale}
+          scaleFinalized={scaleFinalized}
           sharedTransitionKey={sharedTransitionKey}
-          onLayout={() => {
+          onLayout={(event: LayoutChangeEvent) => {
             passageLyricsRef.current!.measureLayout(
               containerRef.current!,
               (_, y) => {
                 setLyricsYPosition(y + CAROUSEL_MARGIN_TOP);
               },
             );
+
+            console.log(
+              `lyrics height: ${
+                event.nativeEvent.layout.height
+              }, passage: ${getPassageId(passage)}`,
+            );
+            setContentHeight(event.nativeEvent.layout.height);
           }}
           viewRef={passageLyricsRef}
         />
@@ -197,6 +197,10 @@ const PassageContainer = (props: PassageContainerProps) => {
     </React.Fragment>
   );
 };
+
+const PassageItemMemo = memo(PassageItem, (prev, next) => {
+  return _.isEqual(prev.passage.theme, next.passage.theme);
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -219,4 +223,6 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PassageItem;
+export default memo(PassageItemMemo, (prev, next) => {
+  return _.isEqual(prev.passage.theme, next.passage.theme);
+});

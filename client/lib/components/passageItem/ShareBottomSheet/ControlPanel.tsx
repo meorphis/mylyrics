@@ -17,11 +17,9 @@ import Ionicon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {RootStackParamList} from '../../../types/navigation';
-import {
-  ShareablePassage,
-  useShareablePassageUpdate,
-} from '../../../utility/shareable_passage';
+import {useShareablePassageUpdate} from '../../../utility/shareable_passage';
 import {getPassageId} from '../../../utility/passage_id';
+import {PassageType} from '../../../types/passage';
 
 export const CONTROL_PANEL_HEIGHTS = {
   margin_top: 24,
@@ -30,7 +28,7 @@ export const CONTROL_PANEL_HEIGHTS = {
 };
 
 type Props = {
-  shareablePassage: ShareablePassage;
+  passage: PassageType;
   sharedTransitionKey: string;
   viewShotRef: React.RefObject<ViewShot>;
 };
@@ -38,14 +36,14 @@ type Props = {
 const ControlPanel = (props: Props) => {
   console.log('rendering ControlPanel');
 
-  const {shareablePassage, sharedTransitionKey, viewShotRef} = props;
-  const setShareablePassage = useShareablePassageUpdate();
+  const {passage, sharedTransitionKey, viewShotRef} = props;
+  const {setShareablePassage} = useShareablePassageUpdate();
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   // THEME SELECTION: we default to the selected passage's theme and that theme's first text color,
   // but we allow the user to change both
-  const defaultTheme = shareablePassage.passage.theme;
+  const defaultTheme = passage.theme;
 
   const [themeSelection, setThemeSelection] = useState<{
     theme: ThemeType;
@@ -73,7 +71,7 @@ const ControlPanel = (props: Props) => {
   // update the parent's theme when the theme changes
   useLayoutEffect(() => {
     setShareablePassage({
-      ...shareablePassage.passage,
+      ...passage,
       theme: {
         ...selectedTheme,
         textColors: [textColorSelection],
@@ -120,7 +118,7 @@ const ControlPanel = (props: Props) => {
   useEffect(() => {
     setThemeSelection({theme: defaultTheme, inverted: false});
     setEditThemeMode(false);
-  }, [getPassageId(shareablePassage.passage)]);
+  }, [getPassageId(passage)]);
 
   return (
     <View
@@ -155,10 +153,9 @@ const ControlPanel = (props: Props) => {
               onPress={() => {
                 navigation.navigate('FullLyrics', {
                   theme: selectedTheme,
-                  song: shareablePassage!.passage.song,
+                  song: passage.song,
                   sharedTransitionKey,
-                  initiallyHighlightedPassageLyrics:
-                    shareablePassage!.passage.lyrics,
+                  initiallyHighlightedPassageLyrics: passage.lyrics,
                   parentYPosition: 0,
                   onSelect: 'UPDATE_SHAREABLE',
                 });
@@ -344,6 +341,5 @@ const styles = StyleSheet.create({
 export default memo(
   ControlPanel,
   (prevProps, nextProps) =>
-    getPassageId(prevProps.shareablePassage.passage) ===
-    getPassageId(nextProps.shareablePassage.passage),
+    getPassageId(prevProps.passage) === getPassageId(nextProps.passage),
 );

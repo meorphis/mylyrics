@@ -4,12 +4,13 @@
 
 import React, {useLayoutEffect, useRef} from 'react';
 import {Dimensions} from 'react-native';
-import Carousel from '../../forks/react-native-snap-carousel/src';
+import Carousel from '../../forks/react-native-reanimated-carousel/src';
 import {RootState} from '../../utility/redux';
 import {useSelector} from 'react-redux';
 import RecommendationsGroupCarousel from './RecommendationsGroupCarousel';
 import {createSelector} from '@reduxjs/toolkit';
 import LikesCarousel from './LikesCarousel';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type Props = {
   activeGroupKey: string;
@@ -40,43 +41,62 @@ const RecommendationsCarousel = (props: Props) => {
     React.useState<string>(activeGroupKey);
 
   const carouselRef = useRef<Carousel>(null);
+  const insets = useSafeAreaInsets();
 
   const activeIndex = passageGroupKeys.findIndex(
     groupKey => groupKey === activeGroupKey,
   );
 
-  useLayoutEffect(() => {
-    if (localActiveGroupKey !== activeGroupKey) {
-      // user has selected a new group
-      const localIndex = passageGroupKeys.findIndex(
-        groupKey => groupKey === localActiveGroupKey,
-      );
+  // useLayoutEffect(() => {
+  //   if (localActiveGroupKey !== activeGroupKey) {
+  //     // user has selected a new group
+  //     const localIndex = passageGroupKeys.findIndex(
+  //       groupKey => groupKey === localActiveGroupKey,
+  //     );
 
-      // new content has loaded in front of the current index
-      if (localIndex !== carouselRef.current?.currentIndex) {
-        carouselRef.current?.snapToItem(localIndex, false, false, true, () => {
-          carouselRef.current?.snapToItem(activeIndex, true, false, false);
-        });
-      } else {
-        carouselRef.current?.snapToItem(activeIndex, true, false, true);
-      }
-      setLocalActiveGroupKey(activeGroupKey);
-    } else if (carouselRef.current?.currentIndex !== activeIndex) {
-      // new content has loaded in front of the current index
-      carouselRef.current?.snapToItem(activeIndex, false, false, true);
+  //     // new content has loaded in front of the current index
+  //     if (localIndex !== carouselRef.current?.currentIndex) {
+  //       carouselRef.current?.snapToItem(localIndex, false, false, true, () => {
+  //         carouselRef.current?.snapToItem(activeIndex, true, false, false);
+  //       });
+  //     } else {
+  //       carouselRef.current?.snapToItem(activeIndex, true, false, true);
+  //     }
+  //     setLocalActiveGroupKey(activeGroupKey);
+  //   } else if (carouselRef.current?.currentIndex !== activeIndex) {
+  //     // new content has loaded in front of the current index
+  //     carouselRef.current?.snapToItem(activeIndex, false, false, true);
+  //   }
+  // }, [carouselRef.current?.currentIndex, activeIndex]);
+
+  useLayoutEffect(() => {
+    if (carouselRef.current?.getCurrentIndex() !== activeIndex) {
+      carouselRef.current?.scrollTo({
+        index: activeIndex,
+        animated: true,
+      });
     }
-  }, [carouselRef.current?.currentIndex, activeIndex]);
+  }, [activeIndex]);
+
+  console.log(
+    'layout',
+    Dimensions.get('window').height,
+    insets.top,
+    insets.bottom,
+  );
 
   return (
     <Carousel
       // other props
       ref={carouselRef}
       data={passageGroupKeys}
-      itemWidth={Dimensions.get('window').width}
-      sliderWidth={Dimensions.get('window').width}
-      scrollEnabled={false}
-      useScrollView
-      keyExtractor={(item: string) => 'carousel-item-' + item}
+      loop={false}
+      // itemWidth={Dimensions.get('window').width}
+      // sliderWidth={Dimensions.get('window').width}
+      width={Dimensions.get('window').width}
+      height={Dimensions.get('window').height - insets.top - insets.bottom - 62}
+      enabled={false}
+      // keyExtractor={(item: string) => 'carousel-item-' + item}
       renderItem={({item: passageGroupKey}: {item: string}) => {
         if (passageGroupKey === 'likes') {
           return <LikesCarousel />;

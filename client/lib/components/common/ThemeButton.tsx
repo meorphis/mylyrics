@@ -9,24 +9,20 @@ import {
   ViewStyle,
 } from 'react-native';
 import Ionicon from 'react-native-vector-icons/Ionicons';
-
 import React from 'react';
-import {
-  isColorLight,
-  buttonColorsForTheme,
-  addColorOpacity,
-  ButtonColorChoice,
-} from '../../utility/color';
 import {textStyleCommon} from '../../utility/text';
 import ThemeType from '../../types/theme';
+import AnimatedLinearGradient from './AnimatedLinearGradient';
+
+type Background = 'solid' | 'gradient';
 
 type Props = {
   text?: string;
-  theme: ThemeType;
-  colorChoice: ButtonColorChoice;
+  theme?: ThemeType;
+  useSaturatedColor?: boolean;
   isDisabled?: boolean;
   onPress: () => void;
-  Container?: React.ComponentType<any>;
+  background?: Background;
   iconName?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
@@ -35,42 +31,36 @@ type Props = {
 const ThemeButton = (props: Props) => {
   const {
     text,
-    theme,
-    colorChoice,
+    useSaturatedColor = false,
     isDisabled,
     onPress,
-    Container,
+    background = 'solid',
     iconName,
     style,
     textStyle,
   } = props;
 
-  const useSaturatedColor = [
-    ButtonColorChoice.detailSaturated,
-    ButtonColorChoice.primarySaturated,
-    ButtonColorChoice.secondarySaturated,
-  ].includes(colorChoice);
+  // const buttonColor = addColorOpacity(
+  //   baseColor,
+  //   isDisabled ? (isButtonColorLight ? 0.3 : 0.1) : 1,
+  // );
 
-  const baseColor = buttonColorsForTheme(theme, colorChoice);
-  const isButtonColorLight = isColorLight(baseColor);
+  // const textColor = addColorOpacity(
+  //   isButtonColorLight ? '#000000' : '#FFFFFF',
+  //   isDisabled ? 0.5 : 1,
+  // );
+  // const borderColor = useSaturatedColor
+  //   ? addColorOpacity(
+  //       isButtonColorLight ? '#444444' : '#CCCCCC',
+  //       isDisabled ? 0.2 : 1,
+  //     )
+  //   : undefined;
 
-  const buttonColor = addColorOpacity(
-    baseColor,
-    isDisabled ? (isButtonColorLight ? 0.3 : 0.1) : 1,
-  );
+  const ContainerComponent =
+    background === 'solid' ? SolidBackground : GradientBackground;
 
-  const textColor = addColorOpacity(
-    isButtonColorLight ? '#000000' : '#FFFFFF',
-    isDisabled ? 0.5 : 1,
-  );
-  const borderColor = useSaturatedColor
-    ? addColorOpacity(
-        isButtonColorLight ? '#444444' : '#CCCCCC',
-        isDisabled ? 0.2 : 1,
-      )
-    : undefined;
-
-  const ContainerComponent = Container || Fragment;
+  const borderColor = useSaturatedColor ? '#ffffff80' : '#00000040';
+  const textColor = useSaturatedColor ? 'white' : 'black';
 
   return (
     <TouchableOpacity
@@ -78,12 +68,11 @@ const ThemeButton = (props: Props) => {
         ...styles.button,
         ...style,
         ...(useSaturatedColor ? styles.saturated : styles.unsaturated),
-        backgroundColor: buttonColor,
         borderColor,
       }}
       onPress={onPress}
       disabled={isDisabled}>
-      <ContainerComponent color={buttonColor}>
+      <ContainerComponent {...props}>
         {iconName && <Ionicon name={iconName} size={24} color={textColor} />}
         {iconName && text && <View style={styles.textIconPadding} />}
         {text && (
@@ -91,8 +80,8 @@ const ThemeButton = (props: Props) => {
             style={{
               ...textStyleCommon,
               ...styles.text,
-              color: textColor,
               ...textStyle,
+              color: textColor,
             }}>
             {text}
           </Text>
@@ -102,31 +91,78 @@ const ThemeButton = (props: Props) => {
   );
 };
 
-const Fragment = (props: {color: string; children: React.ReactNode}) => {
-  const {children} = props;
+const GradientBackground = (
+  props: Props & {
+    children: React.ReactNode;
+  },
+) => {
+  const {theme, useSaturatedColor, children} = props;
 
-  return <React.Fragment>{children}</React.Fragment>;
+  const colors = useSaturatedColor
+    ? ['black', theme?.backgroundColor ?? 'white']
+    : [theme?.backgroundColor ?? 'black', 'white'];
+
+  return (
+    <AnimatedLinearGradient
+      style={styles.gradientBackground}
+      start={{x: -0.5, y: -0.5}}
+      end={{x: 1, y: 1}}
+      colors={colors}>
+      {children}
+    </AnimatedLinearGradient>
+  );
+};
+
+const SolidBackground = (
+  props: Props & {
+    children: React.ReactNode;
+  },
+) => {
+  const {useSaturatedColor, children} = props;
+
+  return (
+    <View
+      // eslint-disable-next-line react-native/no-inline-styles
+      style={{
+        ...styles.solidBackground,
+        backgroundColor: useSaturatedColor ? 'black' : 'white',
+      }}>
+      {children}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
   button: {
-    padding: 6,
-    marginHorizontal: 6,
-    borderRadius: 10,
+    borderRadius: 18,
   },
   unsaturated: {
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.6)', // Semi-transparent black border
+    borderWidth: 3,
   },
   saturated: {
-    borderWidth: 2,
+    borderWidth: 3,
   },
   text: {
     alignSelf: 'center',
     textAlign: 'center',
+    color: 'black',
+    fontSize: 16,
   },
   textIconPadding: {
     width: 8,
+  },
+  gradientBackground: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    borderRadius: 15,
+  },
+  solidBackground: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 15,
   },
 });
 

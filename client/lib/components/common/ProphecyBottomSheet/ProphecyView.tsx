@@ -1,8 +1,4 @@
 import React from 'react';
-import {useTheme} from '../../../utility/theme';
-import {ensureColorContrast, isColorLight} from '../../../utility/color';
-import tinycolor from 'tinycolor2';
-import {getLyricsColor} from '../../../utility/lyrics';
 import ComputedProphecyView from './ComputedProphecyView';
 import ProphecyCardsView from './ProphecyCardsView';
 import {useProphecyRequest} from '../../../utility/prophecy';
@@ -20,9 +16,7 @@ const ProphecyView = (props: Props) => {
 
   const {status: prophecyRequestStatus, makeProphecyRequest} =
     useProphecyRequest();
-  const theme = useTheme();
-  const backgroundColor = theme.backgroundColor;
-  const textColor = getLyricsColor({theme});
+  const textColor = 'black';
   const trigger = `${prophecy != null}-${prophecyRequestStatus === 'loading'}`;
 
   const renderContent = () => {
@@ -30,7 +24,7 @@ const ProphecyView = (props: Props) => {
       return (
         <ComputedProphecyView
           prophecy={prophecy}
-          backgroundColor={getContrastingBackgroundColor(backgroundColor)}
+          backgroundColor="#00000040"
           textColor={textColor}
         />
       );
@@ -45,26 +39,13 @@ const ProphecyView = (props: Props) => {
     return (
       <ProphecyCardsView
         cards={cards}
-        theme={theme}
-        backgroundColor={getContrastingBackgroundColor(backgroundColor)}
+        backgroundColor="#00000040"
         onSubmit={() => makeProphecyRequest(cards)}
       />
     );
   };
 
   return <CrossFadeView trigger={trigger} renderContent={renderContent} />;
-};
-
-const getContrastingBackgroundColor = (backgroundColor: string) => {
-  const {lightenable, darkenable} = ensureColorContrast({
-    lightenable: backgroundColor,
-    darkenable: backgroundColor,
-    preference: isColorLight(backgroundColor) ? 'darken' : 'lighten',
-    minDistance: 6,
-  });
-
-  const color = isColorLight(backgroundColor) ? darkenable : lightenable;
-  return tinycolor(color).setAlpha(0.5).toRgbString();
 };
 
 export default ProphecyView;

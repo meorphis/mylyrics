@@ -3,23 +3,19 @@ import {StyleSheet, Text} from 'react-native';
 import {PassageType} from '../../../types/passage';
 import ProphecyCard from './ProphecyCard';
 import {textStyleCommon} from '../../../utility/text';
-import ThemeType from '../../../types/theme';
-import {getLyricsColor} from '../../../utility/lyrics';
 import ThemeButton from '../ThemeButton';
-import {ButtonColorChoice} from '../../../utility/color';
 import {ScrollView} from 'react-native-gesture-handler';
 
 type Props = {
   cards: PassageType[];
-  theme: ThemeType;
   backgroundColor: string;
   onSubmit: () => void;
 };
 
 const ProphecyCardsView = (props: Props) => {
-  const {cards, theme, backgroundColor, onSubmit} = props;
+  const {cards, backgroundColor, onSubmit} = props;
 
-  const textColor = getLyricsColor({theme});
+  const textColor = 'black';
 
   return (
     <ScrollView style={styles.container}>
@@ -50,15 +46,14 @@ const ProphecyCardsView = (props: Props) => {
         );
       })}
       <ThemeButton
-        theme={theme}
         style={styles.submitButton}
         text="read prophecy"
-        colorChoice={ButtonColorChoice.detailSaturated}
         textStyle={styles.submitButtonText}
         onPress={() => {
           onSubmit();
         }}
         isDisabled={cards.length < 3}
+        useSaturatedColor
       />
     </ScrollView>
   );
@@ -81,9 +76,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   submitButton: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
+    alignSelf: 'center',
     marginBottom: 24,
   },
   submitButtonText: {

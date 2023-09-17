@@ -1,4 +1,6 @@
-import {useFontSize} from './font_size';
+import React, {createContext, useContext, useEffect, useState} from 'react';
+import {useDispatch} from 'react-redux';
+import {addContentReadyPassageId} from './redux/content_ready';
 
 export type ScaleType = {
   index: number;
@@ -7,11 +9,6 @@ export type ScaleType = {
   artistNameSize: number;
   albumNameSize: number;
   albumImageSize: number;
-};
-
-export type ScaleInfoType = {
-  scale: ScaleType;
-  computed: boolean;
 };
 
 const scales = [
@@ -105,41 +102,157 @@ const scales = [
   },
 ];
 
-export const useGetScaleForContainerHeight = () => {
-  const {heights: fontSizeHeights} = useFontSize();
-  return ({
-    containerHeight,
-    numTextLines,
-    actionBarHeight,
-  }: {
-    containerHeight: number;
-    numTextLines: number;
-    actionBarHeight: number;
-  }) => {
-    for (let i = 0; i < scales.length; i++) {
-      const scale = scales[i];
-      const {lyricsFontSize, albumImageSize} = scale;
-      const lyricsFontHeight = fontSizeHeights[lyricsFontSize];
-      const lyricsHeight = lyricsFontHeight * numTextLines;
+const PassageItemMeasurementContext = createContext<{
+  scale: ScaleType;
+  scaleFinalized: boolean;
+  lyricsYPosition?: number;
+}>({
+  scale: scales[0],
+  scaleFinalized: false,
+});
 
-      const totalHeight = albumImageSize + lyricsHeight + actionBarHeight;
+const SetPassageItemMeasurementContext = createContext<{
+  setContentHeight: (contentHeight: number) => void;
+  setMaxContentHeight: (maxContentHeight: number) => void;
+  setLyricsYPosition: (lyricsYPosition: number) => void;
+}>({
+  setContentHeight: () => {},
+  setMaxContentHeight: () => {},
+  setLyricsYPosition: () => {},
+});
 
-      console.log(
-        'totalHeight',
-        totalHeight,
-        'containerHeight',
-        containerHeight,
-        'heights',
-        JSON.stringify(fontSizeHeights),
-      );
-
-      if (totalHeight <= containerHeight) {
-        return scale;
-      }
-    }
-
-    return scales[scales.length - 1];
-  };
+export const usePassageItemMeasurement = () => {
+  return useContext(PassageItemMeasurementContext);
 };
 
-export const DEFAULT_SCALE = scales[0];
+export const useSetPassageItemMeasurement = () => {
+  return useContext(SetPassageItemMeasurementContext);
+};
+
+type Measurement = {
+  contentHeight?: number;
+  maxContentHeight?: number;
+  lyricsYPosition?: number;
+  scaleIndex: number;
+  scaleFinalized: boolean;
+};
+
+export const PassageItemMeasurementProvider = ({
+  passageId,
+  children,
+}: {
+  passageId: string;
+  children: React.ReactNode;
+}) => {
+  const [measurement, setMeasurement] = useState<Measurement>({
+    scaleIndex: 0,
+    scaleFinalized: false,
+  });
+
+  const dispatch = useDispatch();
+
+  const setContentHeight = (contentHeight: number) => {
+    setMeasurement(prevMeasurement => {
+      const m = {
+        ...prevMeasurement,
+        contentHeight,
+      };
+
+      return applyUpdates(m);
+    });
+  };
+
+  const setMaxContentHeight = (maxContentHeight: number) => {
+    setMeasurement(prevMeasurement => {
+      const m = {
+        ...prevMeasurement,
+        maxContentHeight,
+      };
+
+      return applyUpdates(m);
+    });
+  };
+
+  const setLyricsYPosition = (lyricsYPosition: number) => {
+    setMeasurement(prevMeasurement => {
+      const m = {
+        ...prevMeasurement,
+        lyricsYPosition,
+      };
+
+      return applyUpdates(m);
+    });
+  };
+
+  const applyUpdates = (m: Measurement) => {
+    console.log(
+      'APPLY UPDATES',
+      passageId,
+      `scaleFinalized: ${m.scaleFinalized}`,
+      `maxContentHeight: ${m?.maxContentHeight}`,
+      `contentHeight: ${m?.contentHeight}`,
+      `lyricsYPosition: ${m?.lyricsYPosition}`,
+    );
+
+    if (
+      m?.contentHeight != null &&
+      m?.maxContentHeight != null &&
+      m.contentHeight > m.maxContentHeight
+    ) {
+      if (m.scaleIndex < scales.length - 1) {
+        // the layout metrics are invalid for the new scale size, so
+        // do not retain them
+        return {
+          scaleIndex: m.scaleIndex + 1,
+          scaleFinalized: m.scaleFinalized,
+        };
+      } else {
+        // unlikely, but at this point we just have to render the content
+        // with the smallest possible scale no matter how large it is
+        return {
+          ...m,
+          scaleFinalized: true,
+        };
+      }
+    } else if (
+      m?.maxContentHeight != null &&
+      m?.contentHeight != null &&
+      !m.scaleFinalized
+    ) {
+      return {...m, scaleFinalized: true};
+    } else {
+      return m;
+    }
+  };
+
+  useEffect(() => {
+    if (measurement.scaleFinalized && measurement?.lyricsYPosition != null) {
+      console.log(
+        'CONTENT READY',
+        passageId,
+        `maxContentHeight: ${measurement?.maxContentHeight}`,
+        `contentHeight: ${measurement?.contentHeight}`,
+        `lyricsYPosition: ${measurement?.lyricsYPosition}`,
+      );
+      dispatch(addContentReadyPassageId(passageId));
+    }
+  }, [measurement]);
+
+  return (
+    <PassageItemMeasurementContext.Provider
+      value={{
+        scale: scales[measurement.scaleIndex],
+        scaleFinalized: measurement.scaleFinalized,
+        lyricsYPosition: measurement.lyricsYPosition,
+      }}>
+      <SetPassageItemMeasurementContext.Provider
+        value={{
+          setContentHeight,
+          setMaxContentHeight,
+          setLyricsYPosition,
+        }}>
+        {children}
+      </SetPassageItemMeasurementContext.Provider>
+    </PassageItemMeasurementContext.Provider>
+  );
+};

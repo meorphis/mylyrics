@@ -5,14 +5,11 @@ import BottomSheet, {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import {StyleSheet, Text, View} from 'react-native';
-import {useTheme} from '../../utility/theme';
-import {addColorOpacity} from '../../utility/color';
 import Tag from '../passageItem/Tag';
 import SentimentEnumType from '../../types/sentiments';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import _ from 'lodash';
-import {getLyricsColor} from '../../utility/lyrics';
 import {textStyleCommon} from '../../utility/text';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {RootStackParamList} from '../../types/navigation';
@@ -38,10 +35,9 @@ const GroupSelectorBottomSheet = (props: Props) => {
     }),
     {} as {[group: string]: string[]},
   );
-  const theme = useTheme();
 
-  const textColor = getLyricsColor({theme});
-  const groupBackgroundColor = theme.backgroundColor;
+  const textColor = 'black';
+  const groupBackgroundColor = '#00000040';
   const selectedGroup = activeGroupKey
     ? groupsToShow
         .map(({group}) => group)
@@ -73,9 +69,7 @@ const GroupSelectorBottomSheet = (props: Props) => {
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{
-        backgroundColor: addColorOpacity(theme.farBackgroundColor, 0.95),
-      }}>
+      backgroundStyle={styles.bottomSheet}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
         <Text
           style={{...textStyleCommon, ...styles.titleText, color: textColor}}>
@@ -119,7 +113,6 @@ const GroupSelectorBottomSheet = (props: Props) => {
                       type: 'sentiment',
                       sentiment: sentiment,
                     }}
-                    theme={theme}
                     isActiveGroup={activeGroupKey === sentiment}
                     passageKey={
                       activeGroupKey === sentiment ? passageKey : null
@@ -158,7 +151,10 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'column',
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
+  },
+  bottomSheet: {
+    backgroundColor: 'lightgrey',
   },
   titleText: {
     fontSize: 24,
@@ -168,15 +164,15 @@ const styles = StyleSheet.create({
   },
   group: {
     flexDirection: 'column',
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 24,
+    marginBottom: 16,
     borderWidth: 0.2,
   },
   groupLabel: {
     flexDirection: 'row',
-    paddingLeft: 12,
-    paddingBottom: 4,
+    paddingLeft: 10,
     alignItems: 'center',
   },
   groupLabelText: {
@@ -193,7 +189,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   tagContainer: {
-    paddingVertical: 4,
+    marginHorizontal: 4,
+    paddingTop: 8,
   },
 });
 

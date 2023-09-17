@@ -1,16 +1,15 @@
-import {StyleSheet, View, ViewStyle} from 'react-native';
+import {StyleSheet, ViewStyle} from 'react-native';
 import {useTheme} from '../../utility/theme';
 import ThemeButton from './ThemeButton';
 import React from 'react';
-import {ButtonColorChoice, addColorOpacity} from '../../utility/color';
 import BottomSheet from '@gorhom/bottom-sheet';
-import AnimatedLinearGradient from './AnimatedLinearGradient';
 import GroupSelectorBottomSheet from './GroupSelectorBottomSheet';
 import ProphecyBottomSheet from './ProphecyBottomSheet/ProphecyBottomSheet';
 import WalkthroughStepComponent from './WalkthroughStep';
 import {useWalkthroughStep} from '../../utility/walkthrough';
 import {useDispatch} from 'react-redux';
 import {setActivePassage} from '../../utility/redux/active_passage';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 type Props = {
   activeGroupKey: string | null;
@@ -31,7 +30,7 @@ const BottomBar = (props: Props) => {
 
   return (
     <React.Fragment>
-      <View style={{...styles.menuRow, ...style}}>
+      <SafeAreaView style={{...styles.menuRow, ...style}}>
         <WalkthroughStepComponent
           walkthroughStepStatus={walkthroughStepStatus}
           setWalkthroughStepAsCompleted={setWalkthroughStepAsCompleted}
@@ -41,16 +40,14 @@ const BottomBar = (props: Props) => {
               activeGroupKey && activeGroupKey !== 'likes' ? activeGroupKey : ''
             }
             theme={theme}
-            colorChoice={
-              activeGroupKey && activeGroupKey !== 'likes'
-                ? ButtonColorChoice.detailSaturated
-                : ButtonColorChoice.detailUnsaturated
+            useSaturatedColor={
+              activeGroupKey != null && activeGroupKey !== 'likes'
             }
             onPress={() => {
               setWalkthroughStepAsCompleted();
               groupSelectorBottomSheetRef?.current?.expand();
             }}
-            Container={AnimatedButtonLinearGradient}
+            background="gradient"
             iconName="grid-outline"
             textStyle={styles.gridButtonText}
             style={styles.button}
@@ -58,31 +55,26 @@ const BottomBar = (props: Props) => {
         </WalkthroughStepComponent>
         <ThemeButton
           theme={theme}
-          colorChoice={
-            activeGroupKey === 'likes'
-              ? ButtonColorChoice.detailSaturated
-              : ButtonColorChoice.detailUnsaturated
-          }
+          useSaturatedColor={activeGroupKey === 'likes'}
           onPress={() => {
             dispatch(setActivePassage({passageKey: null, groupKey: 'likes'}));
           }}
-          Container={AnimatedButtonLinearGradient}
+          background="gradient"
           iconName="heart-outline"
           textStyle={styles.gridButtonText}
           style={styles.button}
         />
         <ThemeButton
           theme={theme}
-          colorChoice={ButtonColorChoice.detailUnsaturated}
           onPress={() => {
             prophecyBottomSheetRef.current?.expand();
           }}
-          Container={AnimatedButtonLinearGradient}
+          background="gradient"
           iconName="eye-outline"
           textStyle={styles.gridButtonText}
           style={styles.button}
         />
-      </View>
+      </SafeAreaView>
       <GroupSelectorBottomSheet
         activeGroupKey={activeGroupKey}
         bottomSheetRef={groupSelectorBottomSheetRef}
@@ -92,28 +84,14 @@ const BottomBar = (props: Props) => {
   );
 };
 
-const AnimatedButtonLinearGradient = (props: {
-  color: string;
-  children: React.ReactNode;
-}) => {
-  const {color, children} = props;
-
-  return (
-    <AnimatedLinearGradient
-      style={styles.linearGradient}
-      start={{x: 0, y: 0}}
-      end={{x: 0, y: 1.0}}
-      colors={[addColorOpacity(color, 0.9), addColorOpacity(color, 0.1)]}>
-      {children}
-    </AnimatedLinearGradient>
-  );
-};
-
 const styles = StyleSheet.create({
   menuRow: {
+    position: 'absolute',
+    bottom: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    marginHorizontal: 36,
+    left: 0,
+    right: 0,
     alignContent: 'center',
     padding: 0,
     marginBottom: 8,
@@ -124,18 +102,14 @@ const styles = StyleSheet.create({
   },
   button: {
     padding: 0,
-    borderRadius: 8,
+    borderRadius: 18,
+    minWidth: 62,
+    marginHorizontal: 8,
   },
   tooltipText: {
     flex: 1,
     flexGrow: 1,
     fontSize: 14,
-  },
-  linearGradient: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    borderRadius: 6,
   },
 });
 

@@ -5,7 +5,7 @@ import {
   Dimensions,
   LayoutChangeEvent,
 } from 'react-native';
-import React, {useEffect, useLayoutEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   FullLyricsScreenProps,
   RootStackParamList,
@@ -32,7 +32,7 @@ import {useShareablePassageUpdate} from '../../utility/shareable_passage';
 
 export type SelectionOption = 'FULL_PAGE' | 'UPDATE_SHAREABLE';
 
-const CONTAINER_PADDING = 16;
+const CONTAINER_PADDING = 12;
 
 // shows the full lyrics for a song. a lot of the logic here is to ensure that
 // the animation from the passage item to the full lyrics is smooth
@@ -50,7 +50,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const songLyrics = cleanLyrics(song.lyrics);
-  const setShareablePassage = useShareablePassageUpdate();
+  const {setShareablePassage} = useShareablePassageUpdate();
 
   // *** y-axis positions ***
   // scroll view position
@@ -100,7 +100,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   // the highlighted lyrics will be at the top of their parent component
   // on first render, but once the appearing lyrics are rendered, they'll
   // get pushed down - at this point, we need to scroll accordingly
-  useLayoutEffect(() => {
+  useEffect(() => {
     setTimeout(() => {
       if (
         topOfInitiallyHighlightedLyricsPosition != null &&
@@ -151,7 +151,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
           setShowSpacer(false);
         }
       }
-    }, 200);
+    }, 100);
   }, [
     topOfInitiallyHighlightedLyricsPosition != null &&
       innerScrollViewLayoutAfterAppearingTextIsRendered != null &&
@@ -272,10 +272,15 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
             onLayout={event => {
               setScrollViewHeight(event.nativeEvent.layout.y);
             }}>
-            <BackButton theme={theme} onPress={() => navigation.goBack()} />
+            <BackButton
+              theme={theme}
+              style={styles.button}
+              onPress={() => navigation.goBack()}
+            />
             <SelectionButton
               highlightedIndexes={highlightedIndexes}
               theme={theme}
+              style={{...styles.button, ...styles.selectionButton}}
               onPress={() => {
                 const passage = {
                   theme: theme,
@@ -354,7 +359,6 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
     theme,
     sharedTransitionKey,
   } = props;
-
   const ref = React.useRef<Animated.ScrollView>(null);
 
   useEffect(() => {
@@ -364,7 +368,7 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
           y: scrollTo,
           animated: true,
         });
-      }, 500);
+      }, 100);
     }
   }, []);
 
@@ -395,7 +399,7 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
         }}>
         {isInitialVersion ? null : (
           <AppearingView
-            duration={750}
+            duration={250}
             // eslint-disable-next-line react-native/no-inline-styles
             style={{
               ...styles.metadataColumn,
@@ -463,6 +467,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flexDirection: 'column',
+    flexGrow: 1,
   },
   innerScrollView: {
     paddingHorizontal: 24,
@@ -489,6 +494,16 @@ const styles = StyleSheet.create({
   buttonContainer: {
     alignSelf: 'center',
     flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: '100%',
+  },
+  button: {
+    marginRight: 8,
+  },
+  selectionButton: {
+    minWidth: 128,
   },
 });
 

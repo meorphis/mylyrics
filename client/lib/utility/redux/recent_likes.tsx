@@ -17,9 +17,16 @@ export const recentLikesSlice = createSlice({
     ) => {
       return [
         ...state,
-        ...action.payload.map(l => {
-          return {...l, isLiked: true};
-        }),
+        ...action.payload
+          .filter(
+            l =>
+              !state.find(
+                sl => getPassageId(sl.passage) === getPassageId(l.passage),
+              ),
+          )
+          .map(l => {
+            return {...l, isLiked: true};
+          }),
       ]
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 20);

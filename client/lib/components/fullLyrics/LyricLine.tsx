@@ -7,12 +7,7 @@ import {
 } from 'react-native';
 import AppearingView from '../common/AppearingView';
 import React from 'react';
-import {
-  ButtonColorChoice,
-  addColorOpacity,
-  buttonColorsForTheme,
-  isColorLight,
-} from '../../utility/color';
+import {addColorOpacity, isColorLight} from '../../utility/color';
 import {getLyricsColor} from '../../utility/lyrics';
 import {textStyleCommon} from '../../utility/text';
 import ThemeType from '../../types/theme';
@@ -45,10 +40,9 @@ const LyricLine = (props: Props) => {
     onLayout,
   } = props;
 
-  const saturatedColor = buttonColorsForTheme(
-    theme,
-    ButtonColorChoice.detailSaturated,
-  );
+  const saturatedColor = isColorLight(theme.farBackgroundColor)
+    ? '#000000'
+    : '#ffffff';
 
   const textStyle = {
     ...textStyleCommon,
@@ -95,7 +89,7 @@ const LyricLine = (props: Props) => {
   }
 
   return shouldShowAppearingText ? (
-    <AppearingView duration={750}>{innerSharedComponent}</AppearingView>
+    <AppearingView duration={250}>{innerSharedComponent}</AppearingView>
   ) : null;
 };
 

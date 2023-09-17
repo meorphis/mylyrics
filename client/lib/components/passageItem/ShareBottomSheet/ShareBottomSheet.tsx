@@ -1,4 +1,4 @@
-import {useCallback, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import ViewShot from 'react-native-view-shot';
 import React from 'react';
 import BottomSheet, {
@@ -8,35 +8,43 @@ import BottomSheet, {
 import {uuidv4} from '@firebase/util';
 import {Dimensions, StyleSheet, View} from 'react-native';
 import {
-  ShareablePassage,
   useShareablePassage,
+  useShareablePassageUpdate,
 } from '../../../utility/shareable_passage';
 import {PASSAGE_ITEM_PADDING} from '../PassageItem';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {isColorLight} from '../../../utility/color';
 import ShareablePassageItem from './ShareablePassageItem';
 import ControlPanel, {CONTROL_PANEL_HEIGHTS} from './ControlPanel';
+import {PassageType} from '../../../types/passage';
 
 const BOTTOM_SHEET_HANDLE_HEIGHT = 24;
 
 const ShareBottomSheet = () => {
   console.log('rendering ShareBottomSheet');
 
-  const shareablePassage = useShareablePassage();
+  const {passage, bottomSheetTriggered} = useShareablePassage();
 
-  if (shareablePassage === null) {
+  if (passage === null) {
     return null;
   }
 
-  return <ShareBottomSheetInner shareablePassage={shareablePassage} />;
+  return (
+    <ShareBottomSheetInner
+      passage={passage}
+      bottomSheetTriggered={bottomSheetTriggered}
+    />
+  );
 };
 
 const ShareBottomSheetInner = ({
-  shareablePassage,
+  passage,
+  bottomSheetTriggered,
 }: {
-  shareablePassage: ShareablePassage;
+  passage: PassageType;
+  bottomSheetTriggered: boolean;
 }) => {
-  const {theme} = shareablePassage.passage;
+  const {theme} = passage;
 
   // POSITIONING: we need to compute (1) the maximum space we can allow the lyric card's passage
   // container component to take up (we provide this value as a paramter to the PassageItem which
@@ -65,28 +73,40 @@ const ShareBottomSheetInner = ({
     maxLyricCardHeight - 2 * PASSAGE_ITEM_PADDING;
 
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const [snapPoint, setSnapPoint] = useState<number>(1);
+  const [snapPoint, setSnapPoint] = useState<number>(1000);
 
   const setLyricCardHeight = useCallback(
     ({lyricCardHeight, expand}: {lyricCardHeight: number; expand: boolean}) => {
       const newSnapPoint = lyricCardHeight + nonLyricCardHeight + insets.bottom;
       if (newSnapPoint !== snapPoint) {
+        console.log(`setting snap point to ${newSnapPoint}`);
+
         setSnapPoint(newSnapPoint);
         // slight delay because the animation is smoother if the snap points
         // are already updated by the time we expand the bottom sheet
         if (expand) {
-          setTimeout(() => {
-            bottomSheetRef.current?.expand();
-          }, 50);
+          // setTimeout(() => {
+          //   bottomSheetRef.current?.expand();
+          // }, 250);
         }
       } else {
         if (expand) {
-          bottomSheetRef.current?.expand();
+          // bottomSheetRef.current?.expand();
         }
       }
     },
     [],
   );
+
+  const {setBottomSheetTriggered} = useShareablePassageUpdate();
+
+  useEffect(() => {
+    if (bottomSheetTriggered) {
+      bottomSheetRef.current?.expand();
+    }
+
+    setBottomSheetTriggered(false);
+  }, [bottomSheetTriggered]);
 
   // OTHER CONFIGURATION
   const sharedTransitionKey = useRef<string>(uuidv4()).current;
@@ -122,18 +142,16 @@ const ShareBottomSheetInner = ({
       containerStyle={{...styles.container}}
       handleHeight={BOTTOM_SHEET_HANDLE_HEIGHT}>
       <View style={styles.passageEditor}>
-        {shareablePassage && (
-          <ShareablePassageItem
-            shareablePassage={shareablePassage}
-            maxContainerHeight={maxPassageContainerHeight}
-            setHeight={setLyricCardHeight}
-            viewShotRef={viewShotRef}
-            sharedTransitionKey={sharedTransitionKey}
-          />
-        )}
+        <ShareablePassageItem
+          passage={passage}
+          maxContainerHeight={maxPassageContainerHeight}
+          setHeight={setLyricCardHeight}
+          viewShotRef={viewShotRef}
+          sharedTransitionKey={sharedTransitionKey}
+        />
       </View>
       <ControlPanel
-        shareablePassage={shareablePassage}
+        passage={passage}
         sharedTransitionKey={sharedTransitionKey}
         viewShotRef={viewShotRef}
       />

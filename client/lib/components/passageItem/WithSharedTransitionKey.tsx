@@ -1,11 +1,11 @@
 import React, {useRef} from 'react';
 import {uuidv4} from '@firebase/util';
-import PassageItem, {
+import {
   PassageItemProps,
   PassageItemPropsWithoutSharedTransitionKey,
 } from './PassageItem';
 
-const WithSharedTransitionKey = (
+export const WithSharedTransitionKey = (
   WrappedComponent: React.ComponentType<PassageItemProps>,
 ) => {
   const SharedTransitionPassageItem = (
@@ -20,5 +20,3 @@ const WithSharedTransitionKey = (
 
   return SharedTransitionPassageItem;
 };
-
-export default WithSharedTransitionKey(PassageItem);

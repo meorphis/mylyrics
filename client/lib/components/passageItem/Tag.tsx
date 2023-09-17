@@ -4,13 +4,10 @@ import TagType from '../../types/tag';
 import React from 'react';
 import {useSetAsActiveGroup} from '../../utility/active_group';
 import ThemeButton from '../common/ThemeButton';
-import ThemeType from '../../types/theme';
-import {ButtonColorChoice} from '../../utility/color';
 import {StyleSheet} from 'react-native';
 
 type Props = {
   tag: TagType;
-  theme: ThemeType;
   isActiveGroup: boolean;
   passageKey: string | null;
   includeEmoji?: boolean;
@@ -20,7 +17,7 @@ type Props = {
 const Tag = (props: Props) => {
   console.log(`rendering Tag ${props.passageKey} ${props.tag.sentiment}`);
 
-  const {tag, theme, isActiveGroup, passageKey, onPress} = props;
+  const {tag, isActiveGroup, passageKey, onPress} = props;
 
   const setAsActiveGroup = useSetAsActiveGroup({
     passageKey,
@@ -30,14 +27,8 @@ const Tag = (props: Props) => {
   return (
     <ThemeButton
       text={tag.sentiment}
-      theme={theme}
-      style={styles.button}
       textStyle={styles.buttonText}
-      colorChoice={
-        isActiveGroup
-          ? ButtonColorChoice.detailSaturated
-          : ButtonColorChoice.detailUnsaturated
-      }
+      useSaturatedColor={isActiveGroup}
       onPress={() => {
         if (onPress) {
           onPress();
@@ -49,9 +40,6 @@ const Tag = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
-  button: {
-    padding: 16,
-  },
   buttonText: {
     fontSize: 14,
     fontWeight: 'bold',

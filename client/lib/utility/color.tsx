@@ -1,15 +1,5 @@
 import tinycolor, {ColorFormats} from 'tinycolor2';
 import {rgba_to_lab, diff} from 'color-diff';
-import ThemeType from '../types/theme';
-
-export enum ButtonColorChoice {
-  detailSaturated,
-  detailUnsaturated,
-  primarySaturated,
-  primaryUnsaturated,
-  secondarySaturated,
-  secondaryUnsaturated,
-}
 
 export const addColorOpacity = (hexColor: string, opacity: number) => {
   if (!hexColor.includes('#')) {
@@ -81,65 +71,6 @@ const hslToLab = (hsl: {h: number; s: number; l: number}) => {
     B: rgb.b,
     A: rgb.a,
   });
-};
-
-export const buttonColorsForTheme = (
-  theme: ThemeType,
-  colorChoice: ButtonColorChoice,
-) => {
-  let themeColor;
-
-  switch (colorChoice) {
-    case ButtonColorChoice.detailSaturated:
-    case ButtonColorChoice.detailUnsaturated:
-      themeColor = theme.textColors[0];
-      break;
-    case ButtonColorChoice.primarySaturated:
-    case ButtonColorChoice.primaryUnsaturated:
-      themeColor = theme.textColors[0];
-      break;
-    case ButtonColorChoice.secondarySaturated:
-    case ButtonColorChoice.secondaryUnsaturated:
-      themeColor = theme.textColors[0];
-      break;
-  }
-
-  // generally we use the detail color for the active tag, and the greyscale version of that for
-  // the inactive tags, but if the detail color is close to grey to begin with, they end up too
-  // similar -- so we add contrast; on a light background, we'll darken the greyscale color (or,
-  // if needed lighten the detail color) whereas on a dark background we'll do the reverse
-  let unsaturatedColor: string, saturatedColor: string;
-
-  if (isColorLight(theme.backgroundColor)) {
-    const contrastedColors = ensureColorContrast({
-      lightenable: colorToGreyscale(themeColor),
-      darkenable: themeColor,
-      preference: 'lighten',
-    });
-
-    unsaturatedColor = contrastedColors.lightenable;
-    saturatedColor = contrastedColors.darkenable;
-  } else {
-    const contrastedColors = ensureColorContrast({
-      lightenable: themeColor,
-      darkenable: colorToGreyscale(themeColor),
-      preference: 'darken',
-    });
-
-    unsaturatedColor = contrastedColors.darkenable;
-    saturatedColor = contrastedColors.lightenable;
-  }
-
-  switch (colorChoice) {
-    case ButtonColorChoice.detailSaturated:
-    case ButtonColorChoice.primarySaturated:
-    case ButtonColorChoice.secondarySaturated:
-      return saturatedColor;
-    case ButtonColorChoice.detailUnsaturated:
-    case ButtonColorChoice.primaryUnsaturated:
-    case ButtonColorChoice.secondaryUnsaturated:
-      return unsaturatedColor;
-  }
 };
 
 // if two colors are too similar, lighten one and darken the other until they are sufficiently different

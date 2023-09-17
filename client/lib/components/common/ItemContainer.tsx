@@ -18,7 +18,7 @@ type Props = {
 const ItemContainer = (props: Props) => {
   const {theme, containerRef, ignoreFlex} = props;
   const {backgroundColor} = theme || {backgroundColor: 'lightgrey'};
-  const borderWidth = props.omitBorder ? 0 : 4;
+  const borderWidth = props.omitBorder ? 0 : 6;
   const borderColor = isColorLight(backgroundColor) ? '#00000040' : '#ffffff40';
 
   return (
@@ -35,7 +35,7 @@ const ItemContainer = (props: Props) => {
         // eslint-disable-next-line react-native/no-inline-styles
         style={{
           flex: ignoreFlex ? 0 : 1,
-          borderRadius: 24 - borderWidth,
+          borderRadius: 36 - borderWidth,
         }}
         colors={[backgroundColor, backgroundColor]}
         start={{x: 0, y: 0.0}}
@@ -48,7 +48,7 @@ const ItemContainer = (props: Props) => {
 
 const styles = StyleSheet.create({
   itemContainer: {
-    borderRadius: 24,
+    borderRadius: 36,
     borderColor: 'rgba(0, 0, 0, 0.5)',
   },
 });
