@@ -2,7 +2,6 @@ import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import Tag from './Tag';
 import TagType from '../../types/tag';
-import ThemeType from '../../types/theme';
 import {RootState} from '../../utility/redux';
 import {useDispatch, useSelector} from 'react-redux';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
@@ -16,7 +15,6 @@ import {addCard, removeCard} from '../../utility/redux/prophecy';
 type Props = {
   passage: PassageType;
   tags: TagType[];
-  theme: ThemeType;
   passageItemKey?: {
     passageKey: string;
     groupKey: string;
@@ -26,16 +24,10 @@ type Props = {
 };
 
 const ActionBar = (props: Props) => {
-  console.log(`rendering ActionBar ${props.passageItemKey?.groupKey}`);
+  console.log(`rendering ActionBar ${props.passage.song.name}`);
 
-  const {
-    passage,
-    tags,
-    theme,
-    passageItemKey,
-    navigateToFullLyrics,
-    onSharePress,
-  } = props;
+  const {passage, tags, passageItemKey, navigateToFullLyrics, onSharePress} =
+    props;
 
   const isActivePassage = useSelector(
     (state: RootState) =>
@@ -79,7 +71,7 @@ const ActionBar = (props: Props) => {
               <View key={index}>
                 <Tag
                   tag={tag}
-                  theme={theme}
+                  theme={passage.theme}
                   isActiveGroup={isActiveGroup}
                   passageKey={passageItemKey.passageKey}
                 />
@@ -100,7 +92,7 @@ const ActionBar = (props: Props) => {
           icon="heart-outline"
           IconClass={Ionicon}
           text="like"
-          theme={theme}
+          theme={passage.theme}
           walkthroughStep={
             isActivePassage
               ? {
@@ -131,7 +123,7 @@ const ActionBar = (props: Props) => {
           icon="add-circle-outline"
           IconClass={Ionicon}
           text="draw"
-          theme={theme}
+          theme={passage.theme}
           isDisabled={(!isDrawn && !canDraw) || (isDrawn && !canUndraw)}
           walkthroughStep={
             isActivePassage
@@ -154,7 +146,7 @@ const ActionBar = (props: Props) => {
           icon="share-outline"
           IconClass={Ionicon}
           text="share"
-          theme={theme}
+          theme={passage.theme}
         />
         <ActionBarButton
           onPress={() => {
@@ -163,7 +155,7 @@ const ActionBar = (props: Props) => {
           icon="expand"
           IconClass={MaterialIcon}
           text="full lyrics"
-          theme={theme}
+          theme={passage.theme}
           walkthroughStep={
             isActivePassage
               ? {

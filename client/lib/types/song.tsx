@@ -1,10 +1,13 @@
-import {ImageColorsResult} from 'react-native-image-colors';
+import {AlbumCoverColor} from './color';
 
 export type RawSongType = {
   id: string;
   album: {
     name: string;
-    image: string;
+    image: {
+      url: string;
+      colors: AlbumCoverColor[];
+    };
   };
   name: string;
   artists: {
@@ -20,7 +23,7 @@ export type SongType = {
     image: {
       url: string;
       blob: string;
-      colors: ImageColorsResult;
+      colors: AlbumCoverColor[];
     };
   };
   name: string;

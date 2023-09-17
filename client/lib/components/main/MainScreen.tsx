@@ -11,8 +11,10 @@ import {useSpotifyAuthentication} from '../../utility/spotify_auth';
 import AppearingView from '../common/AppearingView';
 import {AppState, StyleSheet} from 'react-native';
 import {useRecentLikesRequest} from '../../utility/db/likes';
+import {useFontSize} from '../../utility/font_size';
 
 const MainScreen = () => {
+  const {allComputed: allFontSizesComputed} = useFontSize();
   const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
   const setUserRequest = useSetUserRequest();
   const {recommendationsRequest, makeRecommendationsRequest} =
@@ -68,6 +70,7 @@ const MainScreen = () => {
   }
 
   if (
+    !allFontSizesComputed ||
     recommendationsRequest.status === 'loading' ||
     recommendationsRequest.status === 'init' ||
     getUserRequest.status === 'loading' ||

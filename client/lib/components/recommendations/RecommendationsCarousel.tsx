@@ -16,7 +16,7 @@ type Props = {
 };
 
 const RecommendationsCarousel = (props: Props) => {
-  console.log('rendering PassageGroupsCarousel');
+  console.log('rendering RecommendationsCarousel');
 
   const {activeGroupKey} = props;
 

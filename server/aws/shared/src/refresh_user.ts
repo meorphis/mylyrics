@@ -199,7 +199,10 @@ const pushBackUserRecentListens = async (
       ),
     };
     const update: Record<string, {songs: Array<string>, artists: Array<string>}> = {
-      today: daysago[0],
+      today: {
+        songs: [],
+        artists: [],
+      },
       yesterday: today,
       "daysago-2": yesterday,
       longerAgo: newLongerAgo,

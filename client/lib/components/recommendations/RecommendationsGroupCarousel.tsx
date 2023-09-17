@@ -13,8 +13,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import ThemedLoadingIndicator from './ThemedLoadingIndicator';
 import {useUpdateSequentialWalkthroughStep} from '../../utility/walkthrough';
 import PassageItemCarousel from '../passageItem/PassageItemCarousel';
-import {RawPassageType} from '../../types/passage';
-import ImageDataPassageItem from './ImageDataPassageItem';
+import {PassageType} from '../../types/passage';
+import ThemedPassageItem from '../passageItem/ThemedPassageItem';
 
 type Props = {
   passageGroupKey: string;
@@ -22,11 +22,13 @@ type Props = {
 
 type PassageCarouselItem = {
   passageKey: string;
-  passage: RawPassageType;
+  passage: PassageType;
 };
 
 const RecommendationsGroupCarousel = (props: Props) => {
-  console.log(`rendering PassageGroupCarousel ${props.passageGroupKey}`);
+  console.log(
+    `rendering RecommendationsGroupCarousel ${props.passageGroupKey}`,
+  );
 
   const {passageGroupKey} = props;
 
@@ -65,7 +67,7 @@ const RecommendationsGroupCarousel = (props: Props) => {
           data={data}
           renderItem={({item}: {item: PassageCarouselItem; index: number}) => {
             return (
-              <ImageDataPassageItem
+              <ThemedPassageItem
                 passage={item.passage}
                 passageIsActive={item.passageKey === activePassageKey}
               />

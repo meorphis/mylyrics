@@ -54,6 +54,14 @@ export const isColorLight = (color: string) => {
   return brightness > 155; // 155 is standard optimal value for differentiation between light and dark
 };
 
+export const isColorVeryLight = (color: string) => {
+  const {r, g, b} = tinycolor(color).toRgb();
+
+  // Calculate brightness (standard formula from luminance)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 200;
+};
+
 export const colorDistance = (color1: string, color2: string) => {
   return colorDistanceHsl(tinycolor(color1).toHsl(), tinycolor(color2).toHsl());
 };
@@ -84,15 +92,15 @@ export const buttonColorsForTheme = (
   switch (colorChoice) {
     case ButtonColorChoice.detailSaturated:
     case ButtonColorChoice.detailUnsaturated:
-      themeColor = theme.detailColor;
+      themeColor = theme.textColors[0];
       break;
     case ButtonColorChoice.primarySaturated:
     case ButtonColorChoice.primaryUnsaturated:
-      themeColor = theme.primaryColor;
+      themeColor = theme.textColors[0];
       break;
     case ButtonColorChoice.secondarySaturated:
     case ButtonColorChoice.secondaryUnsaturated:
-      themeColor = theme.secondaryColor;
+      themeColor = theme.textColors[0];
       break;
   }
 
@@ -144,6 +152,12 @@ export const ensureColorContrast = ({
   maxLightness = 0.9, // lightness when converted to HSL
   minLightness = 0.1, // lightness when converted to HSL
   distanceFn = getContrastRatio,
+  lightenFn = (hslLightenable: ColorFormats.HSLA, maxLightness: number) => {
+    hslLightenable.l += Math.min(0.01, maxLightness - hslLightenable.l);
+  },
+  darkenFn = (hslDarkenable: ColorFormats.HSLA, minLightness: number) => {
+    hslDarkenable.l -= Math.min(0.01, hslDarkenable.l - minLightness);
+  },
 }: {
   lightenable: string;
   darkenable: string;
@@ -152,6 +166,9 @@ export const ensureColorContrast = ({
   maxLightness?: number;
   minLightness?: number;
   distanceFn?: (color1: ColorFormats.HSLA, color2: ColorFormats.HSLA) => number;
+  lightenFn?: (hslLightenable: ColorFormats.HSLA, maxLightness: number) => void;
+  darkenFn?: (hslDarkenable: ColorFormats.HSLA, minLightness: number) => void;
+  lightnessSaturationSwap?: boolean;
 }) => {
   let hslLightenable = tinycolor(lightenable).toHsl();
   let hslDarkenable = tinycolor(darkenable).toHsl();
@@ -162,9 +179,9 @@ export const ensureColorContrast = ({
     const canDarken = hslDarkenable.l > minLightness;
 
     if ((canLighten && preference === 'lighten') || !canDarken) {
-      hslLightenable.l += Math.min(0.01, maxLightness - hslLightenable.l);
+      lightenFn(hslLightenable, maxLightness);
     } else if ((canDarken && preference === 'darken') || !canLighten) {
-      hslDarkenable.l -= Math.min(0.01, hslDarkenable.l - minLightness);
+      darkenFn(hslDarkenable, minLightness);
     } else {
       // shouldn't happen unless the parameters are impossible to satisfy
       throw Error(
@@ -187,13 +204,16 @@ export const ensureColorContrast = ({
 export const ensureColorContrast2 = ({
   changeable,
   unchangeable,
-  shouldDarkenFn,
+  shouldDarkenFn = ({unchangeable}: {unchangeable: string}) =>
+    isColorLight(unchangeable),
   minDistance = 4.5,
   distanceFn,
+  lightenFn,
+  darkenFn,
 }: {
   changeable: string;
   unchangeable: string;
-  shouldDarkenFn: ({
+  shouldDarkenFn?: ({
     changeable,
     unchangeable,
   }: {
@@ -202,6 +222,8 @@ export const ensureColorContrast2 = ({
   }) => boolean;
   minDistance?: number;
   distanceFn?: (color1: ColorFormats.HSLA, color2: ColorFormats.HSLA) => number;
+  lightenFn?: (hslLightenable: ColorFormats.HSLA, maxLightness: number) => void;
+  darkenFn?: (hslDarkenable: ColorFormats.HSLA, minLightness: number) => void;
 }) => {
   const shouldDarken = shouldDarkenFn({changeable, unchangeable});
 
@@ -211,6 +233,8 @@ export const ensureColorContrast2 = ({
     preference: shouldDarken ? 'darken' : 'lighten',
     minDistance,
     distanceFn,
+    lightenFn,
+    darkenFn,
   });
 
   return shouldDarken
@@ -248,7 +272,7 @@ export const colorToGreyscale = (color: string) => {
   return grayColor;
 };
 
-const getContrastRatio = (
+export const getContrastRatio = (
   color1: ColorFormats.HSLA,
   color2: ColorFormats.HSLA,
 ) => {

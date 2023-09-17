@@ -5,6 +5,7 @@ import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import ThemeType from '../../types/theme';
 import LinearGradient from 'react-native-linear-gradient';
+import {isColorLight} from '../../utility/color';
 
 type Props = {
   theme?: ThemeType;
@@ -17,7 +18,8 @@ type Props = {
 const ItemContainer = (props: Props) => {
   const {theme, containerRef, ignoreFlex} = props;
   const {backgroundColor} = theme || {backgroundColor: 'lightgrey'};
-  const borderWidth = props.omitBorder ? 0 : 0.5;
+  const borderWidth = props.omitBorder ? 0 : 4;
+  const borderColor = isColorLight(backgroundColor) ? '#00000040' : '#ffffff40';
 
   return (
     <View
@@ -25,7 +27,8 @@ const ItemContainer = (props: Props) => {
       style={{
         ...styles.itemContainer,
         flex: ignoreFlex ? 0 : 1,
-        borderWidth: borderWidth,
+        borderWidth,
+        borderColor,
       }}
       ref={containerRef}>
       <LinearGradient

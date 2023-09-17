@@ -13,15 +13,12 @@ import {
   RawPassageType,
 } from '../types/passage';
 import {useDeviceId} from './device_id';
-import {
-  unflattenRecommendations,
-  updateImpressions,
-} from './db/recommendations';
+import {updateImpressions} from './db/recommendations';
 import {API_HOST} from './api';
-import {useCacheImageDataForUrls} from './images';
 import {useEffect} from 'react';
 import _ from 'lodash';
 import {useNavigation} from '@react-navigation/native';
+import {getPassageGroups} from './recommendations';
 
 const findFirstPassageKey = (
   gk: string,
@@ -66,7 +63,6 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
   const deviceId = useDeviceId();
 
   const dispatch = useDispatch();
-  const cacheImageDataForUrls = useCacheImageDataForUrls();
 
   const setActiveGroup = async () => {
     const {groupKey, passageKey} = passage;
@@ -90,14 +86,11 @@ export const useSetAsActiveGroup = (passage: PassageItemKeyType) => {
 
         updateImpressions({deviceId, passages: flatRecommendations});
 
-        await cacheImageDataForUrls(
-          flatRecommendations.map(({song}) => song.album.image),
-        );
-
-        const recommendations = unflattenRecommendations(
+        const recommendations = await getPassageGroups(
           flatRecommendations,
           allSentiments,
         );
+
         dispatch(addLoadedPassageGroups(recommendations));
       } catch (e) {
         dispatch(

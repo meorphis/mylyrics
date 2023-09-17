@@ -31,8 +31,6 @@ export const useProphecyRequest = () => {
       return;
     }
 
-    console.log('response', response);
-
     const data = await response.json();
     dispatch(setProphecy(data.prophecy));
     setRequest({status: 'loaded', data: null});

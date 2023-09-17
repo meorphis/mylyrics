@@ -104,9 +104,9 @@ const ActionBarButtonInner = (props: Props) => {
       <IconClass
         name={isActive ? activeState?.activeIcon : icon}
         size={40}
-        color={theme.detailColor}
+        color={theme.textColors[0]}
       />
-      <Text style={{...styles.actionText, color: theme.detailColor}}>
+      <Text style={{...styles.actionText, color: theme.textColors[0]}}>
         {isActive ? activeState?.activeText : text}
       </Text>
     </AnimatedPressable>

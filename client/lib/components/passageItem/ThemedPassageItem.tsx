@@ -6,13 +6,8 @@ import {useThemeUpdate} from '../../utility/theme';
 import React from 'react';
 import {PassageType} from '../../types/passage';
 import {getPassageId} from '../../utility/passage_id';
-import {PassageItemProps} from './PassageItem';
-import ScaleProviderPassageItem from './ScaleProviderPassageItem';
-import {
-  colorDistanceHsl,
-  ensureColorContrast2,
-  isColorLight,
-} from '../../utility/color';
+import SharedTransitionPassageItem from './SharedTransitionPassageItem';
+import {PassageItemPropsWithoutSharedTransitionKey} from './PassageItem';
 
 export type WithPassageThemeProps = {
   passage: PassageType;
@@ -24,60 +19,30 @@ export type WithPassageThemeProps = {
 };
 
 const WithPassageTheme = (
-  WrappedComponent: React.ComponentType<PassageItemProps>,
+  WrappedComponent: React.ComponentType<PassageItemPropsWithoutSharedTransitionKey>,
 ) => {
   const ThemedPassageItem = (props: WithPassageThemeProps) => {
     console.log(`rendering ThemedPassageItem ${getPassageId(props.passage)}`);
 
     const {passage, passageIsActive} = props;
-    const {image: imageData} = passage.song.album;
 
     const updateGlobalTheme = useThemeUpdate();
 
-    const backgroundColor =
-      imageData.colors.platform === 'ios'
-        ? imageData.colors.background
-        : imageData.colors.muted;
-
-    // albumColors behaves different on iOS and Android, so we need to normalize
-    const theme = {
-      primaryColor:
-        imageData.colors.platform === 'ios'
-          ? imageData.colors.primary
-          : imageData.colors.vibrant,
-      secondaryColor:
-        imageData.colors.platform === 'ios'
-          ? imageData.colors.secondary
-          : imageData.colors.darkVibrant,
-      backgroundColor,
-      detailColor:
-        imageData.colors.platform === 'ios'
-          ? imageData.colors.detail
-          : imageData.colors.darkMuted,
-      backgroundContrastColor: ensureColorContrast2({
-        changeable: backgroundColor,
-        unchangeable: backgroundColor,
-        shouldDarkenFn: ({changeable}) => isColorLight(changeable),
-        minDistance: 20,
-        distanceFn: colorDistanceHsl,
-      }),
-    };
-
     // update the global theme is the passage has become active
     useEffect(() => {
-      if (passageIsActive && theme) {
-        updateGlobalTheme(theme);
+      if (passageIsActive) {
+        updateGlobalTheme(passage.theme);
       }
     }, [passageIsActive]);
 
-    return <WrappedComponent {...props} passageTheme={theme!} />;
+    return <WrappedComponent {...props} />;
   };
 
   return ThemedPassageItem;
 };
 
 const ThemedPassageItem = memo(
-  WithPassageTheme(ScaleProviderPassageItem),
+  WithPassageTheme(SharedTransitionPassageItem),
   (prevProps, nextProps) => {
     // only re-render if passage goes in or out of active state and global theme needs to be updated
     return prevProps.passageIsActive === nextProps.passageIsActive;
