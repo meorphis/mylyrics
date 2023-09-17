@@ -9,12 +9,18 @@ import PendingRecommendations from '../nux/PendingRecommendations';
 import {useNotifications} from '../../utility/notifications';
 import {useSpotifyAuthentication} from '../../utility/spotify_auth';
 import AppearingView from '../common/AppearingView';
-import {AppState, StyleSheet} from 'react-native';
+import {AppState, StyleSheet, View} from 'react-native';
 import {useRecentLikesRequest} from '../../utility/db/likes';
-import {useFontSize} from '../../utility/font_size';
+import {RootState} from '../../utility/redux';
+import {getPassageId} from '../../utility/passage_id';
+import {useSelector} from 'react-redux';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 const MainScreen = () => {
-  const {allComputed: allFontSizesComputed} = useFontSize();
   const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
   const setUserRequest = useSetUserRequest();
   const {recommendationsRequest, makeRecommendationsRequest} =
@@ -69,40 +75,93 @@ const MainScreen = () => {
     return <ErrorComponent />;
   }
 
-  if (
-    !allFontSizesComputed ||
+  const showOnlyLoader =
     recommendationsRequest.status === 'loading' ||
     recommendationsRequest.status === 'init' ||
     getUserRequest.status === 'loading' ||
     getUserRequest.status === 'init' ||
     recentLikesRequest.status === 'loading' ||
     recentLikesRequest.status === 'init' ||
-    spotifyAuthStatus === 'pending'
-  ) {
-    return (
-      <AppearingView duration={500} style={styles.container}>
-        <LoadingComponent size="large" />
-      </AppearingView>
-    );
-  }
+    spotifyAuthStatus === 'pending';
 
-  if (
+  const showSpotifyLogin =
+    !showOnlyLoader &&
     !getUserRequest.data?.hasSpotifyAuth &&
-    spotifyAuthStatus !== 'succeeded'
-  ) {
+    spotifyAuthStatus !== 'succeeded';
+
+  if (showSpotifyLogin) {
     return <SpotifyLogin handleSpotifyLogin={handleSpotifyLogin} />;
   }
 
-  if (recommendationsRequest.data == null) {
+  const showPendingRecommendations =
+    !showOnlyLoader && recommendationsRequest.data == null;
+
+  if (showPendingRecommendations) {
     return <PendingRecommendations notificationStatus={notificationStatus} />;
   }
 
-  return <Recommendations />;
+  return <MainScreenInner showOnlyLoader={showOnlyLoader} />;
+};
+
+const MainScreenInner = (props: {showOnlyLoader: boolean}) => {
+  const {showOnlyLoader} = props;
+
+  const contentReady = useSelector((state: RootState) => {
+    const passageIds = Object.values(state.recommendations)
+      .map(r => Object.values(r.passageGroupRequest.data))
+      .flat()
+      .map(p => getPassageId(p.passage));
+
+    if (passageIds.length === 0) {
+      return false;
+    }
+
+    return (
+      [...new Set(passageIds)].sort().join(',') ===
+      [...state.contentReady].sort().join(',')
+    );
+  });
+
+  const recommendationsOpacitySharedValue = useSharedValue(0);
+
+  useEffect(() => {
+    if (contentReady) {
+      console.log('CONTENT READY');
+      recommendationsOpacitySharedValue.value = withTiming(1, {duration: 500});
+    }
+  }, [contentReady]);
+
+  const animatedRecommendations = useAnimatedStyle(() => {
+    return {
+      opacity: recommendationsOpacitySharedValue.value,
+    };
+  });
+
+  return (
+    <React.Fragment>
+      {(showOnlyLoader || !contentReady) && (
+        <AppearingView duration={500} style={styles.container}>
+          <LoadingComponent size="large" />
+        </AppearingView>
+      )}
+      {!showOnlyLoader && (
+        <Animated.View
+          style={[styles.recommendations, animatedRecommendations]}>
+          <Recommendations />
+        </Animated.View>
+      )}
+    </React.Fragment>
+  );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  recommendations: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
   },
 });
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Tag from './Tag';
 import TagType from '../../types/tag';
@@ -19,15 +19,22 @@ type Props = {
     passageKey: string;
     groupKey: string;
   };
-  navigateToFullLyrics: () => void;
+  parentYPosition: number;
+  navigateToFullLyrics: (parentYPosition: number) => void;
   onSharePress: () => void;
 };
 
 const ActionBar = (props: Props) => {
   console.log(`rendering ActionBar ${props.passage.song.name}`);
 
-  const {passage, tags, passageItemKey, navigateToFullLyrics, onSharePress} =
-    props;
+  const {
+    passage,
+    tags,
+    passageItemKey,
+    navigateToFullLyrics,
+    parentYPosition,
+    onSharePress,
+  } = props;
 
   const isActivePassage = useSelector(
     (state: RootState) =>
@@ -150,7 +157,7 @@ const ActionBar = (props: Props) => {
         />
         <ActionBarButton
           onPress={() => {
-            navigateToFullLyrics();
+            navigateToFullLyrics(parentYPosition);
           }}
           icon="expand"
           IconClass={MaterialIcon}
@@ -220,4 +227,8 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ActionBar;
+export default memo(
+  ActionBar,
+  (prevProps, nextProps) =>
+    prevProps.parentYPosition === nextProps.parentYPosition,
+);

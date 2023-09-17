@@ -123,6 +123,10 @@ export const useLikeRequest = (passage: PassageType) => {
     });
   };
 
+  console.log(
+    `passage: ${passage.song.name}, isRecentlyLiked: ${request.data}`,
+  );
+
   return {request, toggleLike};
 };
 

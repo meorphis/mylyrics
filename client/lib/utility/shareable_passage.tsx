@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React, {useMemo} from 'react';
 import {PassageType} from '../types/passage';
 
 export type ShareablePassage = {
@@ -14,23 +14,28 @@ export const ShareablePassageProvider = ({
   children: React.ReactNode;
 }) => {
   const [shareablePassage, setShareablePassage] =
-    React.useState<ShareablePassage | null>(null);
+    React.useState<PassageType | null>(null);
 
-  const setShareablePassageCallback = useCallback(
-    (passage: PassageType) => {
-      setShareablePassage(v => {
-        return {
-          counter: v?.counter ? v.counter + 1 : 1,
-          passage: passage,
-        };
-      });
-    },
-    [setShareablePassage],
-  );
+  const [bottomSheetTriggered, setBottomSheetTriggered] = React.useState(false);
+
+  const value = useMemo(() => {
+    return {
+      setShareablePassage: (passage: PassageType) => {
+        setShareablePassage(passage);
+      },
+      setBottomSheetTriggered: (triggered: boolean) => {
+        setBottomSheetTriggered(triggered);
+      },
+    };
+  }, []);
 
   return (
-    <ShareablePassageUpdateContext.Provider value={setShareablePassageCallback}>
-      <ShareablePassageContext.Provider value={shareablePassage}>
+    <ShareablePassageUpdateContext.Provider value={value}>
+      <ShareablePassageContext.Provider
+        value={{
+          passage: shareablePassage,
+          bottomSheetTriggered,
+        }}>
         {children}
       </ShareablePassageContext.Provider>
     </ShareablePassageUpdateContext.Provider>
@@ -61,9 +66,14 @@ export const useShareablePassageUpdate = () => {
   return context;
 };
 
-const ShareablePassageContext = React.createContext<ShareablePassage | null>(
-  null,
-);
-const ShareablePassageUpdateContext = React.createContext<
-  (passage: PassageType) => void
->(_ => {});
+const ShareablePassageContext = React.createContext<{
+  passage: PassageType | null;
+  bottomSheetTriggered: boolean;
+}>({
+  passage: null,
+  bottomSheetTriggered: false,
+});
+const ShareablePassageUpdateContext = React.createContext<{
+  setShareablePassage: (passage: PassageType) => void;
+  setBottomSheetTriggered: (triggered: boolean) => void;
+}>({setShareablePassage: _ => {}, setBottomSheetTriggered: () => {}});

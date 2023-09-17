@@ -1,17 +1,17 @@
 import React from 'react';
 import ThemeType from '../../types/theme';
 import ThemeButton from '../common/ThemeButton';
-import {StyleSheet} from 'react-native';
-import {ButtonColorChoice} from '../../utility/color';
+import {ViewStyle} from 'react-native';
 
 type Props = {
   highlightedIndexes: number[];
   theme: ThemeType;
   onPress: () => void;
+  style?: ViewStyle;
 };
 
 const SelectionButton = (props: Props) => {
-  const {highlightedIndexes, theme, onPress} = props;
+  const {highlightedIndexes, theme, onPress, style} = props;
   const isDisabled = highlightedIndexes.length === 0;
   const text = isDisabled
     ? 'No lines selected'
@@ -22,20 +22,12 @@ const SelectionButton = (props: Props) => {
     <ThemeButton
       text={text}
       theme={theme}
-      colorChoice={ButtonColorChoice.detailSaturated}
+      useSaturatedColor
       isDisabled={isDisabled}
       onPress={onPress}
-      style={styles.button}
+      style={style}
     />
   );
 };
-
-const styles = StyleSheet.create({
-  button: {
-    padding: 12,
-    margin: 12,
-    textAlign: 'center',
-  },
-});
 
 export default SelectionButton;

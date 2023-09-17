@@ -4,7 +4,7 @@ import PassageItemCarousel from '../passageItem/PassageItemCarousel';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import {getPassageId} from '../../utility/passage_id';
-import ThemedPassageItem from '../passageItem/ThemedPassageItem';
+import ThemedPassageItem from '../passageItem/SelectedPassageItem';
 import {RecentLike} from '../../types/likes';
 
 const LikesCarousel = () => {
@@ -15,6 +15,10 @@ const LikesCarousel = () => {
     (a, b) =>
       a.map(l => getPassageId(l.passage)).join() ===
       b.map(l => getPassageId(l.passage)).join(),
+  );
+
+  const carouselIsActive = useSelector(
+    (state: RootState) => state.activePassage.groupKey === 'likes',
   );
 
   const firstPassage = likes[0]?.passage;
@@ -37,7 +41,9 @@ const LikesCarousel = () => {
         return (
           <ThemedPassageItem
             passage={item.passage}
-            passageIsActive={getPassageId(item.passage) === activePassageId}
+            passageIsActive={
+              carouselIsActive && getPassageId(item.passage) === activePassageId
+            }
           />
         );
       }}

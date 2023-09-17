@@ -1,35 +1,21 @@
 import React from 'react';
 import ThemeType from '../../types/theme';
 import ThemeButton from '../common/ThemeButton';
-import {StyleSheet} from 'react-native';
-import {ButtonColorChoice} from '../../utility/color';
+import {ViewStyle} from 'react-native';
 
 type Props = {
   theme: ThemeType;
   onPress: () => void;
+  style?: ViewStyle;
 };
 
 const BackButton = (props: Props) => {
-  const {theme, onPress} = props;
+  const {theme, onPress, style} = props;
   const text = 'Back';
 
   return (
-    <ThemeButton
-      text={text}
-      theme={theme}
-      colorChoice={ButtonColorChoice.detailUnsaturated}
-      onPress={onPress}
-      style={styles.button}
-    />
+    <ThemeButton text={text} theme={theme} onPress={onPress} style={style} />
   );
 };
-
-const styles = StyleSheet.create({
-  button: {
-    padding: 12,
-    margin: 12,
-    textAlign: 'center',
-  },
-});
 
 export default BackButton;

@@ -14,7 +14,7 @@ import ThemedLoadingIndicator from './ThemedLoadingIndicator';
 import {useUpdateSequentialWalkthroughStep} from '../../utility/walkthrough';
 import PassageItemCarousel from '../passageItem/PassageItemCarousel';
 import {PassageType} from '../../types/passage';
-import ThemedPassageItem from '../passageItem/ThemedPassageItem';
+import ThemedPassageItem from '../passageItem/SelectedPassageItem';
 
 type Props = {
   passageGroupKey: string;
@@ -41,10 +41,10 @@ const RecommendationsGroupCarousel = (props: Props) => {
   )!;
 
   // and figure out which one is active
-  const {passageKey: activePassageKey} = useSelector(
-    (state: RootState) => state.activePassage,
-    // only recompute if the passage key has changed *and* this group is active
-    (a, b) => a.passageKey === b.passageKey || b.groupKey !== passageGroupKey,
+  const activePassageKey = useSelector((state: RootState) =>
+    state.activePassage.groupKey === passageGroupKey
+      ? state.activePassage.passageKey
+      : null,
   )!;
 
   const dispatch = useDispatch();

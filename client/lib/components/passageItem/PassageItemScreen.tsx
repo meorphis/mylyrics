@@ -1,13 +1,13 @@
 import React from 'react';
 import {PassageItemScreenProps} from '../../types/navigation';
 import ThemeBackground from '../common/ThemeBackground';
-import {Dimensions, StyleSheet, View} from 'react-native';
+import {Dimensions, StyleSheet} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import BottomBar from '../common/BottomBar';
 import {ThemeProvider} from '../../utility/theme';
 import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
 import ShareBottomSheet from './ShareBottomSheet/ShareBottomSheet';
-import SharedTransitionPassageItem from './SharedTransitionPassageItem';
+import CarouselPassageItem from './SelectedPassageItem';
 
 const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   const {passage, theme} = route.params;
@@ -18,12 +18,10 @@ const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   return (
     <ThemeProvider initialTheme={theme}>
       <ThemeBackground theme={theme}>
-        <SafeAreaView style={{...styles.safearea}}>
-          <View style={{...styles.container, width, maxHeight}}>
-            <SharedTransitionPassageItem passage={passage} />
-          </View>
-          <BottomBar activeGroupKey={null} style={styles.bottomBar} />
+        <SafeAreaView style={{...styles.container, width, maxHeight}}>
+          <CarouselPassageItem passage={passage} passageIsActive />
         </SafeAreaView>
+        <BottomBar activeGroupKey={null} style={styles.bottomBar} />
         <ShareBottomSheet />
       </ThemeBackground>
     </ThemeProvider>
@@ -31,13 +29,10 @@ const PassageItemScreen = ({route}: PassageItemScreenProps) => {
 };
 
 const styles = StyleSheet.create({
-  safearea: {
-    marginTop: CAROUSEL_MARGIN_TOP,
-    flex: 1,
-  },
   container: {
+    marginTop: CAROUSEL_MARGIN_TOP,
+    marginHorizontal: 24,
     flex: 1,
-    alignSelf: 'center',
   },
   bottomBar: {
     alignSelf: 'center',

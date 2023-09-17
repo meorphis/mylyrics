@@ -5,8 +5,6 @@ import BottomSheet, {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import {StyleSheet} from 'react-native';
-import {useTheme} from '../../../utility/theme';
-import {addColorOpacity} from '../../../utility/color';
 import ProphecyView from './ProphecyView';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../../utility/redux';
@@ -17,7 +15,6 @@ type Props = {
 
 const ProphecyBottomSheet = (props: Props) => {
   const {bottomSheetRef} = props;
-  const theme = useTheme();
 
   const snapPoints = useMemo(() => ['85%'], []);
   const {cards, prophecy} = useSelector(
@@ -46,9 +43,7 @@ const ProphecyBottomSheet = (props: Props) => {
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{
-        backgroundColor: addColorOpacity(theme.backgroundColor, 0.95),
-      }}>
+      backgroundStyle={styles.bottomSheet}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
         <ProphecyView cards={cards} prophecy={prophecy} />
       </BottomSheetScrollView>
@@ -60,6 +55,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 10,
+  },
+  bottomSheet: {
+    backgroundColor: 'lightgrey',
   },
 });
 
