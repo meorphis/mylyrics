@@ -1,3 +1,4 @@
+import { getImageColors } from "../utility/image";
 import { VALID_SENTIMENTS } from "../utility/sentiments";
 import { LabeledPassage, Recommendation, Song, SongWithLyrics } from "../utility/types";
 import { getSearchClient } from "./aws";
@@ -150,14 +151,25 @@ export const getRecommendationsForSentiment = async (
   // get the top N
   const passages = sortedParsedResults.slice(0, limit);
 
-  return passages.map(({song, passage, score}) => {
+  const startImageDownload = Date.now();
+  const colors = await Promise.all(passages.map(async (passage) => {
+    const {album} = passage.song;
+    const {image} = album;
+    return await getImageColors({url: image.url});
+  }));
+  console.log(`took ${Date.now() - startImageDownload}ms to download and parse images`);
+
+  return passages.map(({song, passage, score}, idx) => {
     return {
       lyrics: passage.lyrics,
       song: {
         id: song.id,
         album: {
           name: song.album.name,
-          image: song.album.image.url,
+          image: {
+            url: song.album.image.url,
+            colors: colors[idx],
+          }
         },
         artists: song.artists.map((artist) => {
           return {
@@ -257,14 +269,23 @@ export const getSemanticMatchesForTerm = async (
     }
   });
 
-  return passages.map(({song, passage, score}) => {
+  const colors = await Promise.all(passages.map(async (passage) => {
+    const {album} = passage.song;
+    const {image} = album;
+    return await getImageColors({url: image.url});
+  }));
+
+  return passages.map(({song, passage, score}, idx) => {
     return {
       lyrics: passage.lyrics,
       song: {
         id: song.id,
         album: {
           name: song.album.name,
-          image: song.album.image.url,
+          image: {
+            url: song.album.image.url,
+            colors: colors[idx],
+          }
         },
         artists: song.artists.map((artist) => {
           return {

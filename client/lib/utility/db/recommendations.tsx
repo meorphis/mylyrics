@@ -18,11 +18,11 @@ import {
 } from '../redux/recommendations';
 import {errorToString} from '../error';
 import {setActivePassage} from '../redux/active_passage';
-import {PassageGroupsType, RawPassageType} from '../../types/passage';
-import {useCacheImageDataForUrls} from '../images';
+import {RawPassageType} from '../../types/passage';
 import {setProphecy} from '../redux/prophecy';
 import {getPassageId} from '../passage_id';
 import {setSentimentGroups} from '../redux/sentiment_groups';
+import {getPassageGroups} from '../recommendations';
 
 // Returns a function to get make a request along with the result of that request;
 // the request gets the user's recommendations from the database fetches image data
@@ -82,44 +82,6 @@ export const useRecommendationsRequest = () => {
   };
 };
 
-// Groups recommendations into "passage groups" based on sentiment; a passage
-// can be in multiple groups, one for each sentiment it has
-export const unflattenRecommendations = (
-  flatRecommendations: RawPassageType[],
-  allSentiments: string[],
-): PassageGroupsType => {
-  const recommendations: PassageGroupsType = [];
-  flatRecommendations.forEach((rec: RawPassageType) => {
-    rec.tags.forEach(({sentiment}) => {
-      const cleanedRec = {
-        ...rec,
-        tags: rec.tags.filter(({sentiment: s}) => allSentiments.includes(s)),
-      };
-
-      if (!allSentiments.includes(sentiment)) {
-        return;
-      }
-
-      let passageGroup = recommendations.find(
-        ({groupKey}) => groupKey === sentiment,
-      )?.passageGroup;
-      if (passageGroup == null) {
-        passageGroup = [];
-        recommendations.push({
-          groupKey: sentiment,
-          passageGroup,
-        });
-      }
-
-      passageGroup.push({
-        passageKey: getPassageId(cleanedRec),
-        passage: cleanedRec,
-      });
-    });
-  });
-  return recommendations;
-};
-
 export const updateImpressions = async ({
   deviceId,
   passages,
@@ -151,7 +113,6 @@ export const updateImpressions = async ({
 
 const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
   const dispatch = useDispatch();
-  const cacheImageDataForUrls = useCacheImageDataForUrls();
 
   const setupRecommendations = async ({
     docSnap,
@@ -176,27 +137,21 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
     const activeGroupKey = flatSentiments[0];
 
     updateImpressions({deviceId, passages: flatRecommendations});
-    await cacheImageDataForUrls(
-      flatRecommendations.map(({song}) => song.album.image),
-    );
 
-    const recommendations = unflattenRecommendations(
+    const passageGroups = await getPassageGroups(
       flatRecommendations,
       flatSentiments,
     );
 
     dispatch(initPassageGroups(flatSentiments));
-    dispatch(addLoadedPassageGroups(recommendations));
-
+    dispatch(addLoadedPassageGroups(passageGroups));
     dispatch(setSentimentGroups(sentimentGroups));
-
     dispatch(
       setActivePassage({
         groupKey: activeGroupKey,
         passageKey: getPassageId(flatRecommendations[0]),
       }),
     );
-
     dispatch(setProphecy(prophecy ?? null));
 
     return true;

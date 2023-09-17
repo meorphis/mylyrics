@@ -6,8 +6,7 @@ import DefaultThemeBackground from '../common/DefaultThemeBackground';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import BottomBar from '../common/BottomBar';
-import ShareBottomSheet from '../passageItem/ShareBottomSheet';
-import {SharablePassageProvider} from '../../utility/shareable_passage';
+import ShareBottomSheet from '../passageItem/ShareBottomSheet/ShareBottomSheet';
 
 const Recommendations = () => {
   const activeGroupKey = useSelector(
@@ -16,17 +15,15 @@ const Recommendations = () => {
 
   return (
     <ThemeProvider>
-      <SharablePassageProvider>
-        <View style={styles.container}>
-          <DefaultThemeBackground>
-            <SafeAreaView style={styles.safearea}>
-              <RecommendationsCarousel activeGroupKey={activeGroupKey} />
-              <BottomBar activeGroupKey={activeGroupKey} />
-            </SafeAreaView>
-            <ShareBottomSheet />
-          </DefaultThemeBackground>
-        </View>
-      </SharablePassageProvider>
+      <View style={styles.container}>
+        <DefaultThemeBackground>
+          <SafeAreaView style={styles.safearea}>
+            <RecommendationsCarousel activeGroupKey={activeGroupKey} />
+            <BottomBar activeGroupKey={activeGroupKey} />
+          </SafeAreaView>
+          <ShareBottomSheet />
+        </DefaultThemeBackground>
+      </View>
     </ThemeProvider>
   );
 };

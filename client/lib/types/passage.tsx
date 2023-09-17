@@ -1,6 +1,7 @@
 import {RequestTypeWithPartial} from './request';
 import {RawSongType, SongType} from './song';
 import TagType from './tag';
+import ThemeType from './theme';
 
 export type RawPassageType = {
   lyrics: string;
@@ -12,11 +13,12 @@ export type PassageType = {
   lyrics: string;
   tags: TagType[];
   song: SongType;
+  theme: ThemeType;
 };
 
 export type PassageGroupType = {
   passageKey: string;
-  passage: RawPassageType;
+  passage: PassageType;
 }[];
 
 export type PassageGroupsType = {

@@ -1,6 +1,5 @@
 import React from 'react';
 import AnimatedLinearGradient from './AnimatedLinearGradient';
-import {addColorOpacity} from '../../utility/color';
 import {StyleSheet} from 'react-native';
 import ThemeType from '../../types/theme';
 
@@ -19,11 +18,13 @@ const ThemeBackground = (props: Props) => {
   return (
     <AnimatedLinearGradient
       style={styles.gradient}
-      start={{x: 0, y: 0}}
-      end={{x: 0, y: 1.0}}
+      start={{x: 0, y: 0.0}}
+      end={{x: 1.0, y: 1.0}}
       colors={[
-        addColorOpacity(theme.backgroundColor, 0.5),
-        addColorOpacity(theme.backgroundColor, 0.3),
+        theme.farBackgroundColor,
+        theme.alternateThemes[0]?.backgroundColor ?? theme.farBackgroundColor,
+        theme.alternateThemes[1]?.backgroundColor ?? theme.farBackgroundColor,
+        theme.alternateThemes[2]?.backgroundColor ?? theme.farBackgroundColor,
       ]}>
       {children}
     </AnimatedLinearGradient>

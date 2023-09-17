@@ -1,3 +1,5 @@
+import { FinalColor } from "extract-colors/lib/types/Color";
+
 type LabeledPassageMetadata = {
     numLines: number;
     numCharsPerLine: number[];
@@ -104,7 +106,10 @@ export type Recommendation = {
         id: string,
         album: {
             name: string,
-            image: string,
+            image: {
+                url: string,
+                colors: FinalColor[] | null;
+            },
         },
         artists: {
             id: string,

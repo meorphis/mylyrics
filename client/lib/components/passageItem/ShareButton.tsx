@@ -76,14 +76,15 @@ const shareContent = (props: Props) => {
             social: Share.Social.INSTAGRAM_STORIES as any,
             appId: '279012348258138',
           };
-          Share.shareSingle(shareOptions);
+          Share.shareSingle(shareOptions).catch(err => {
+            console.log(err);
+          });
         });
       }
       break;
     case 'other':
       if (viewShotRef.current && viewShotRef.current.capture) {
         viewShotRef.current.capture().then(res => {
-          console.log(res);
           const shareOptions = {
             url: `file://${res}`,
             type: 'image/png',
@@ -114,7 +115,8 @@ const styles = StyleSheet.create({
   },
   button: {
     flexDirection: 'column',
-    marginHorizontal: 24,
+    marginHorizontal: 8,
+    height: undefined,
   },
   buttonText: {
     fontSize: 12,

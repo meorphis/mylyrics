@@ -7,34 +7,26 @@ import React from 'react';
 import {SongType} from '../../types/song';
 import ThemeType from '../../types/theme';
 import {textStyleCommon} from '../../utility/text';
-import {ScaleType} from '../../utility/max_size';
+import {ScaleInfoType} from '../../utility/max_size';
 
 type Props = {
   song: SongType;
   passageTheme: ThemeType;
-  scale: ScaleType;
+  scaleInfo: ScaleInfoType;
 };
 
 const SongInfo = (props: Props) => {
   console.log(`rendering SongInfo ${props.song.name}`);
 
-  const {song, passageTheme, scale} = props;
+  const {song, passageTheme, scaleInfo} = props;
 
-  const {
-    songNameSize,
-    artistNameSize,
-    albumNameSize,
-    albumImageSize,
-    contentReady,
-  } = scale;
+  const {scale, computed: scaleComputed} = scaleInfo;
 
-  const opacity = {opacity: contentReady ? 1 : 0};
+  const {songNameSize, artistNameSize, albumNameSize, albumImageSize} = scale;
 
-  const {
-    primaryColor: songNameColor,
-    secondaryColor: artistNameColor,
-    detailColor: albumNameColor,
-  } = passageTheme;
+  const opacity = {opacity: scaleComputed ? 1 : 0};
+
+  const textColor = passageTheme.textColors[0];
 
   return (
     <View style={{...styles.metadataRow, paddingBottom: songNameSize}}>
@@ -56,7 +48,7 @@ const SongInfo = (props: Props) => {
             ...styles.songName,
             ...opacity,
             fontSize: songNameSize,
-            color: songNameColor,
+            color: textColor,
           }}>
           {song.name}
         </Text>
@@ -66,7 +58,7 @@ const SongInfo = (props: Props) => {
             ...textStyleCommon,
             ...opacity,
             fontSize: artistNameSize,
-            color: artistNameColor,
+            color: textColor,
           }}>
           {song.artists.map(({name}) => name).join(', ')}
         </Text>
@@ -76,7 +68,7 @@ const SongInfo = (props: Props) => {
             ...textStyleCommon,
             ...opacity,
             fontSize: albumNameSize,
-            color: albumNameColor,
+            color: textColor,
           }}>
           {song.album.name}
         </Text>

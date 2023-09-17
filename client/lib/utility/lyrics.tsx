@@ -61,28 +61,21 @@ export const cleanLyrics = (lyrics: string) => {
 };
 
 export const getLyricsColor = ({theme}: {theme: ThemeType}) => {
-  // choose the one furthest in distance from the background color
-  const colors = [theme.primaryColor, theme.secondaryColor, theme.detailColor];
-  return ensureColorContrast2({
-    changeable: getFurthestColor({
-      subject: theme.backgroundColor,
-      options: colors,
-    }),
-    unchangeable: theme.backgroundColor,
-    shouldDarkenFn: ({unchangeable}) => isColorLight(unchangeable),
-  });
+  return theme.textColors[0];
 };
 
 export const getFurthestColor = ({
   subject,
   options,
   ensureContrast,
+  distanceFn = colorDistance,
 }: {
   subject: string;
   options: string[];
   ensureContrast?: boolean;
+  distanceFn?: (color1: string, color2: string) => number;
 }) => {
-  const distances = options.map(option => colorDistance(option, subject));
+  const distances = options.map(option => distanceFn(option, subject));
   const maxDistance = Math.max(...distances);
   const maxIndex = distances.indexOf(maxDistance);
   const proposedColor = options[maxIndex];

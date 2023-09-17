@@ -9,28 +9,37 @@ import {
 } from '../../utility/lyrics';
 import {SharedElement} from 'react-navigation-shared-element';
 import {SongType} from '../../types/song';
-import {ScaleType} from '../../utility/max_size';
+import {ScaleInfoType} from '../../utility/max_size';
 
 type Props = {
   song: SongType;
   lyrics: string;
   theme: ThemeType;
-  scale: ScaleType;
+  scaleInfo: ScaleInfoType;
   sharedTransitionKey: string;
   onLayout: (event: LayoutChangeEvent) => void;
   viewRef: React.RefObject<View>;
 };
 
 const PassageLyrics = (props: Props) => {
-  const {song, lyrics, theme, scale, sharedTransitionKey, onLayout, viewRef} =
-    props;
+  const {
+    song,
+    lyrics,
+    theme,
+    scaleInfo,
+    sharedTransitionKey,
+    onLayout,
+    viewRef,
+  } = props;
 
   const splitLyrics = splitLyricsWithPassages({
     songLyrics: cleanLyrics(song.lyrics),
     passageLyrics: lyrics,
   });
 
-  const {lyricsFontSize, contentReady} = scale;
+  const {scale, computed: scaleComputed} = scaleInfo;
+
+  const {lyricsFontSize} = scale;
 
   return (
     <View style={styles.container} onLayout={onLayout} ref={viewRef}>
@@ -51,7 +60,7 @@ const PassageLyrics = (props: Props) => {
                   ...styles.lyricsLine,
                   fontSize: lyricsFontSize,
                   color: getLyricsColor({theme}),
-                  opacity: contentReady ? 1 : 0,
+                  opacity: scaleComputed ? 1 : 0,
                 }}>
                 {lineText}
               </Text>

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "extract-colors": "^4.0.2",
+    "i": "^0.3.7",
+    "npm": "^10.1.0"
+  }
+}

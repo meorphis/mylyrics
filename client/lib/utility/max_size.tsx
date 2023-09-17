@@ -1,15 +1,20 @@
-import React, {createContext, useContext, useState, useEffect} from 'react';
+import {useFontSize} from './font_size';
 
 export type ScaleType = {
+  index: number;
   lyricsFontSize: number;
   songNameSize: number;
   artistNameSize: number;
   albumNameSize: number;
   albumImageSize: number;
-  contentReady: boolean;
 };
 
-export const Scale = [
+export type ScaleInfoType = {
+  scale: ScaleType;
+  computed: boolean;
+};
+
+const scales = [
   {
     index: 0,
     lyricsFontSize: 20,
@@ -100,79 +105,41 @@ export const Scale = [
   },
 ];
 
-const ScaleContext = createContext<{
-  scaleIndex: number;
-  contentReady: boolean;
-}>({
-  scaleIndex: 0,
-  contentReady: false,
-});
-
-const SetContentHeightContext = createContext<{
-  setContentHeightForScale: ({
-    height,
-    scaleIndex,
+export const useGetScaleForContainerHeight = () => {
+  const {heights: fontSizeHeights} = useFontSize();
+  return ({
+    containerHeight,
+    numTextLines,
+    actionBarHeight,
   }: {
-    height: number;
-    scaleIndex: number;
-  }) => void;
-}>({
-  setContentHeightForScale: () => {},
-});
+    containerHeight: number;
+    numTextLines: number;
+    actionBarHeight: number;
+  }) => {
+    for (let i = 0; i < scales.length; i++) {
+      const scale = scales[i];
+      const {lyricsFontSize, albumImageSize} = scale;
+      const lyricsFontHeight = fontSizeHeights[lyricsFontSize];
+      const lyricsHeight = lyricsFontHeight * numTextLines;
 
-export const useScale = () => {
-  const {scaleIndex, contentReady} = useContext(ScaleContext);
-  return {
-    contentReady,
-    ...Scale[scaleIndex],
+      const totalHeight = albumImageSize + lyricsHeight + actionBarHeight;
+
+      console.log(
+        'totalHeight',
+        totalHeight,
+        'containerHeight',
+        containerHeight,
+        'heights',
+        JSON.stringify(fontSizeHeights),
+      );
+
+      if (totalHeight <= containerHeight) {
+        return scale;
+      }
+    }
+
+    return scales[scales.length - 1];
   };
 };
 
-export const useSetContentHeightForScale = () => {
-  const {setContentHeightForScale} = useContext(SetContentHeightContext);
-  return setContentHeightForScale;
-};
-
-export const ScaleProvider = ({
-  children,
-  maxSize,
-}: {
-  children: React.ReactNode;
-  maxSize: number | null;
-}) => {
-  const [scaleIndex, setScaleIndex] = useState<number>(0);
-  const [contentReady, setContentReady] = useState<boolean>(false);
-  const [contentHeightForScale, setContentHeightForScale] = useState<{
-    height: number;
-    scaleIndex: number;
-  } | null>(null);
-
-  useEffect(() => {
-    console.log('contentHeight', contentHeightForScale?.height);
-    console.log('maxSize', maxSize);
-
-    if (
-      maxSize &&
-      contentHeightForScale &&
-      contentHeightForScale.height > maxSize
-    ) {
-      if (
-        contentHeightForScale.scaleIndex === scaleIndex &&
-        scaleIndex < Scale.length - 1
-      ) {
-        console.log('decreasing scale');
-        setScaleIndex(scaleIndex + 1);
-      }
-    } else if (maxSize && contentHeightForScale && !contentReady) {
-      setContentReady(true);
-    }
-  }, [contentHeightForScale?.height, maxSize]);
-
-  return (
-    <ScaleContext.Provider value={{scaleIndex, contentReady}}>
-      <SetContentHeightContext.Provider value={{setContentHeightForScale}}>
-        {children}
-      </SetContentHeightContext.Provider>
-    </ScaleContext.Provider>
-  );
-};
+export const DEFAULT_SCALE = scales[0];

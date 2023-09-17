@@ -1,13 +1,9 @@
-type InnerThemeType = {
-  primaryColor: string;
-  secondaryColor: string;
+export type ThemeType = {
   backgroundColor: string;
-  detailColor: string;
-};
-
-type ThemeType = {
-  main: InnerThemeType;
-  contrast: InnerThemeType;
+  farBackgroundColor: string;
+  textColors: string[];
+  alternateThemes: ThemeType[];
+  invertedTheme?: ThemeType;
 };
 
 export default ThemeType;

@@ -6,9 +6,8 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import BottomBar from '../common/BottomBar';
 import {ThemeProvider} from '../../utility/theme';
 import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
-import {SharablePassageProvider} from '../../utility/shareable_passage';
-import ShareBottomSheet from './ShareBottomSheet';
-import ScaleProviderPassageItem from './ScaleProviderPassageItem';
+import ShareBottomSheet from './ShareBottomSheet/ShareBottomSheet';
+import SharedTransitionPassageItem from './SharedTransitionPassageItem';
 
 const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   const {passage, theme} = route.params;
@@ -18,20 +17,15 @@ const PassageItemScreen = ({route}: PassageItemScreenProps) => {
 
   return (
     <ThemeProvider initialTheme={theme}>
-      <SharablePassageProvider>
-        <ThemeBackground theme={theme}>
-          <SafeAreaView style={{...styles.safearea}}>
-            <View style={{...styles.container, width, maxHeight}}>
-              <ScaleProviderPassageItem
-                passage={passage}
-                passageTheme={theme}
-              />
-            </View>
-            <BottomBar activeGroupKey={null} style={styles.bottomBar} />
-          </SafeAreaView>
-          <ShareBottomSheet />
-        </ThemeBackground>
-      </SharablePassageProvider>
+      <ThemeBackground theme={theme}>
+        <SafeAreaView style={{...styles.safearea}}>
+          <View style={{...styles.container, width, maxHeight}}>
+            <SharedTransitionPassageItem passage={passage} />
+          </View>
+          <BottomBar activeGroupKey={null} style={styles.bottomBar} />
+        </SafeAreaView>
+        <ShareBottomSheet />
+      </ThemeBackground>
     </ThemeProvider>
   );
 };

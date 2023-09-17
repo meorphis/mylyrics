@@ -6,17 +6,12 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import {StyleSheet, Text, View} from 'react-native';
 import {useTheme} from '../../utility/theme';
-import {
-  addColorOpacity,
-  ensureColorContrast,
-  isColorLight,
-} from '../../utility/color';
+import {addColorOpacity} from '../../utility/color';
 import Tag from '../passageItem/Tag';
 import SentimentEnumType from '../../types/sentiments';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import _ from 'lodash';
-import tinycolor from 'tinycolor2';
 import {getLyricsColor} from '../../utility/lyrics';
 import {textStyleCommon} from '../../utility/text';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -43,12 +38,10 @@ const GroupSelectorBottomSheet = (props: Props) => {
     }),
     {} as {[group: string]: string[]},
   );
-  console.log(groupsAsMap);
   const theme = useTheme();
 
-  const backgroundColor = theme.backgroundColor;
   const textColor = getLyricsColor({theme});
-  const groupBackgroundColor = getContrastingBackgroundColor(backgroundColor);
+  const groupBackgroundColor = theme.backgroundColor;
   const selectedGroup = activeGroupKey
     ? groupsToShow
         .map(({group}) => group)
@@ -81,7 +74,7 @@ const GroupSelectorBottomSheet = (props: Props) => {
       backdropComponent={renderBackdrop}
       enablePanDownToClose
       backgroundStyle={{
-        backgroundColor: addColorOpacity(theme.backgroundColor, 0.95),
+        backgroundColor: addColorOpacity(theme.farBackgroundColor, 0.95),
       }}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
         <Text
@@ -147,18 +140,6 @@ const GroupSelectorBottomSheet = (props: Props) => {
       </BottomSheetScrollView>
     </BottomSheet>
   );
-};
-
-const getContrastingBackgroundColor = (backgroundColor: string) => {
-  const {lightenable, darkenable} = ensureColorContrast({
-    lightenable: backgroundColor,
-    darkenable: backgroundColor,
-    preference: isColorLight(backgroundColor) ? 'darken' : 'lighten',
-    minDistance: 6,
-  });
-
-  const color = isColorLight(backgroundColor) ? darkenable : lightenable;
-  return tinycolor(color).setAlpha(0.5).toRgbString();
 };
 
 // re-arranges the list, putting the item at the front of the array but retaining

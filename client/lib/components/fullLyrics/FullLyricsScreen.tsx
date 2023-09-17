@@ -28,21 +28,29 @@ import BackButton from './BackButton';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {SongType} from '../../types/song';
 import ThemeType from '../../types/theme';
+import {useShareablePassageUpdate} from '../../utility/shareable_passage';
+
+export type SelectionOption = 'FULL_PAGE' | 'UPDATE_SHAREABLE';
+
+const CONTAINER_PADDING = 16;
 
 // shows the full lyrics for a song. a lot of the logic here is to ensure that
 // the animation from the passage item to the full lyrics is smooth
 const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
+  console.log(`rendering FullLyricsScreen ${route.params.song.name}`);
+
   const {
     song,
     theme,
     sharedTransitionKey,
     initiallyHighlightedPassageLyrics,
     parentYPosition,
+    onSelect,
   } = route.params;
-
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const songLyrics = cleanLyrics(song.lyrics);
+  const setShareablePassage = useShareablePassageUpdate();
 
   // *** y-axis positions ***
   // scroll view position
@@ -75,15 +83,14 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
     end: number;
   } | null>(null);
 
-  // safe area
-  const safeAreaHeight = useSafeAreaInsets().top;
-
   // we show a large amount of additional padding at the top and bottom of the
   // scroll view to begin with, to ensure that the highlighted lyrics are at
   // roughly the same position they were at in the PassageView - but after we've
   // scrolled these spacers out of view, we remove them so that the user cannot
   // scroll past the start/end of the lyrics
   const [showSpacer, setShowSpacer] = React.useState(true);
+
+  const safeAreaInsets = useSafeAreaInsets();
 
   const [scrollViewOffset, setScrollViewOffset] = React.useState<{
     initial: number;
@@ -94,69 +101,62 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   // on first render, but once the appearing lyrics are rendered, they'll
   // get pushed down - at this point, we need to scroll accordingly
   useLayoutEffect(() => {
-    if (
-      topOfInitiallyHighlightedLyricsPosition != null &&
-      innerScrollViewLayoutAfterAppearingTextIsRendered != null &&
-      setScrollViewHeight != null
-    ) {
-      // topOfInitiallyHighlightedLyricsPosition (controlling for safe area and padding) is
-      // the extent to which adding the appearing lyrics pushes the highlighted lyrics down,
-      // so we need to scroll by that amount to avoid a visible jump
-      const scrollTo =
-        topOfInitiallyHighlightedLyricsPosition - innerScrollViewPaddingTop;
-
-      console.log(
-        scrollTo,
-        innerScrollViewLayoutAfterAppearingTextIsRendered,
-        scrollViewHeight,
-      );
-
-      // in this case the top spacer is in view; we will first do a non-animated scroll to
-      // account for the appearing lyrics, then an animated scroll to scroll the spacer out
-      // of view (the onMomentumScrollEnd handler will remove the spacers)
-      if (scrollTo < innerScrollViewLayoutAfterAppearingTextIsRendered!.start) {
-        console.log('top spacer in view');
-        setScrollViewOffset({
-          initial: scrollTo,
-          scrollTo: innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
-        });
-      }
-      // very similar to the above case - in this case the bottom spacer is in view, so we
-      // will first do a non-animated scroll to account for the appearing lyrics, then an
-      // animated scroll to scroll the spacer out of view
-      else if (
-        scrollTo + scrollViewHeight! >
-        innerScrollViewLayoutAfterAppearingTextIsRendered!.end
+    setTimeout(() => {
+      if (
+        topOfInitiallyHighlightedLyricsPosition != null &&
+        innerScrollViewLayoutAfterAppearingTextIsRendered != null
       ) {
-        console.log('bottom spacer in view');
-        setScrollViewOffset({
-          initial: scrollTo,
-          scrollTo: Math.max(
-            innerScrollViewLayoutAfterAppearingTextIsRendered!.end -
-              scrollViewHeight!,
-            innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
-          ),
-        });
-      } else {
-        console.log('no spacers in view');
-        // in this case the spacers are not in view, so we can just do a non-animated scroll
-        // to account for both the appearing lyrics and the spacers and manually remove the
-        // spacers synchronously
-        setScrollViewOffset({
-          initial:
-            scrollTo - innerScrollViewLayoutAfterAppearingTextIsRendered.start,
-          scrollTo: null,
-        });
-        setShowSpacer(false);
+        // topOfInitiallyHighlightedLyricsPosition (controlling for padding) is
+        // the extent to which adding the appearing lyrics pushes the highlighted lyrics down,
+        // so we need to scroll by that amount to avoid a visible jump
+        const scrollTo =
+          topOfInitiallyHighlightedLyricsPosition - innerScrollViewPaddingTop;
+
+        // in this case the top spacer is in view; we will first do a non-animated scroll to
+        // account for the appearing lyrics, then an animated scroll to scroll the spacer out
+        // of view (the onMomentumScrollEnd handler will remove the spacers)
+        if (
+          scrollTo < innerScrollViewLayoutAfterAppearingTextIsRendered!.start
+        ) {
+          setScrollViewOffset({
+            initial: scrollTo,
+            scrollTo: innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
+          });
+        }
+        // very similar to the above case - in this case the bottom spacer is in view, so we
+        // will first do a non-animated scroll to account for the appearing lyrics, then an
+        // animated scroll to scroll the spacer out of view
+        else if (
+          scrollTo + scrollViewHeight! >
+          innerScrollViewLayoutAfterAppearingTextIsRendered!.end
+        ) {
+          setScrollViewOffset({
+            initial: scrollTo,
+            scrollTo: Math.max(
+              innerScrollViewLayoutAfterAppearingTextIsRendered!.end -
+                scrollViewHeight!,
+              innerScrollViewLayoutAfterAppearingTextIsRendered!.start,
+            ),
+          });
+        } else {
+          // in this case the spacers are not in view, so we can just do a non-animated scroll
+          // to account for both the appearing lyrics and the spacers and manually remove the
+          // spacers synchronously
+          setScrollViewOffset({
+            initial:
+              scrollTo -
+              innerScrollViewLayoutAfterAppearingTextIsRendered.start,
+            scrollTo: null,
+          });
+          setShowSpacer(false);
+        }
       }
-    }
+    }, 200);
   }, [
     topOfInitiallyHighlightedLyricsPosition != null &&
       innerScrollViewLayoutAfterAppearingTextIsRendered != null &&
       scrollViewHeight != null,
   ]);
-
-  const {width, height} = Dimensions.get('window');
 
   const splitLyrics = splitLyricsWithPassages({
     songLyrics,
@@ -177,13 +177,21 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
     initiallyHighlightedIndexes,
   );
 
+  const topSpacerHeight =
+    parentYPosition -
+    CONTAINER_PADDING -
+    safeAreaInsets.top +
+    innerScrollViewPaddingTop;
+
   return (
     <ThemeBackground theme={theme}>
       <View
         style={{
           ...styles.container,
-          width: width * 0.95,
-          height: (height - safeAreaHeight) * 0.95,
+          // for some reason SafeAreaView doesn't play well with the animation
+          // so we create the padding manually
+          paddingTop: CONTAINER_PADDING + safeAreaInsets.top,
+          paddingBottom: CONTAINER_PADDING + safeAreaInsets.bottom,
         }}>
         <ItemContainer theme={theme}>
           {scrollViewOffset == null ? (
@@ -193,7 +201,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                 isInitialVersion={true}
                 innerScrollViewPaddingTop={innerScrollViewPaddingTop}
                 showSpacer={true}
-                topSpacerHeight={parentYPosition}
+                topSpacerHeight={topSpacerHeight}
                 song={song}
                 splitLyrics={splitLyrics}
                 highlightedIndexes={highlightedIndexes}
@@ -214,7 +222,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                   }
                   innerScrollViewPaddingTop={innerScrollViewPaddingTop}
                   showSpacer={showSpacer}
-                  topSpacerHeight={parentYPosition}
+                  topSpacerHeight={topSpacerHeight}
                   song={song}
                   splitLyrics={splitLyrics}
                   highlightedIndexes={highlightedIndexes}
@@ -232,7 +240,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
               onMomentumScrollEnd={() => setShowSpacer(false)}
               innerScrollViewPaddingTop={innerScrollViewPaddingTop}
               showSpacer={showSpacer}
-              topSpacerHeight={parentYPosition}
+              topSpacerHeight={topSpacerHeight}
               song={song}
               splitLyrics={splitLyrics}
               highlightedIndexes={highlightedIndexes}
@@ -246,12 +254,12 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
               skipAnimation={scrollViewOffset.scrollTo != null}
               verticalOffset={
                 scrollViewOffset.scrollTo != null
-                  ? scrollViewOffset.scrollTo - parentYPosition
+                  ? scrollViewOffset.scrollTo - topSpacerHeight
                   : scrollViewOffset.initial
               }
               innerScrollViewPaddingTop={innerScrollViewPaddingTop}
               showSpacer={showSpacer}
-              topSpacerHeight={parentYPosition}
+              topSpacerHeight={topSpacerHeight}
               song={song}
               splitLyrics={splitLyrics}
               highlightedIndexes={highlightedIndexes}
@@ -269,16 +277,27 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
               highlightedIndexes={highlightedIndexes}
               theme={theme}
               onPress={() => {
-                navigation.replace('PassageItem', {
-                  passage: {
-                    lyrics: highlightedIndexes
-                      .map(index => splitLyrics[index].lineText)
-                      .join('\n'),
-                    tags: [],
-                    song: song,
-                  },
-                  theme,
-                });
+                const passage = {
+                  theme: theme,
+                  lyrics: highlightedIndexes
+                    .map(index => splitLyrics[index].lineText)
+                    .join('\n'),
+                  tags: [],
+                  song: song,
+                };
+
+                switch (onSelect) {
+                  case 'FULL_PAGE':
+                    navigation.replace('PassageItem', {
+                      passage,
+                      theme,
+                    });
+                    break;
+                  case 'UPDATE_SHAREABLE':
+                    setShareablePassage(passage);
+                    navigation.goBack();
+                    break;
+                }
               }}
             />
           </View>
@@ -345,7 +364,7 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
           y: scrollTo,
           animated: true,
         });
-      }, 250);
+      }, 500);
     }
   }, []);
 
@@ -389,7 +408,7 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
               style={{
                 ...textStyleCommon,
                 ...styles.songNameText,
-                color: theme.primaryColor,
+                color: theme.textColors[0],
               }}>
               {song.name}
             </Text>
@@ -397,7 +416,7 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
               style={{
                 ...textStyleCommon,
                 ...styles.artistNameText,
-                color: theme.secondaryColor,
+                color: theme.textColors[0],
               }}>
               {song.artists.map(artist => artist.name).join(', ')}
             </Text>
@@ -405,7 +424,7 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
               style={{
                 ...textStyleCommon,
                 ...styles.albumNameText,
-                color: theme.detailColor,
+                color: theme.textColors[0],
               }}>
               {song.album.name}
             </Text>
@@ -433,7 +452,8 @@ const SwapableScrollView = (props: SwapableScrollViewProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    alignSelf: 'center',
+    padding: CONTAINER_PADDING,
+    width: '100%',
   },
   invisibleScrollView: {
     position: 'absolute',

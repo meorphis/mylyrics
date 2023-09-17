@@ -1,69 +1,69 @@
 import React, {useCallback} from 'react';
 import {PassageType} from '../types/passage';
 
-export type SharablePassage = {
+export type ShareablePassage = {
   passage: PassageType;
   counter: number;
 };
 
 // *** PUBLIC INTERFACE ***
-// should be place near the top of the component tree - allows children to set and get the currently sharable passage
-export const SharablePassageProvider = ({
+// should be place near the top of the component tree - allows children to set and get the currently shareable passage
+export const ShareablePassageProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  const [sharablePassage, setSharablePassage] =
-    React.useState<SharablePassage | null>(null);
+  const [shareablePassage, setShareablePassage] =
+    React.useState<ShareablePassage | null>(null);
 
-  const setSharablePassageCallback = useCallback(
+  const setShareablePassageCallback = useCallback(
     (passage: PassageType) => {
-      setSharablePassage(v => {
+      setShareablePassage(v => {
         return {
           counter: v?.counter ? v.counter + 1 : 1,
           passage: passage,
         };
       });
     },
-    [setSharablePassage],
+    [setShareablePassage],
   );
 
   return (
-    <SharablePassageUpdateContext.Provider value={setSharablePassageCallback}>
-      <SharablePassageContext.Provider value={sharablePassage}>
+    <ShareablePassageUpdateContext.Provider value={setShareablePassageCallback}>
+      <ShareablePassageContext.Provider value={shareablePassage}>
         {children}
-      </SharablePassageContext.Provider>
-    </SharablePassageUpdateContext.Provider>
+      </ShareablePassageContext.Provider>
+    </ShareablePassageUpdateContext.Provider>
   );
 };
 
-export const useSharablePassage = () => {
-  const context = React.useContext(SharablePassageContext);
+export const useShareablePassage = () => {
+  const context = React.useContext(ShareablePassageContext);
 
   if (context === undefined) {
     throw new Error(
-      'useSharablePassage must be used within a SharablePassageProvider',
+      'useShareablePassage must be used within a ShareablePassageProvider',
     );
   }
 
   return context;
 };
 
-export const useSharablePassageUpdate = () => {
-  const context = React.useContext(SharablePassageUpdateContext);
+export const useShareablePassageUpdate = () => {
+  const context = React.useContext(ShareablePassageUpdateContext);
 
   if (context === undefined) {
     throw new Error(
-      'useSharablePassageUpdate must be used within a SharablePassageProvider',
+      'useShareablePassageUpdate must be used within a ShareablePassageProvider',
     );
   }
 
   return context;
 };
 
-const SharablePassageContext = React.createContext<SharablePassage | null>(
+const ShareablePassageContext = React.createContext<ShareablePassage | null>(
   null,
 );
-const SharablePassageUpdateContext = React.createContext<
+const ShareablePassageUpdateContext = React.createContext<
   (passage: PassageType) => void
 >(_ => {});

@@ -8,24 +8,28 @@
 // of PassageItem or any component nested beneath PassageItem, where N is the
 // number of passage groups and M is the number of passages in each
 
-import React, {useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import SongInfo from './SongInfo';
 import PassageLyrics from './PassageLyrics';
-import ThemeType from '../../types/theme';
 import ActionBar from './ActionBar';
-import {NavigationProp, useNavigation} from '@react-navigation/core';
+import {useNavigation} from '@react-navigation/core';
 import {RootStackParamList} from '../../types/navigation';
-import {uuidv4} from '@firebase/util';
 import ItemContainer from '../common/ItemContainer';
 import {PassageType} from '../../types/passage';
 import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
-import {useSharablePassageUpdate} from '../../utility/shareable_passage';
-import {useScale, useSetContentHeightForScale} from '../../utility/max_size';
+import {useShareablePassageUpdate} from '../../utility/shareable_passage';
+import {
+  DEFAULT_SCALE,
+  ScaleInfoType,
+  useGetScaleForContainerHeight,
+} from '../../utility/max_size';
+import {StackNavigationProp} from '@react-navigation/stack';
 
-export type PassageItemProps = {
+export const PASSAGE_ITEM_PADDING = 36;
+
+export type PassageItemPropsWithoutSharedTransitionKey = {
   passage: PassageType;
-  passageTheme: ThemeType;
   passageItemKey?: {
     passageKey: string;
     groupKey: string;
@@ -33,32 +37,56 @@ export type PassageItemProps = {
   omitActionBar?: boolean;
   ignoreFlex?: boolean;
   omitBorder?: boolean;
-  onPassageLyricsContainerLayout?: (event: any) => void;
+  maxContainerHeight?: number;
+};
+
+export type PassageItemProps = PassageItemPropsWithoutSharedTransitionKey & {
+  sharedTransitionKey: string;
 };
 
 const PassageItem = (props: PassageItemProps) => {
-  console.log(`rendering PassageItem ${props.passageItemKey?.passageKey}`);
+  console.log(`rendering PassageItem ${props.passage.song.name}`);
 
-  const sharedTransitionKey = useRef<string>(uuidv4()).current;
   const [lyricsYPosition, setLyricsYPosition] = useState<number | null>(null);
   const containerRef = useRef<View>(null);
-  const setSharablePassage = useSharablePassageUpdate();
+  const setShareablePassage = useShareablePassageUpdate();
 
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const getScaleForContainerHeight = useGetScaleForContainerHeight();
+  const [scaleInfo, setScaleInfo] = useState<ScaleInfoType>({
+    scale: DEFAULT_SCALE,
+    computed: false,
+  });
+
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const {
     passage,
-    passageTheme,
     passageItemKey,
     omitActionBar,
     ignoreFlex,
     omitBorder,
-    onPassageLyricsContainerLayout,
+    maxContainerHeight: maxContainerHeightProp,
+    sharedTransitionKey,
   } = props;
-  const {lyrics, tags, song} = passage;
+  const {lyrics, tags, song, theme} = passage;
+
+  useEffect(() => {
+    if (maxContainerHeightProp) {
+      const computedScale = getScaleForContainerHeight({
+        containerHeight: maxContainerHeightProp,
+        numTextLines: lyrics.split('\n').length,
+        actionBarHeight: omitActionBar ? 0 : 48,
+      });
+
+      setScaleInfo({
+        scale: computedScale,
+        computed: true,
+      });
+    }
+  }, []);
 
   return (
     <ItemContainer
-      theme={passageTheme}
+      theme={theme}
       containerRef={containerRef}
       ignoreFlex={ignoreFlex}
       omitBorder={omitBorder}>
@@ -70,12 +98,25 @@ const PassageItem = (props: PassageItemProps) => {
           style={{
             ...styles.passageContainer,
             flex: ignoreFlex ? 0 : 1,
+          }}
+          onLayout={event => {
+            if (!scaleInfo.computed) {
+              const computedScale = getScaleForContainerHeight({
+                containerHeight: event.nativeEvent.layout.height,
+                numTextLines: lyrics.split('\n').length,
+                actionBarHeight: omitActionBar ? 0 : 48,
+              });
+
+              setScaleInfo({
+                scale: computedScale,
+                computed: true,
+              });
+            }
           }}>
           <PassageContainer
             passage={passage}
-            passageTheme={passageTheme}
+            scaleInfo={scaleInfo}
             sharedTransitionKey={sharedTransitionKey}
-            onPassageLyricsContainerLayout={onPassageLyricsContainerLayout}
             setLyricsYPosition={setLyricsYPosition}
             containerRef={containerRef}
             ignoreFlex={ignoreFlex}
@@ -86,19 +127,19 @@ const PassageItem = (props: PassageItemProps) => {
             <ActionBar
               passage={passage}
               tags={tags}
-              theme={passageTheme}
               passageItemKey={passageItemKey}
               navigateToFullLyrics={() => {
                 navigation.navigate('FullLyrics', {
-                  theme: passageTheme,
-                  song: song,
+                  theme,
+                  song,
                   sharedTransitionKey: sharedTransitionKey,
                   initiallyHighlightedPassageLyrics: lyrics,
                   parentYPosition: lyricsYPosition || 0,
+                  onSelect: 'FULL_PAGE',
                 });
               }}
               onSharePress={() => {
-                setSharablePassage(passage);
+                setShareablePassage(passage);
               }}
             />
           </View>
@@ -110,51 +151,39 @@ const PassageItem = (props: PassageItemProps) => {
 
 type PassageContainerProps = {
   passage: PassageType;
-  passageTheme: ThemeType;
+  scaleInfo: ScaleInfoType;
   sharedTransitionKey: string;
   setLyricsYPosition: (y: number) => void;
   containerRef: React.RefObject<View>;
-  onPassageLyricsContainerLayout?: (event: any) => void;
   ignoreFlex?: boolean;
 };
 
 const PassageContainer = (props: PassageContainerProps) => {
   const {
     passage,
-    passageTheme,
+    scaleInfo,
     sharedTransitionKey,
     setLyricsYPosition,
     containerRef,
-    onPassageLyricsContainerLayout,
     ignoreFlex,
   } = props;
-  const {song} = passage;
+  const {song, theme} = passage;
 
-  const setContentHeightForScale = useSetContentHeightForScale();
   const passageLyricsRef = useRef<View>(null);
-  const scale = useScale();
 
   return (
     <React.Fragment>
-      <SongInfo song={song} passageTheme={passageTheme} scale={scale} />
+      <SongInfo song={song} passageTheme={theme} scaleInfo={scaleInfo} />
       <View
         // eslint-disable-next-line react-native/no-inline-styles
-        style={{...styles.passageLyricsContainer, flex: ignoreFlex ? 0 : 1}}
-        onLayout={event => {
-          if (onPassageLyricsContainerLayout) {
-            onPassageLyricsContainerLayout(event);
-          }
-        }}>
+        style={{...styles.passageLyricsContainer, flex: ignoreFlex ? 0 : 1}}>
         <PassageLyrics
           song={song}
           lyrics={passage.lyrics}
-          theme={passageTheme}
-          scale={scale}
+          theme={theme}
+          scaleInfo={scaleInfo}
           sharedTransitionKey={sharedTransitionKey}
-          onLayout={event => {
-            const {height} = event.nativeEvent.layout;
-            setContentHeightForScale({height, scaleIndex: scale.index});
-
+          onLayout={() => {
             passageLyricsRef.current!.measureLayout(
               containerRef.current!,
               (_, y) => {
@@ -172,8 +201,7 @@ const PassageContainer = (props: PassageContainerProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    margin: 20,
-    padding: 16,
+    padding: PASSAGE_ITEM_PADDING,
     flexDirection: 'column',
     justifyContent: 'flex-start',
   },
