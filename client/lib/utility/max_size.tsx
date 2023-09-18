@@ -1,4 +1,9 @@
-import React, {createContext, useContext, useEffect, useState} from 'react';
+import React, {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useState,
+} from 'react';
 import {useDispatch} from 'react-redux';
 import {addContentReadyPassageId} from './redux/content_ready';
 
@@ -225,7 +230,7 @@ export const PassageItemMeasurementProvider = ({
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (measurement.scaleFinalized && measurement?.lyricsYPosition != null) {
       console.log(
         'CONTENT READY',
@@ -236,7 +241,7 @@ export const PassageItemMeasurementProvider = ({
       );
       dispatch(addContentReadyPassageId(passageId));
     }
-  }, [measurement]);
+  }, [measurement.scaleFinalized, measurement?.lyricsYPosition]);
 
   return (
     <PassageItemMeasurementContext.Provider

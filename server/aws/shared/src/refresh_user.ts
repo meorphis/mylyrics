@@ -1,7 +1,6 @@
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getFirestoreDb } from "./integrations/firebase";
-import { getRecommendationsForSentiment, getScoredSentiments } from "./integrations/open_search";
-import { NUMBER_OF_RECOMMENDATIONS_FOR_MAIN_SENTIMENT } from "./utility/recommendations";
+import { getRecommendationsForSentiments, getScoredSentiments } from "./integrations/open_search";
 import { SENTIMENT_GROUPS, SENTIMENT_TO_GROUP } from "./utility/sentiments";
 import { sqs } from "./integrations/aws";
 import { sendRecommendationNotif } from "./integrations/notifications";
@@ -75,21 +74,24 @@ export const refreshUser = async ({userId, numRetries} : {userId: string, numRet
 
   if (!recommendedSentiments || Object.values(recommendedSentiments).flat().length === 0) {
     console.log(`no recommended sentiments for user ${userId}`);
-    if (numRetries) {
+    if (numRetries > 0) {
       console.log(`retrying in 60 seconds for user ${userId}`);
       await createRefreshUserTask({userId, numRetries: numRetries - 1, delaySeconds: 60});
     }
     return;
   }
 
-  const sentiment = recommendedSentiments.map((s) => s.sentiments).flat()[0];
+  const flatSentiments = recommendedSentiments.map((s) => s.sentiments).flat();
 
-  const recommendations = await getRecommendationsForSentiment(
-    {userId, sentiment, limit: NUMBER_OF_RECOMMENDATIONS_FOR_MAIN_SENTIMENT}
+  const recommendations = await getRecommendationsForSentiments(
+    {
+      userId,
+      sentiments: flatSentiments,
+    }
   );
 
   if (recommendations.length === 0) {
-    console.log(`no recommendations for sentiment ${sentiment} for user ${userId}`);
+    console.log(`no recommendations for sentiments ${flatSentiments} for user ${userId}`);
     return;
   }
 

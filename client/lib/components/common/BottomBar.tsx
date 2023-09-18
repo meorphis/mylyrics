@@ -7,9 +7,8 @@ import GroupSelectorBottomSheet from './GroupSelectorBottomSheet';
 import ProphecyBottomSheet from './ProphecyBottomSheet/ProphecyBottomSheet';
 import WalkthroughStepComponent from './WalkthroughStep';
 import {useWalkthroughStep} from '../../utility/walkthrough';
-import {useDispatch} from 'react-redux';
-import {setActivePassage} from '../../utility/redux/active_passage';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useSetActiveGroup} from '../../utility/active_passage';
 
 type Props = {
   activeGroupKey: string | null;
@@ -22,8 +21,9 @@ const BottomBar = (props: Props) => {
   const groupSelectorBottomSheetRef = React.useRef<BottomSheet>(null);
   const prophecyBottomSheetRef = React.useRef<BottomSheet>(null);
 
+  const setLikesAsActiveGroup = useSetActiveGroup({groupKey: 'likes'});
+
   const theme = useTheme();
-  const dispatch = useDispatch();
 
   const {walkthroughStepStatus, setWalkthroughStepAsCompleted} =
     useWalkthroughStep('explore');
@@ -57,7 +57,7 @@ const BottomBar = (props: Props) => {
           theme={theme}
           useSaturatedColor={activeGroupKey === 'likes'}
           onPress={() => {
-            dispatch(setActivePassage({passageKey: null, groupKey: 'likes'}));
+            setLikesAsActiveGroup();
           }}
           background="gradient"
           iconName="heart-outline"

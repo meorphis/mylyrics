@@ -17,12 +17,11 @@ import {
   initPassageGroups,
 } from '../redux/recommendations';
 import {errorToString} from '../error';
-import {setActivePassage} from '../redux/active_passage';
 import {RawPassageType} from '../../types/passage';
 import {setProphecy} from '../redux/prophecy';
-import {getPassageId} from '../passage_id';
 import {setSentimentGroups} from '../redux/sentiment_groups';
 import {getPassageGroups} from '../recommendations';
+import {useSetActivePassage} from '../active_passage';
 
 // Returns a function to get make a request along with the result of that request;
 // the request gets the user's recommendations from the database fetches image data
@@ -113,6 +112,7 @@ export const updateImpressions = async ({
 
 const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
   const dispatch = useDispatch();
+  const setActivePassage = useSetActivePassage();
 
   const setupRecommendations = async ({
     docSnap,
@@ -134,7 +134,6 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
 
     const flatRecommendations = data.recommendations as RawPassageType[];
     const prophecy = data.prophecy as string;
-    const activeGroupKey = flatSentiments[0];
 
     updateImpressions({deviceId, passages: flatRecommendations});
 
@@ -143,15 +142,21 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
       flatSentiments,
     );
 
+    const activeGroupKey = flatSentiments[0];
+    const activePassage = passageGroups.find(p => p.groupKey === activeGroupKey)
+      ?.passageGroup[0]?.passage;
+
+    if (activePassage == null) {
+      throw new Error(`could not find active passage for ${activeGroupKey}`);
+    }
+
     dispatch(initPassageGroups(flatSentiments));
     dispatch(addLoadedPassageGroups(passageGroups));
     dispatch(setSentimentGroups(sentimentGroups));
-    dispatch(
-      setActivePassage({
-        groupKey: activeGroupKey,
-        passageKey: getPassageId(flatRecommendations[0]),
-      }),
-    );
+    setActivePassage({
+      groupKey: activeGroupKey,
+      passage: activePassage,
+    });
     dispatch(setProphecy(prophecy ?? null));
 
     return true;

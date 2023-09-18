@@ -5,24 +5,15 @@
 // and then rendering the appropriate PassageItems accordingly
 import React, {memo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {useDispatch, useSelector} from 'react-redux';
-import {setActivePassage} from '../../utility/redux/active_passage';
+import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import _ from 'lodash';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ThemedLoadingIndicator from './ThemedLoadingIndicator';
-import {useUpdateSequentialWalkthroughStep} from '../../utility/walkthrough';
 import PassageItemCarousel from '../passageItem/PassageItemCarousel';
-import {PassageType} from '../../types/passage';
-import ThemedPassageItem from '../passageItem/SelectedPassageItem';
 
 type Props = {
   passageGroupKey: string;
-};
-
-type PassageCarouselItem = {
-  passageKey: string;
-  passage: PassageType;
 };
 
 const RecommendationsGroupCarousel = (props: Props) => {
@@ -41,55 +32,24 @@ const RecommendationsGroupCarousel = (props: Props) => {
   )!;
 
   // and figure out which one is active
-  const activePassageKey = useSelector((state: RootState) =>
-    state.activePassage.groupKey === passageGroupKey
-      ? state.activePassage.passageKey
-      : null,
-  )!;
-
-  const dispatch = useDispatch();
-
-  const updateSequentialWalkthroughStep = useUpdateSequentialWalkthroughStep();
+  // const activePassageKey = useSelector((state: RootState) =>
+  //   state.activePassage.groupKey === passageGroupKey
+  //     ? state.activePassage.passageKey
+  //     : null,
+  // )!;
 
   const data = passageGroupRequest.data;
 
   const isLoading = passageGroupRequest.status === 'loading';
   const isErrored = passageGroupRequest.status === 'error';
 
-  const activeIndex = data.findIndex(
-    item => item.passageKey === activePassageKey,
-  );
+  // const activeIndex = data.findIndex(
+  //   item => item.passageKey === activePassageKey,
+  // );
 
   return (
     <View style={styles.container}>
-      {data.length > 0 && (
-        <PassageItemCarousel
-          data={data}
-          renderItem={({item}: {item: PassageCarouselItem; index: number}) => {
-            return (
-              <ThemedPassageItem
-                passage={item.passage}
-                passageIsActive={item.passageKey === activePassageKey}
-              />
-            );
-          }}
-          keyExtractor={(item: PassageCarouselItem, index: number) =>
-            `${item.passageKey}:${index}`
-          }
-          firstItem={activeIndex}
-          onBeforeSnapToItem={(slideIndex: number) => {
-            dispatch(
-              setActivePassage({
-                passageKey: data[slideIndex].passageKey,
-              }),
-            );
-
-            setTimeout(() => {
-              updateSequentialWalkthroughStep();
-            }, 250);
-          }}
-        />
-      )}
+      {data.length > 0 && <PassageItemCarousel data={data} />}
       {isLoading && (
         <ThemedLoadingIndicator
           noun={`${data.length > 0 ? 'more' : passageGroupKey} passages`}

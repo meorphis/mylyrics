@@ -22,7 +22,6 @@ type Props = {
 const GroupSelectorBottomSheet = (props: Props) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const {activeGroupKey, bottomSheetRef} = props;
-  const {passageKey} = useSelector((state: RootState) => state.activePassage)!;
   const allSentiments = useSelector(
     (state: RootState) => state.recommendations.map(({groupKey: gk}) => gk),
     _.isEqual,
@@ -114,9 +113,6 @@ const GroupSelectorBottomSheet = (props: Props) => {
                       sentiment: sentiment,
                     }}
                     isActiveGroup={activeGroupKey === sentiment}
-                    passageKey={
-                      activeGroupKey === sentiment ? passageKey : null
-                    }
                     onPress={() => {
                       bottomSheetRef.current?.close();
 

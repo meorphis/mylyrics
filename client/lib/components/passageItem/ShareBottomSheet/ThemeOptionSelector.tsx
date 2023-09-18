@@ -15,6 +15,8 @@ type Props<T> = {
   invert?: () => void;
 };
 
+export const THEME_OPTION_SIZE = 40;
+
 const ThemeOptionSelector = <T,>(props: Props<T>) => {
   const {
     icon,
@@ -32,7 +34,7 @@ const ThemeOptionSelector = <T,>(props: Props<T>) => {
     <View style={styles.selector}>
       <MaterialIcon
         name={icon}
-        size={36}
+        size={THEME_OPTION_SIZE}
         color="black"
         style={styles.selectorIcon}
       />
@@ -78,7 +80,7 @@ const ThemeOptionSelector = <T,>(props: Props<T>) => {
                   }}>
                   <Ionicon
                     name="invert-mode"
-                    size={36}
+                    size={THEME_OPTION_SIZE}
                     color={selectedFarBackgroundColor}
                   />
                 </TouchableOpacity>
@@ -110,8 +112,8 @@ const styles = StyleSheet.create({
   themeOption: {
     flewGrow: 1,
     marginLeft: 12,
-    height: 36,
-    width: 36,
+    height: THEME_OPTION_SIZE,
+    width: THEME_OPTION_SIZE,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -125,7 +127,7 @@ const styles = StyleSheet.create({
   },
   invertIcon: {
     marginLeft: 12,
-    borderRadius: 20,
+    borderRadius: THEME_OPTION_SIZE / 2,
   },
   selectedIndicator: {
     height: 12,

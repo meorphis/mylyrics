@@ -11,7 +11,7 @@ import tinycolor from 'tinycolor2';
 import ThemeType from '../../../types/theme';
 import ShareButton from '../ShareButton';
 import Share from 'react-native-share';
-import ThemeOptionSelector from './ThemeOptionSelector';
+import ThemeOptionSelector, {THEME_OPTION_SIZE} from './ThemeOptionSelector';
 import {isColorLight} from '../../../utility/color';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
@@ -23,7 +23,7 @@ import {PassageType} from '../../../types/passage';
 
 export const CONTROL_PANEL_HEIGHTS = {
   margin_top: 24,
-  editor_height: 108,
+  editor_height: 36 + THEME_OPTION_SIZE * 2,
   editor_margin: 8,
 };
 

@@ -5,32 +5,36 @@ import { getSearchClient } from "./aws";
 import { getFirestoreDb } from "./firebase";
 import { vectorizeSearchTerm } from "./open_ai/open_ai_integration";
 
+type SearchResult = {
+    song: SongWithLyrics, passage: LabeledPassage, score: number
+};
+
+const NUMBER_OF_RECOMMENDATIONS_FOR_MAIN_SENTIMENT = 10;
+const NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS = 5;
+
 // *** PUBLIC INTERFACE ***
-// for a given user, we find the most relevant passages to show them for a given sentiment
+// for a given user, we find the most relevant passages to show them for a given set of sentiments
 // we do this by looking at their listening history - generally if a user has listened to
 // a given song or artist more recently or frequently it will get a higher boost
-export const getRecommendationsForSentiment = async (
-  {userId, sentiment, limit, currentlyRecommendedSongIds, currentlyRecommendedArtistIds}:
+export const getRecommendationsForSentiments = async (
+  {userId, sentiments}:
   { 
     userId: string,
-    sentiment: string,
-    limit: number
-    currentlyRecommendedSongIds?: string[],
-    currentlyRecommendedArtistIds?: string[],
+    sentiments: string[],
   }
 ): Promise<Recommendation[]> => {
   const db = await getFirestoreDb();
 
   console.log("getting impressions and recent listens");
 
-  const [impressionsSnap, recentListensSnap] = await Promise.all([
-    db.collection("user-impressions").doc(`${userId}-${sentiment}`).get(),
-    db.collection("user-recent-listens").doc(userId).get()
-  ]);
+  const [recentListensSnap, ...impressionsSnaps] = await db.getAll(
+    db.collection("user-recent-listens").doc(userId),
+    ...sentiments.map(s => db.collection("user-impressions").doc(`${userId}-${s}`))
+  );
 
   console.log("got impressions and recent listens");
 
-  const impressions = impressionsSnap.data()?.value || [];
+  const impressions = impressionsSnaps.map((snap) => snap.data()?.value || []).flat();
 
   console.log("got impressions data");
 
@@ -38,128 +42,73 @@ export const getRecommendationsForSentiment = async (
 
   console.log("got recent listens data");
 
-  console.log("getting search client");
-
-  const searchClient = getSearchClient();
-
   console.log("getting boosts");
 
   const {boosts, maxBoost} = getBoostsTerm({recentListens});
 
-  console.log("constructing opensearch query");
-
-  const query = {
-    index: "song-lyric-songs",
-    body: {
-      query: {
-        "function_score": {
-          "query": {
-            "function_score": {
-              "query": {
-                "bool": {
-                  "must_not": [
-                    // do not return songs that the user has already seen passages from with this
-                    // sentiment attached (either currently or before)
-                    {"ids": {"values": currentlyRecommendedSongIds || []}},
-    
-                    // if we have a current recommendation for this artist for this sentiment, don't
-                    // get more
-                    {"terms": {"primaryArtist.id": currentlyRecommendedArtistIds || []}},
-                  ],
-    
-                  // only return passages that do have the specified sentiment
-                  "filter": {"term": {"passageSentiments": sentiment}},
-                }
-              },
-              "functions": boosts,
-              "score_mode": "sum",
-              "boost_mode": "replace",
-              // must have at least one recency/frequency boost OR a popularity of at least
-              // 80 (log base 10 of 80 is ~1.9)
-              "min_score": 1.9,
-            }
-          },
-          "functions": [
-            {
-              "filter": {
-                "bool": {
-                  "must_not": {
-                    "ids": {
-                      "values": impressions || []
-                    }
-                  }
-                }
-              },
-              // boost all candidates without an impression above all candidates with an
-              // impression
-              "weight": maxBoost,
-            }
-          ],
-          "score_mode": "sum",
-          "boost_mode": "sum",
-        },
-      },
-      "collapse": {
-        "field": "primaryArtist.id",
-        "inner_hits": {
-          "name": "top_three",
-          "size": 3
-        }
-      },
-      "size": limit,
-    }
-  };
-
-  console.log("running opensearch query")
-
-  const results = await searchClient.search(query);
-
-  console.log(`query took ${results.body.took}ms`);
-
-  type Result = {
-    _id: string,
-    _score: number,
-    _source: Omit<Song, keyof {id: string}> & {passages: LabeledPassage[]}
+  // we run our ES query in a loop - the query has a constraint such that all results
+  // will match exactly one of the target sentiments, but we have some additional constraints
+  // - each sentiment should be represented at least N times (see constants at the top of the file)
+  // - each artist should be represented at most 3 times
+  // to satisfy these constraints, we run the query multiple times, each time narrowing the
+  // constraints to exclude artists, songs, and sentiments that have already been used sufficiently
+  const allResults: SearchResult[] = [];
+  let filteredResults: SearchResult[] = [];
+  
+  let loopData = {
+    iterations: 0,
+    numResultsStillNeeded: NUMBER_OF_RECOMMENDATIONS_FOR_MAIN_SENTIMENT + (
+      sentiments.length - 1
+    ) * NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS,
+    depletedSongIds: [] as string[],
+    depletedArtistIds: [] as string[],
+    remainingSentiments: sentiments,
   }
 
-  // unpack search results
-  const parsedResults: {
-    song: SongWithLyrics, passage: LabeledPassage, score: number
-  }[][] = results.body.hits.hits.map((
-    hit: {inner_hits: {top_three: {hits: {hits: Result[]}}}}
-  ) => hit.inner_hits.top_three.hits.hits.map(
-    (innerhit: Result) => {
-      const {_id: songId, _score: score, _source: {passages, ...song}} = innerhit;
-      const passage = selectOptimalPassage({passages, sentiment});
-      return {
-        song: {
-          id: songId,
-          ...song,
-        },
-        // select the passage most suitable for display
-        passage: {
-          ...passage,
-          sentiments: passage.sentiments.filter((s) => VALID_SENTIMENTS.includes(s)),
-        },
-        score,
-      }
-    }));
+  while (loopData.numResultsStillNeeded > 0 && loopData.iterations < 5) {
+    const additionalResults = await getRecommendationsForSentimentsInner({
+      boosts,
+      maxBoost,
+      impressions,
+      sentiments: loopData.remainingSentiments,
+      // fetch twice as many as we need since we'll likely filter some out
+      limit: 2 * loopData.numResultsStillNeeded,
+      excludeSongIds: loopData.depletedSongIds,
+      excludeArtistIds: loopData.depletedArtistIds
+    });
+
+    if (additionalResults.length === 0) {
+      console.log(`stopped finding results after ${loopData.iterations} iterations`);
+      break;
+    }
+
+    allResults.push(...additionalResults);
+
+    const {newResults, newLoopData} = filterResults({
+      results: allResults,
+      sentiments,
+    })
+
+    filteredResults = newResults;
+
+    loopData = {
+      ...newLoopData,
+      iterations: loopData.iterations + 1,
+    }
+  }
 
   // sort by score
-  const sortedParsedResults = parsedResults.flat().sort((a, b) => b.score - a.score);
-
-  // get the top N
-  const passages = sortedParsedResults.slice(0, limit);
+  const sortedFilteredResults = filteredResults.sort((a, b) => b.score - a.score);
 
   const startImageDownload = Date.now();
-  const colors = await Promise.all(passages.map(async (passage) => {
+  const colors = await Promise.all(sortedFilteredResults.map(async (passage) => {
     const {album} = passage.song;
     const {image} = album;
     return await getImageColors({url: image.url});
   }));
   console.log(`took ${Date.now() - startImageDownload}ms to download and parse images`);
 
-  return passages.map(({song, passage, score}, idx) => {
+  return sortedFilteredResults.map(({song, passage, score}, idx) => {
     return {
       lyrics: passage.lyrics,
       song: {
@@ -595,19 +544,193 @@ const getRecentSongs = async (
   return songs;
 }
 
-const selectOptimalPassage = ((
-  {passages, sentiment}: {passages: LabeledPassage[], sentiment: string}
+const getRecommendationsForSentimentsInner = async (
+  {boosts, maxBoost, impressions, sentiments, limit, excludeSongIds, excludeArtistIds}: 
+  {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    boosts: any[],
+    maxBoost: number,
+    impressions: string[],
+    sentiments: string[],
+    limit: number,
+    excludeSongIds: string[],
+    excludeArtistIds: string[],
+  }
 ) => {
+  console.log("getting search client");
+
+  const searchClient = getSearchClient();
+
+  const query = {
+    index: "song-lyric-songs",
+    body: {
+      query: {
+        "function_score": {
+          "query": {
+            "function_score": {
+              "query": {
+                "bool": {
+                  "must_not": [
+                    // do not return songs that the user has already seen passages from with this
+                    // sentiment attached (either currently or before)
+                    {"ids": {"values": excludeSongIds}},
+    
+                    // if we have a current recommendation for this artist for this sentiment, don't
+                    // get more
+                    {"terms": {"primaryArtist.id": excludeArtistIds}},
+                  ],
+    
+                  // only return passages that do have the specified sentiment
+                  "filter": {"terms": {"passageSentiments": sentiments}},
+                }
+              },
+              "functions": boosts,
+              "score_mode": "sum",
+              "boost_mode": "replace",
+              // must have at least one recency/frequency boost OR a popularity of at least
+              // 80 (log base 10 of 80 is ~1.9)
+              "min_score": 1.9,
+            }
+          },
+          "functions": [
+            {
+              "filter": {
+                "bool": {
+                  "must_not": {
+                    "ids": {
+                      "values": impressions || []
+                    }
+                  }
+                }
+              },
+              // boost all candidates without an impression above all candidates with an
+              // impression
+              "weight": maxBoost,
+            }
+          ],
+          "score_mode": "sum",
+          "boost_mode": "sum",
+        },
+      },
+      "size": limit,
+    }
+  };
+
+  console.log("running opensearch query")
+
+  const results = await searchClient.search(query);
+
+  console.log(`query took ${results.body.took}ms`);
+
+  type Result = {
+    _id: string,
+    _score: number,
+    _source: Omit<Song, keyof {id: string}> & {passages: LabeledPassage[]}
+  }
+
+  // unpack search results
+  const parsedResults: SearchResult[] = results.body.hits.hits.map(
+    (result: Result) => {
+      const {_id: songId, _score: score, _source: {passages, ...song}} = result;
+      const passage = selectOptimalPassage({passages, sentiments});
+      return {
+        song: {
+          id: songId,
+          ...song,
+        },
+        // select the passage most suitable for display
+        passage: {
+          ...passage,
+          sentiments: passage.sentiments.filter((s) => VALID_SENTIMENTS.includes(s)),
+        },
+        score,
+      }
+    });
+
+  return parsedResults;
+}
+
+const filterResults = (
+  {results, sentiments}:
+  {
+    results: SearchResult[],
+    sentiments: string[],
+  }
+) => {
+  const artistOccuranceMap = new Map();
+  const sentimentOccuranceMap = new Map();
+
+  const numEntriesStillNeeded = (sentiment: string) => {
+    if (!sentiments.includes(sentiment)) {
+      return 0;
+    }
+
+    const sentimentOccurances = sentimentOccuranceMap.get(sentiment) ?? 0;
+    // we need at least 10 passages for the first sentiment and 5 for the rest
+    return Math.max(
+      0, sentiment === sentiments[0]
+        ? NUMBER_OF_RECOMMENDATIONS_FOR_MAIN_SENTIMENT - sentimentOccurances :
+        NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS - sentimentOccurances)
+  }
+
+  const artistIsDepleted = (artistId: string) => {
+    const artistOccurances = artistOccuranceMap.get(artistId) ?? 0;
+    // do not allow more than 3 passages from a given artist
+    return artistOccurances >= 3;
+  }
+
+  const filteredResults = results.filter((r) => {
+    const shouldAdd = (
+      !artistIsDepleted(r.song.primaryArtist.id) && r.passage.sentiments.some((s) => {
+        return numEntriesStillNeeded(s) > 0;
+      })
+    );
+    if (shouldAdd) {
+      const {song, passage} = r;
+      artistOccuranceMap.set(
+        song.primaryArtist.id, (artistOccuranceMap.get(song.primaryArtist.id) ?? 0) + 1
+      );
+      passage.sentiments.forEach((s) => {
+        if (sentiments.includes(s)) {
+          sentimentOccuranceMap.set(s, (sentimentOccuranceMap.get(s) ?? 0) + 1);
+        }
+      }); 
+    }
+    return shouldAdd;
+  });
+
+  console.log(
+    `sentiment occurances so far ${JSON.stringify(Array.from(sentimentOccuranceMap.entries()))}`
+  );
+
+  return {
+    newResults: filteredResults,
+    newLoopData: {
+      numResultsStillNeeded: sentiments.reduce((acc, sentiment) => {
+        return acc + numEntriesStillNeeded(sentiment);
+      }, 0),
+      depletedSongIds: results.map((r) => r.song.id),
+      depletedArtistIds: Array.from(artistOccuranceMap.keys()).filter(artistIsDepleted),
+      remainingSentiments: sentiments.filter((s) => numEntriesStillNeeded(s) > 0),
+    }
+  }
+};
+
+const selectOptimalPassage = ((
+  {passages, sentiments}: {passages: LabeledPassage[], sentiments: string[]}
+) => {
+  const sentimentsSet = new Set(sentiments);
+
   // generally prefer passages with a "medium" number of lines
   const sortedOptimalNumEffectiveLines = [6, 5, 4, 7, 8, 3, 2, 1];
 
   // select the passage with the most optimal number of effective lines
   return passages.sort((a, b) => {
-    // if a passage doesn't match the target sentiment, it loses by default
-    if (!a.sentiments.includes(sentiment)) {
+    // if a passage doesn't match one of the target sentiments, it loses by default
+    if (!a.sentiments.some((s) => sentimentsSet.has(s))) {
       return 1;
     }
-    if (!b.sentiments.includes(sentiment)) {
+    if (!b.sentiments.some((s) => sentimentsSet.has(s))) {
       return -1;
     }
 

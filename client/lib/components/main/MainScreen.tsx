@@ -9,7 +9,7 @@ import PendingRecommendations from '../nux/PendingRecommendations';
 import {useNotifications} from '../../utility/notifications';
 import {useSpotifyAuthentication} from '../../utility/spotify_auth';
 import AppearingView from '../common/AppearingView';
-import {AppState, StyleSheet, View} from 'react-native';
+import {AppState, StyleSheet} from 'react-native';
 import {useRecentLikesRequest} from '../../utility/db/likes';
 import {RootState} from '../../utility/redux';
 import {getPassageId} from '../../utility/passage_id';
@@ -116,17 +116,18 @@ const MainScreenInner = (props: {showOnlyLoader: boolean}) => {
       return false;
     }
 
-    return (
-      [...new Set(passageIds)].sort().join(',') ===
-      [...state.contentReady].sort().join(',')
-    );
+    const contentReadyState = new Set(passageIds);
+
+    const diff = passageIds.filter(p => !contentReadyState.has(p));
+
+    return diff.length === 0;
   });
 
   const recommendationsOpacitySharedValue = useSharedValue(0);
 
   useEffect(() => {
     if (contentReady) {
-      console.log('CONTENT READY');
+      console.log('CONTENT READY ALL');
       recommendationsOpacitySharedValue.value = withTiming(1, {duration: 500});
     }
   }, [contentReady]);
