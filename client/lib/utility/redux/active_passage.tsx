@@ -1,29 +1,38 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
-import {PassageItemKeyType} from '../../types/passage';
+
+type ActivePassageState = {
+  groupKeyToPassageKey: {
+    [groupKey: string]: string;
+  };
+  activeGroupKey: string | null;
+};
 
 export const activePassageSlice = createSlice({
   name: 'active_passage',
   initialState: {
-    groupKey: '',
-    passageKey: '',
+    groupKeyToPassageKey: {},
+    activeGroupKey: null,
   },
   reducers: {
     setActivePassage: (
-      state: PassageItemKeyType,
+      state: ActivePassageState,
       action: PayloadAction<{
         groupKey?: string;
         passageKey?: string | null;
       }>,
     ) => {
-      console.log(
-        `set active passage key ${action.payload.groupKey} ${action.payload.passageKey}`,
-      );
+      const {groupKey, passageKey} = action.payload;
 
-      if (action.payload.groupKey) {
-        state.groupKey = action.payload.groupKey;
+      if (groupKey) {
+        state.activeGroupKey = groupKey;
       }
-      if (action.payload.passageKey !== undefined) {
-        state.passageKey = action.payload.passageKey;
+
+      if (state.activeGroupKey == null) {
+        throw new Error('cannot set active passage without active group');
+      }
+
+      if (passageKey) {
+        state.groupKeyToPassageKey[state.activeGroupKey] = passageKey;
       }
     },
   },
@@ -31,4 +40,4 @@ export const activePassageSlice = createSlice({
 
 export const {setActivePassage} = activePassageSlice.actions;
 
-export default activePassageSlice.reducer as Reducer<PassageItemKeyType>;
+export default activePassageSlice.reducer as Reducer<ActivePassageState>;

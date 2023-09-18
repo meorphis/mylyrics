@@ -1,11 +1,9 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import PassageItemCarousel from '../passageItem/PassageItemCarousel';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import {getPassageId} from '../../utility/passage_id';
-import ThemedPassageItem from '../passageItem/SelectedPassageItem';
-import {RecentLike} from '../../types/likes';
 
 const LikesCarousel = () => {
   console.log('rendering LikesCarousel');
@@ -15,15 +13,6 @@ const LikesCarousel = () => {
     (a, b) =>
       a.map(l => getPassageId(l.passage)).join() ===
       b.map(l => getPassageId(l.passage)).join(),
-  );
-
-  const carouselIsActive = useSelector(
-    (state: RootState) => state.activePassage.groupKey === 'likes',
-  );
-
-  const firstPassage = likes[0]?.passage;
-  const [activePassageId, setActivePassageId] = useState<string | undefined>(
-    firstPassage && getPassageId(firstPassage),
   );
 
   if (likes.length === 0) {
@@ -36,23 +25,12 @@ const LikesCarousel = () => {
 
   return (
     <PassageItemCarousel
-      data={likes}
-      renderItem={({item}: {item: RecentLike; index: number}) => {
-        return (
-          <ThemedPassageItem
-            passage={item.passage}
-            passageIsActive={
-              carouselIsActive && getPassageId(item.passage) === activePassageId
-            }
-          />
-        );
-      }}
-      onBeforeSnapToItem={index => {
-        setActivePassageId(getPassageId(likes[index].passage));
-      }}
-      keyExtractor={(item: RecentLike, index: number) =>
-        `${getPassageId(item.passage)}:${index}`
-      }
+      data={likes.map(l => {
+        return {
+          passageKey: getPassageId(l.passage),
+          passage: l.passage,
+        };
+      })}
     />
   );
 };

@@ -13,7 +13,7 @@ import LikesCarousel from './LikesCarousel';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type Props = {
-  activeGroupKey: string;
+  activeGroupKey: string | null;
 };
 
 const RecommendationsCarousel = (props: Props) => {
@@ -37,9 +37,10 @@ const RecommendationsCarousel = (props: Props) => {
 
   const passageGroupKeys = [...useSelector(passageGroupKeysSelector), 'likes'];
 
-  const [localActiveGroupKey, setLocalActiveGroupKey] =
-    React.useState<string>(activeGroupKey);
+  // const [localActiveGroupKey, setLocalActiveGroupKey] =
+  //   React.useState<string>(activeGroupKey);
 
+  // @ts-ignore
   const carouselRef = useRef<Carousel>(null);
   const insets = useSafeAreaInsets();
 

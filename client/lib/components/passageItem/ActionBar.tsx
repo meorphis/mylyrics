@@ -1,7 +1,5 @@
 import React, {memo} from 'react';
 import {StyleSheet, View} from 'react-native';
-import Tag from './Tag';
-import TagType from '../../types/tag';
 import {RootState} from '../../utility/redux';
 import {useDispatch, useSelector} from 'react-redux';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
@@ -11,14 +9,10 @@ import {useLikeRequest} from '../../utility/db/likes';
 import ActionBarButton from './ActionBarButton';
 import {getPassageId} from '../../utility/passage_id';
 import {addCard, removeCard} from '../../utility/redux/prophecy';
+import {useIsActivePassage} from '../../utility/active_passage';
 
 type Props = {
   passage: PassageType;
-  tags: TagType[];
-  passageItemKey?: {
-    passageKey: string;
-    groupKey: string;
-  };
   parentYPosition: number;
   navigateToFullLyrics: (parentYPosition: number) => void;
   onSharePress: () => void;
@@ -27,21 +21,11 @@ type Props = {
 const ActionBar = (props: Props) => {
   console.log(`rendering ActionBar ${props.passage.song.name}`);
 
-  const {
-    passage,
-    tags,
-    passageItemKey,
-    navigateToFullLyrics,
-    parentYPosition,
-    onSharePress,
-  } = props;
+  const {passage, navigateToFullLyrics, parentYPosition, onSharePress} = props;
 
-  const isActivePassage = useSelector(
-    (state: RootState) =>
-      state.activePassage.passageKey === passageItemKey?.passageKey &&
-      state.activePassage.groupKey === passageItemKey?.groupKey,
-    (a, b) => a === b,
-  );
+  const isActivePassage = useIsActivePassage({
+    passageKey: getPassageId(passage),
+  });
 
   const isDrawn = useSelector(
     (state: RootState) =>
@@ -63,30 +47,8 @@ const ActionBar = (props: Props) => {
 
   const {request: likeRequest, toggleLike} = useLikeRequest(passage);
 
-  const orderedTags = useSelector(
-    (state: RootState) => selectOrderedTags(state, tags),
-    () => true,
-  );
-
   return (
     <View style={styles.actionBar}>
-      {passageItemKey && (
-        <View style={styles.sentimentsRow}>
-          {orderedTags.map((tag, index) => {
-            const isActiveGroup = tag.sentiment === passageItemKey.groupKey;
-            return (
-              <View key={index}>
-                <Tag
-                  tag={tag}
-                  theme={passage.theme}
-                  isActiveGroup={isActiveGroup}
-                  passageKey={passageItemKey.passageKey}
-                />
-              </View>
-            );
-          })}
-        </View>
-      )}
       <View style={styles.buttonContainer}>
         <ActionBarButton
           onPress={() => {
@@ -177,41 +139,9 @@ const ActionBar = (props: Props) => {
   );
 };
 
-// we order tags the same way they are ordered in the recommendations array (or alphabetically if
-// neither is present)
-const selectOrderedTags = (state: RootState, tags: TagType[]) =>
-  tags.slice().sort((a: TagType, b: TagType) => {
-    const aIndex = state.recommendations.findIndex(
-      ({groupKey}) => groupKey === a.sentiment,
-    );
-    const bIndex = state.recommendations.findIndex(
-      ({groupKey}) => groupKey === b.sentiment,
-    );
-
-    if (aIndex === -1 && bIndex === -1) {
-      return a.sentiment < b.sentiment ? -1 : 1;
-    }
-
-    if (aIndex === -1) {
-      return 1;
-    }
-
-    if (bIndex === -1) {
-      return -1;
-    }
-
-    return aIndex - bIndex;
-  });
-
 const styles = StyleSheet.create({
   actionBar: {
     flexDirection: 'column',
-  },
-  sentimentsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 4,
-    justifyContent: 'center',
   },
   buttonContainer: {
     flexDirection: 'row',

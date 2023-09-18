@@ -11,6 +11,8 @@ type Props = {
   viewShotRef: React.RefObject<ViewShot>;
 };
 
+const BUTTON_SIZE = 72;
+
 const ShareButton = (props: Props) => {
   const {shareType} = props;
 
@@ -41,7 +43,7 @@ const shareIcon = (shareType: string) => {
     case 'other':
       return (
         <View style={styles.moreIcon}>
-          <MaterialIcon name="more-horiz" size={56} color="darkgrey" />
+          <MaterialIcon name="more-horiz" size={BUTTON_SIZE} color="darkgrey" />
         </View>
       );
     default:
@@ -104,12 +106,12 @@ export default ShareButton;
 
 const styles = StyleSheet.create({
   icon: {
-    width: 56,
-    height: 56,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
   },
   moreIcon: {
-    width: 56,
-    height: 56,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
     backgroundColor: 'white',
     borderRadius: 12,
   },

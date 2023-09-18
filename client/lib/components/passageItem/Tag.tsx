@@ -2,27 +2,23 @@
 
 import TagType from '../../types/tag';
 import React from 'react';
-import {useSetAsActiveGroup} from '../../utility/active_group';
 import ThemeButton from '../common/ThemeButton';
 import {StyleSheet} from 'react-native';
+import {useSetActiveGroup} from '../../utility/active_passage';
 
 type Props = {
   tag: TagType;
   isActiveGroup: boolean;
-  passageKey: string | null;
   includeEmoji?: boolean;
   onPress?: () => void;
 };
 
 const Tag = (props: Props) => {
-  console.log(`rendering Tag ${props.passageKey} ${props.tag.sentiment}`);
+  console.log(`rendering Tag ${props.tag.sentiment}`);
 
-  const {tag, isActiveGroup, passageKey, onPress} = props;
+  const {tag, isActiveGroup, onPress} = props;
 
-  const setAsActiveGroup = useSetAsActiveGroup({
-    passageKey,
-    groupKey: tag.sentiment,
-  });
+  const setActiveGroup = useSetActiveGroup({groupKey: tag.sentiment});
 
   return (
     <ThemeButton
@@ -33,7 +29,7 @@ const Tag = (props: Props) => {
         if (onPress) {
           onPress();
         }
-        setAsActiveGroup();
+        setActiveGroup();
       }}
     />
   );

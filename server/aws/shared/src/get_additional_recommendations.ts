@@ -1,6 +1,5 @@
 import { getFirestoreDb } from "./integrations/firebase";
-import { getRecommendationsForSentiment } from "./integrations/open_search";
-import { NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS } from "./utility/recommendations";
+import { getRecommendationsForSentiments } from "./integrations/open_search";
 import { Recommendation } from "./utility/types";
 import {FieldValue} from "firebase-admin/firestore";
 
@@ -13,38 +12,37 @@ export const getAdditionalRecommendations = async (
   {userId, sentiment}: {userId: string, sentiment: string}
 ): Promise<Recommendation[]> => {
   const db = await getFirestoreDb();
-  const data = (await db.collection("user-recommendations").doc(userId).get()).data();
-  if (!data) {
-    throw Error("cannot add recommendations for a user that does not already have some")
-  }
+  // const data = (await db.collection("user-recommendations").doc(userId).get()).data();
+  // if (!data) {
+  //   throw Error("cannot add recommendations for a user that does not already have some")
+  // }
 
-  const existingRecommendations: Recommendation[] = data.recommendations;
-  const recommendationsForSentiment = existingRecommendations.filter((recommendation) => {
-    return recommendation.tags.some((tag) => tag.sentiment === sentiment);
-  });
+  // const existingRecommendations: Recommendation[] = data.recommendations;
+  // const recommendationsForSentiment = existingRecommendations.filter((recommendation) => {
+  //   return recommendation.tags.some((tag) => tag.sentiment === sentiment);
+  // });
 
-  const numberOfRecommendationsNeeded = (
-    NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS - recommendationsForSentiment.length
-  )
+  // const numberOfRecommendationsNeeded = (
+  //   NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS - recommendationsForSentiment.length
+  // )
 
-  if (numberOfRecommendationsNeeded <= 0) {
-    return [];
-  }
+  // if (numberOfRecommendationsNeeded <= 0) {
+  //   return [];
+  // }
 
-  // for songs, we don't want at recommend any songs twice across sentiments
-  const currentlyRecommendedSongIds = existingRecommendations.map(
-    (recommendation) => recommendation.song.id
-  );
-  // for artists, just avoid duplicates within a sentiment
-  const currentlyRecommendedArtistIds = recommendationsForSentiment.map(
-    (recommendation) => recommendation.song.artists[0].id
-  );
-  const newRecommendations = await getRecommendationsForSentiment({
+  // // for songs, we don't want at recommend any songs twice across sentiments
+  // const currentlyRecommendedSongIds = existingRecommendations.map(
+  //   (recommendation) => recommendation.song.id
+  // );
+  // // for artists, just avoid duplicates within a sentiment
+  // const currentlyRecommendedArtistIds = recommendationsForSentiment.map(
+  //   (recommendation) => recommendation.song.artists[0].id
+  // );
+  const newRecommendations = await getRecommendationsForSentiments({
     userId,
-    sentiment,
-    limit: NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS - recommendationsForSentiment.length,
-    currentlyRecommendedSongIds,
-    currentlyRecommendedArtistIds,
+    sentiments: [sentiment],
+    // currentlyRecommendedSongIds,
+    // currentlyRecommendedArtistIds,
   });
 
   const recommendations = await db.runTransaction(async (transaction) => {

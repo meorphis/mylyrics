@@ -7,7 +7,13 @@ import BottomBar from '../common/BottomBar';
 import {ThemeProvider} from '../../utility/theme';
 import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
 import ShareBottomSheet from './ShareBottomSheet/ShareBottomSheet';
-import CarouselPassageItem from './SelectedPassageItem';
+import {WithSharedTransitionKey} from './WithSharedTransitionKey';
+import {WithPassageItemMeasurement} from './WithPassageItemMeasurement';
+import PassageItem from './PassageItem';
+
+const PassageItemComponent = WithSharedTransitionKey(
+  WithPassageItemMeasurement(PassageItem),
+);
 
 const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   const {passage, theme} = route.params;
@@ -19,7 +25,7 @@ const PassageItemScreen = ({route}: PassageItemScreenProps) => {
     <ThemeProvider initialTheme={theme}>
       <ThemeBackground theme={theme}>
         <SafeAreaView style={{...styles.container, width, maxHeight}}>
-          <CarouselPassageItem passage={passage} passageIsActive />
+          <PassageItemComponent passage={passage} />
         </SafeAreaView>
         <BottomBar activeGroupKey={null} style={styles.bottomBar} />
         <ShareBottomSheet />
