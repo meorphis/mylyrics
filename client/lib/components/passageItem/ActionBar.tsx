@@ -1,4 +1,4 @@
-import React, {memo} from 'react';
+import React, {memo, useMemo} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {RootState} from '../../utility/redux';
 import {useDispatch, useSelector} from 'react-redux';
@@ -23,8 +23,11 @@ const ActionBar = (props: Props) => {
 
   const {passage, navigateToFullLyrics, parentYPosition, onSharePress} = props;
 
+  // memoized passage key
+  const passageKey = useMemo(() => getPassageId(passage), [passage]);
+
   const isActivePassage = useIsActivePassage({
-    passageKey: getPassageId(passage),
+    passageKey,
   });
 
   const isDrawn = useSelector(
@@ -160,5 +163,6 @@ const styles = StyleSheet.create({
 export default memo(
   ActionBar,
   (prevProps, nextProps) =>
-    prevProps.parentYPosition === nextProps.parentYPosition,
+    prevProps.parentYPosition === nextProps.parentYPosition &&
+    prevProps.passage.lyrics === nextProps.passage.lyrics,
 );

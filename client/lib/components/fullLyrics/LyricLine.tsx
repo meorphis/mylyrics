@@ -1,27 +1,24 @@
 import {
   LayoutChangeEvent,
   Pressable,
-  StyleSheet,
   Text,
+  TextStyle,
   View,
+  ViewStyle,
 } from 'react-native';
 import AppearingView from '../common/AppearingView';
-import React from 'react';
-import {addColorOpacity, isColorLight} from '../../utility/color';
-import {getLyricsColor} from '../../utility/lyrics';
-import {textStyleCommon} from '../../utility/text';
-import ThemeType from '../../types/theme';
 import {SharedElement} from 'react-navigation-shared-element';
+import React from 'react';
 
 type Props = {
   lineText: string;
   index: number;
   isAppearingText: boolean;
   shouldShowAppearingText: boolean;
-  theme: ThemeType;
+  skipPressable?: boolean;
+  textStyle: TextStyle;
+  pressableStyle: ViewStyle;
   sharedTransitionKey?: string;
-  isHighlighted: boolean;
-  adjacentLineIsHighlighted: boolean;
   setAsHighlighted: () => void;
   onLayout?: (event: LayoutChangeEvent) => void;
 };
@@ -32,45 +29,19 @@ const LyricLine = (props: Props) => {
     index,
     isAppearingText,
     shouldShowAppearingText,
-    theme,
+    textStyle,
+    pressableStyle,
+    skipPressable,
     sharedTransitionKey,
-    isHighlighted,
-    adjacentLineIsHighlighted,
     setAsHighlighted,
     onLayout,
   } = props;
 
-  const saturatedColor = isColorLight(theme.farBackgroundColor)
-    ? '#000000'
-    : '#ffffff';
-
-  const textStyle = {
-    ...textStyleCommon,
-    ...styles.lyricsLine,
-    color: isHighlighted
-      ? isColorLight(saturatedColor)
-        ? 'black'
-        : 'white'
-      : getLyricsColor({theme}),
-  };
-
-  const getBackgroundColorForLineIndex = () => {
-    if (isHighlighted) {
-      return saturatedColor;
-    } else if (adjacentLineIsHighlighted) {
-      return addColorOpacity(saturatedColor, 0.2);
-    } else {
-      return undefined;
-    }
-  };
-
-  const pressableStyle = {
-    ...styles.lyricsLineContainer,
-    ...styles.activeLyricsLineContainer,
-    backgroundColor: getBackgroundColorForLineIndex(),
-  };
-
-  const innerComponent = (
+  const innerComponent = skipPressable ? (
+    <View style={pressableStyle}>
+      <Text style={textStyle}>{lineText}</Text>
+    </View>
+  ) : (
     <Pressable onPress={setAsHighlighted} style={pressableStyle}>
       <Text style={textStyle}>{lineText}</Text>
     </Pressable>
@@ -89,22 +60,8 @@ const LyricLine = (props: Props) => {
   }
 
   return shouldShowAppearingText ? (
-    <AppearingView duration={250}>{innerSharedComponent}</AppearingView>
+    <AppearingView duration={500}>{innerSharedComponent}</AppearingView>
   ) : null;
 };
-
-const styles = StyleSheet.create({
-  activeLyricsLineContainer: {
-    borderRadius: 8,
-  },
-  lyricsLineContainer: {
-    marginVertical: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  lyricsLine: {
-    fontSize: 20,
-  },
-});
 
 export default LyricLine;

@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo} from 'react';
+import React, {memo, useCallback, useMemo} from 'react';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -11,8 +11,6 @@ import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import _ from 'lodash';
 import {textStyleCommon} from '../../utility/text';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
-import {RootStackParamList} from '../../types/navigation';
 
 type Props = {
   activeGroupKey: string | null;
@@ -20,7 +18,6 @@ type Props = {
 };
 
 const GroupSelectorBottomSheet = (props: Props) => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const {activeGroupKey, bottomSheetRef} = props;
   const allSentiments = useSelector(
     (state: RootState) => state.recommendations.map(({groupKey: gk}) => gk),
@@ -115,10 +112,6 @@ const GroupSelectorBottomSheet = (props: Props) => {
                     isActiveGroup={activeGroupKey === sentiment}
                     onPress={() => {
                       bottomSheetRef.current?.close();
-
-                      setTimeout(() => {
-                        navigation.navigate('Main');
-                      }, 100);
                     }}
                   />
                 </View>
@@ -201,4 +194,7 @@ const groupEmojis: {[key: string]: string} = {
   spine: '🦾',
 };
 
-export default GroupSelectorBottomSheet;
+export default memo(
+  GroupSelectorBottomSheet,
+  (prev, next) => prev.activeGroupKey === next.activeGroupKey,
+);

@@ -45,16 +45,18 @@ const ProphecyCardsView = (props: Props) => {
           />
         );
       })}
-      <ThemeButton
-        style={styles.submitButton}
-        text="read prophecy"
-        textStyle={styles.submitButtonText}
-        onPress={() => {
-          onSubmit();
-        }}
-        isDisabled={cards.length < 3}
-        useSaturatedColor
-      />
+      {cards.length === 3 && (
+        <ThemeButton
+          style={styles.submitButton}
+          text="read prophecy"
+          textStyle={styles.submitButtonText}
+          onPress={() => {
+            onSubmit();
+          }}
+          isDisabled={cards.length < 3}
+          useSaturatedColor
+        />
+      )}
     </ScrollView>
   );
 };

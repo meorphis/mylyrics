@@ -11,7 +11,7 @@ type Props = {
 const DefaultThemeBackground = (props: Props) => {
   console.log('rendering DefaultThemeBackground');
 
-  const theme = useTheme();
+  const {theme} = useTheme();
 
   return <ThemeBackground theme={theme} {...props} />;
 };

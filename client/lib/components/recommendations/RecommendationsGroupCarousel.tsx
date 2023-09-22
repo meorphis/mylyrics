@@ -4,13 +4,13 @@
 // - which passage is currently active
 // and then rendering the appropriate PassageItems accordingly
 import React, {memo} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useSelector} from 'react-redux';
 import {RootState} from '../../utility/redux';
 import _ from 'lodash';
-import Icon from 'react-native-vector-icons/Ionicons';
 import ThemedLoadingIndicator from './ThemedLoadingIndicator';
 import PassageItemCarousel from '../passageItem/PassageItemCarousel';
+import ErrorComponent from '../common/ErrorComponent';
 
 type Props = {
   passageGroupKey: string;
@@ -49,18 +49,15 @@ const RecommendationsGroupCarousel = (props: Props) => {
 
   return (
     <View style={styles.container}>
-      {data.length > 0 && <PassageItemCarousel data={data} />}
+      {data.length > 0 && (
+        <PassageItemCarousel groupKey={passageGroupKey} data={data} />
+      )}
       {isLoading && (
         <ThemedLoadingIndicator
           noun={`${data.length > 0 ? 'more' : passageGroupKey} passages`}
         />
       )}
-      {isErrored && (
-        <View style={styles.errorContainer}>
-          <Icon name="alert-circle-outline" size={24} color="darkred" />
-          <Text style={styles.errorText}>an error occurred</Text>
-        </View>
-      )}
+      {isErrored && <ErrorComponent />}
     </View>
   );
 };
@@ -68,17 +65,6 @@ const RecommendationsGroupCarousel = (props: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  errorContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignSelf: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  errorText: {
-    marginLeft: 4,
-    color: 'darkred',
   },
 });
 

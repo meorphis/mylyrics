@@ -18,6 +18,15 @@ export const store = configureStore({
     sentimentGroups: sentimentGroupsReducer,
     contentReady: contentReadyReducer,
   },
+  middleware: [
+    _ => next => action => {
+      const start = performance.now();
+      const result = next(action);
+      const end = performance.now();
+      console.log(`${action.type} took ${end - start} ms`);
+      return result;
+    },
+  ],
 });
 
 export type RootState = ReturnType<typeof store.getState>;

@@ -10,7 +10,7 @@ type Props = {
 const ThemedLoadingIndicator = (props: Props) => {
   const {noun} = props;
 
-  const theme = useTheme();
+  const {theme} = useTheme();
   const color = isColorLight(addColorOpacity(theme.backgroundColor, 0.6))
     ? 'black'
     : 'white';

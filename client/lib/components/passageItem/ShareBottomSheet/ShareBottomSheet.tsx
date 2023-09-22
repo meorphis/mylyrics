@@ -16,35 +16,37 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {isColorLight} from '../../../utility/color';
 import ShareablePassageItem from './ShareablePassageItem';
 import ControlPanel, {CONTROL_PANEL_HEIGHTS} from './ControlPanel';
-import {PassageType} from '../../../types/passage';
+import {ShareablePassage} from '../../../types/passage';
+import {PassageItemMeasurementProvider} from '../../../utility/max_size';
+import {getPassageId} from '../../../utility/passage_id';
 
-const BOTTOM_SHEET_HANDLE_HEIGHT = 24;
+export const BOTTOM_SHEET_HANDLE_HEIGHT = 24;
 
 const ShareBottomSheet = () => {
   console.log('rendering ShareBottomSheet');
 
-  const {passage, bottomSheetTriggered} = useShareablePassage();
+  const shareablePassage = useShareablePassage();
 
-  if (passage === null) {
+  if (shareablePassage === null) {
     return null;
   }
 
-  return (
-    <ShareBottomSheetInner
-      passage={passage}
-      bottomSheetTriggered={bottomSheetTriggered}
-    />
-  );
+  return <ShareBottomSheetInner shareablePassage={shareablePassage} />;
 };
 
 const ShareBottomSheetInner = ({
-  passage,
-  bottomSheetTriggered,
+  shareablePassage,
 }: {
-  passage: PassageType;
-  bottomSheetTriggered: boolean;
+  shareablePassage: ShareablePassage;
 }) => {
-  const {theme} = passage;
+  const {passage, themeSelection, textColorSelection, bottomSheetTriggered} =
+    shareablePassage;
+
+  const {theme: baseSelectedTheme, inverted} = themeSelection;
+
+  const selectedTheme = inverted
+    ? baseSelectedTheme.invertedTheme!
+    : baseSelectedTheme;
 
   // POSITIONING: we need to compute (1) the maximum space we can allow the lyric card's passage
   // container component to take up (we provide this value as a paramter to the PassageItem which
@@ -76,23 +78,11 @@ const ShareBottomSheetInner = ({
   const [snapPoint, setSnapPoint] = useState<number>(1000);
 
   const setLyricCardHeight = useCallback(
-    ({lyricCardHeight, expand}: {lyricCardHeight: number; expand: boolean}) => {
+    ({lyricCardHeight}: {lyricCardHeight: number}) => {
       const newSnapPoint = lyricCardHeight + nonLyricCardHeight + insets.bottom;
       if (newSnapPoint !== snapPoint) {
         console.log(`setting snap point to ${newSnapPoint}`);
-
         setSnapPoint(newSnapPoint);
-        // slight delay because the animation is smoother if the snap points
-        // are already updated by the time we expand the bottom sheet
-        if (expand) {
-          // setTimeout(() => {
-          //   bottomSheetRef.current?.expand();
-          // }, 250);
-        }
-      } else {
-        if (expand) {
-          // bottomSheetRef.current?.expand();
-        }
       }
     },
     [],
@@ -132,29 +122,39 @@ const ShareBottomSheetInner = ({
       backdropComponent={renderBackdrop}
       // eslint-disable-next-line react-native/no-inline-styles
       handleIndicatorStyle={{
-        backgroundColor: isColorLight(theme.farBackgroundColor)
+        backgroundColor: isColorLight(selectedTheme.farBackgroundColor)
           ? '#00000040'
           : '#ffffff40',
       }}
       backgroundStyle={{
-        backgroundColor: theme.farBackgroundColor,
+        backgroundColor: selectedTheme.farBackgroundColor,
       }}
       containerStyle={{...styles.container}}
       handleHeight={BOTTOM_SHEET_HANDLE_HEIGHT}>
-      <View style={styles.passageEditor}>
-        <ShareablePassageItem
+      <PassageItemMeasurementProvider passageId={getPassageId(passage)}>
+        <View style={styles.passageEditor}>
+          <ShareablePassageItem
+            passage={{
+              ...passage,
+              theme: {
+                ...selectedTheme,
+                textColors: [textColorSelection],
+              },
+            }}
+            maxContainerHeight={maxPassageContainerHeight}
+            setHeight={setLyricCardHeight}
+            viewShotRef={viewShotRef}
+            sharedTransitionKey={sharedTransitionKey}
+          />
+        </View>
+        <ControlPanel
           passage={passage}
-          maxContainerHeight={maxPassageContainerHeight}
-          setHeight={setLyricCardHeight}
-          viewShotRef={viewShotRef}
+          snapPoint={snapPoint}
+          bottomSheetTriggered={bottomSheetTriggered}
           sharedTransitionKey={sharedTransitionKey}
+          viewShotRef={viewShotRef}
         />
-      </View>
-      <ControlPanel
-        passage={passage}
-        sharedTransitionKey={sharedTransitionKey}
-        viewShotRef={viewShotRef}
-      />
+      </PassageItemMeasurementProvider>
     </BottomSheet>
   );
 };

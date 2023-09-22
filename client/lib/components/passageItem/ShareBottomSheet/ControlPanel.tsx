@@ -1,5 +1,11 @@
 import React, {memo, useEffect, useLayoutEffect, useState} from 'react';
-import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -7,7 +13,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import ViewShot from 'react-native-view-shot';
-import tinycolor from 'tinycolor2';
 import ThemeType from '../../../types/theme';
 import ShareButton from '../ShareButton';
 import Share from 'react-native-share';
@@ -17,9 +22,16 @@ import Ionicon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {RootStackParamList} from '../../../types/navigation';
-import {useShareablePassageUpdate} from '../../../utility/shareable_passage';
 import {getPassageId} from '../../../utility/passage_id';
 import {PassageType} from '../../../types/passage';
+import {usePassageItemMeasurement} from '../../../utility/max_size';
+import {BOTTOM_SHEET_HANDLE_HEIGHT} from './ShareBottomSheet';
+import _ from 'lodash';
+import {
+  useShareablePassage,
+  useShareablePassageUpdate,
+} from '../../../utility/shareable_passage';
+import convert from 'color-convert';
 
 export const CONTROL_PANEL_HEIGHTS = {
   margin_top: 24,
@@ -29,6 +41,8 @@ export const CONTROL_PANEL_HEIGHTS = {
 
 type Props = {
   passage: PassageType;
+  snapPoint: number;
+  bottomSheetTriggered: boolean;
   sharedTransitionKey: string;
   viewShotRef: React.RefObject<ViewShot>;
 };
@@ -36,8 +50,19 @@ type Props = {
 const ControlPanel = (props: Props) => {
   console.log('rendering ControlPanel');
 
-  const {passage, sharedTransitionKey, viewShotRef} = props;
-  const {setShareablePassage} = useShareablePassageUpdate();
+  const {
+    passage,
+    snapPoint,
+    bottomSheetTriggered,
+    sharedTransitionKey,
+    viewShotRef,
+  } = props;
+  const {height: windowHeight} = Dimensions.get('window');
+  const {lyricsYPosition} = usePassageItemMeasurement();
+
+  const {themeSelection, textColorSelection} = useShareablePassage()!;
+  const {setThemeSelection, setTextColorSelection, invertThemeSelection} =
+    useShareablePassageUpdate();
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
@@ -45,39 +70,15 @@ const ControlPanel = (props: Props) => {
   // but we allow the user to change both
   const defaultTheme = passage.theme;
 
-  const [themeSelection, setThemeSelection] = useState<{
-    theme: ThemeType;
-    inverted: boolean;
-  }>({
-    theme: defaultTheme,
-    inverted: false,
-  });
-
   const {theme: baseSelectedTheme, inverted} = themeSelection;
 
   const selectedTheme = inverted
     ? baseSelectedTheme.invertedTheme!
     : baseSelectedTheme;
 
-  const [textColorSelection, setTextColorSelection] = useState<string>(
-    defaultTheme.textColors[0],
-  );
-
-  // reset the text color when the theme changes
-  useLayoutEffect(() => {
-    setTextColorSelection(selectedTheme.textColors[0]);
-  }, [selectedTheme]);
-
-  // update the parent's theme when the theme changes
-  useLayoutEffect(() => {
-    setShareablePassage({
-      ...passage,
-      theme: {
-        ...selectedTheme,
-        textColors: [textColorSelection],
-      },
-    });
-  }, [selectedTheme, textColorSelection]);
+  // useLayoutEffect(() => {
+  //   setTextColorSelection(selectedTheme.textColors[0]);
+  // }, [selectedTheme]);
 
   // EDIT MODE: to save space on the screen, we do not show the theme editor by default; if the
   // user toggles it on, we fade the editor main menu out and the theme editor in
@@ -113,12 +114,15 @@ const ControlPanel = (props: Props) => {
     };
   });
 
-  // RESET STATE: when the shareable passage changes, we reset the theme to that passage's theme
-  // and close edit mode
+  // RESET STATE: when the passage changes or the bottom sheet is re-opened, we reset the
+  // edit mode to false
   useEffect(() => {
-    setThemeSelection({theme: defaultTheme, inverted: false});
     setEditThemeMode(false);
-  }, [getPassageId(passage)]);
+  }, [getPassageId(passage), bottomSheetTriggered]);
+
+  console.log(
+    `PARAMS: snapPoint: ${snapPoint}, lyricsYPosition: ${lyricsYPosition} windowHeight: ${windowHeight}`,
+  );
 
   return (
     <View
@@ -152,11 +156,16 @@ const ControlPanel = (props: Props) => {
             <EditorButton
               onPress={() => {
                 navigation.navigate('FullLyrics', {
-                  theme: selectedTheme,
-                  song: passage.song,
+                  originalPassage: passage,
+                  themeSelection,
+                  textColorSelection,
                   sharedTransitionKey,
                   initiallyHighlightedPassageLyrics: passage.lyrics,
-                  parentYPosition: 0,
+                  parentYPosition:
+                    windowHeight -
+                    snapPoint -
+                    BOTTOM_SHEET_HANDLE_HEIGHT +
+                    (lyricsYPosition ?? 0),
                   onSelect: 'UPDATE_SHAREABLE',
                 });
               }}
@@ -199,14 +208,7 @@ const ControlPanel = (props: Props) => {
             }}
             selectedBackgroundColor={selectedTheme.backgroundColor}
             selectedFarBackgroundColor={selectedTheme.farBackgroundColor}
-            invert={() => {
-              setThemeSelection(s => {
-                return {
-                  theme: s.theme,
-                  inverted: !s.inverted,
-                };
-              });
-            }}
+            invert={invertThemeSelection}
           />
           <ThemeOptionSelector<string>
             key="text-color-selector"
@@ -228,22 +230,16 @@ const ControlPanel = (props: Props) => {
 };
 
 const controlPanelColor = (farBackgroundColor: string) => {
-  const farBackgroundColorHsl = tinycolor(farBackgroundColor).toHsl();
+  const [L, a, b] = convert.hex.lab(farBackgroundColor);
 
-  let newL;
-
-  if (farBackgroundColorHsl.l < 0.7 || farBackgroundColorHsl.s > 0.4) {
-    newL = Math.max(0.8, farBackgroundColorHsl.l);
-  } else if (farBackgroundColorHsl.l < 0.9) {
-    newL = farBackgroundColorHsl.l + 0.1;
+  if (L <= 90) {
+    return `#${convert.lab.hex([Math.max(95, L + 5), a * 0.5, b * 0.5])}`;
   } else {
-    newL = farBackgroundColorHsl.l - 0.1;
+    if (Math.abs(a) > 50 || Math.abs(b) > 50) {
+      return `#${convert.lab.hex([L, a * 0.5, b * 0.5])}`;
+    }
+    return `#${convert.lab.hex([L - 10, a, b])}`;
   }
-
-  return tinycolor({
-    ...farBackgroundColorHsl,
-    l: newL,
-  }).toHexString();
 };
 
 const EditorButton = (props: {
@@ -293,7 +289,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 8,
     borderWidth: 1,
-    borderColor: '#ffffff40',
+    borderColor: '#00000040',
     shadowColor: '#000', // Adds shadow for iOS
     shadowOffset: {
       width: 0,
@@ -307,7 +303,7 @@ const styles = StyleSheet.create({
   },
   themeEditor: {
     borderWidth: 3,
-    borderColor: '#ffffff40',
+    borderColor: '#00000040',
     borderRadius: 16,
     backgroundColor: '#f2f2f240', // Adds a subtle background color
     shadowColor: '#000', // Adds shadow for iOS
@@ -338,8 +334,6 @@ const styles = StyleSheet.create({
   },
 });
 
-export default memo(
-  ControlPanel,
-  (prevProps, nextProps) =>
-    getPassageId(prevProps.passage) === getPassageId(nextProps.passage),
+export default memo(ControlPanel, (prevProps, nextProps) =>
+  _.isEqual(prevProps, nextProps),
 );

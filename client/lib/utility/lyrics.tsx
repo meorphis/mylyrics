@@ -1,5 +1,4 @@
 import ThemeType from '../types/theme';
-import {colorDistance, ensureColorContrast2, isColorLight} from './color';
 
 export const splitLyricsWithPassages = ({
   songLyrics,
@@ -62,38 +61,6 @@ export const cleanLyrics = (lyrics: string) => {
 
 export const getLyricsColor = ({theme}: {theme: ThemeType}) => {
   return theme.textColors[0];
-};
-
-export const getFurthestColor = ({
-  subject,
-  options,
-  ensureContrast,
-  distanceFn = colorDistance,
-}: {
-  subject: string;
-  options: string[];
-  ensureContrast?: boolean;
-  distanceFn?: (color1: string, color2: string) => number;
-}) => {
-  const distances = options.map(option => distanceFn(option, subject));
-  const maxDistance = Math.max(...distances);
-  const maxIndex = distances.indexOf(maxDistance);
-  const proposedColor = options[maxIndex];
-
-  if (!ensureContrast) {
-    return proposedColor;
-  }
-
-  return ensureColorContrast2({
-    changeable: proposedColor,
-    unchangeable: subject,
-    shouldDarkenFn: ({
-      unchangeable,
-    }: {
-      changeable: string;
-      unchangeable: string;
-    }) => isColorLight(unchangeable),
-  });
 };
 
 const splitWithIndexes = (str: string, delimiter: string) => {

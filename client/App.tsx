@@ -9,7 +9,7 @@ import React from 'react';
 // import {useSpotifyAuthentication} from './lib/spotify_auth';
 import {DeviceIdProvider} from './lib/utility/device_id';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {Provider} from 'react-redux';
+import {Provider as ReduxProvider} from 'react-redux';
 import {store} from './lib/utility/redux';
 import {NavigationContainer} from '@react-navigation/native';
 import {StackCardStyleInterpolator} from '@react-navigation/stack';
@@ -23,13 +23,13 @@ import {
   SharedElementConfig,
   createSharedElementStackNavigator,
 } from 'react-navigation-shared-element';
-import PassageItemScreen from './lib/components/passageItem/PassageItemScreen';
-import {SongType} from './lib/types/song';
 import {cleanLyrics, splitLyricsWithPassages} from './lib/utility/lyrics';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import {Dirs} from 'react-native-file-access';
 import {ShareablePassageProvider} from './lib/utility/shareable_passage';
 import {ThemeProvider} from './lib/utility/theme';
+import {PassageType} from './lib/types/passage';
+import {SingletonPassageProvider} from './lib/utility/singleton_passage';
 
 const Stack = createSharedElementStackNavigator<RootStackParamList>();
 
@@ -43,95 +43,95 @@ CacheManager.config = {
 
 function App(): JSX.Element {
   return (
-    <GestureHandlerRootView style={styles.gestureHandler}>
-      <ShareablePassageProvider>
-        <ThemeProvider>
-          <NavigationContainer>
-            <Provider store={store}>
-              <DeviceIdProvider>
-                <SafeAreaProvider>
-                  <Stack.Navigator>
-                    <Stack.Screen
-                      name="Main"
-                      component={MainScreen}
-                      options={{
-                        headerShown: false,
-                        cardStyleInterpolator: forFade,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="PassageItem"
-                      component={PassageItemScreen}
-                      options={{
-                        headerShown: false,
-                        cardStyleInterpolator: forFade,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="FullLyrics"
-                      component={FullLyrics}
-                      options={{
-                        headerShown: false,
-                        cardStyleInterpolator: forFade,
-                      }}
-                      sharedElements={(route, otherRoute, showing) => {
-                        if (route.name !== 'FullLyrics' || !showing) {
-                          return [];
-                        }
+    <ReduxProvider store={store}>
+      <GestureHandlerRootView style={styles.gestureHandler}>
+        <ShareablePassageProvider>
+          <SingletonPassageProvider>
+            <ThemeProvider>
+              <NavigationContainer>
+                <DeviceIdProvider>
+                  <SafeAreaProvider>
+                    <Stack.Navigator>
+                      <Stack.Screen
+                        name="Main"
+                        component={MainScreen}
+                        options={{
+                          headerShown: false,
+                          cardStyleInterpolator: forFade,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="FullLyrics"
+                        component={FullLyrics}
+                        options={{
+                          headerShown: false,
+                          cardStyleInterpolator: forFade,
+                        }}
+                        sharedElements={(route, _, showing) => {
+                          if (route.name !== 'FullLyrics' || !showing) {
+                            return [];
+                          }
+                          const {
+                            originalPassage,
+                            sharedTransitionKey,
+                            initiallyHighlightedPassageLyrics,
+                          } = route.params as {
+                            originalPassage: PassageType;
+                            sharedTransitionKey: string;
+                            initiallyHighlightedPassageLyrics: string;
+                          };
 
-                        const {
-                          song,
-                          sharedTransitionKey,
-                          initiallyHighlightedPassageLyrics,
-                        } = route.params as {
-                          song: SongType;
-                          sharedTransitionKey: string;
-                          initiallyHighlightedPassageLyrics: string;
-                        };
+                          const splitLyrics = splitLyricsWithPassages({
+                            songLyrics: cleanLyrics(
+                              originalPassage.song.lyrics,
+                            ),
+                            passageLyrics: initiallyHighlightedPassageLyrics,
+                          });
 
-                        const splitLyrics = splitLyricsWithPassages({
-                          songLyrics: cleanLyrics(song.lyrics),
-                          passageLyrics: initiallyHighlightedPassageLyrics,
-                        });
+                          return [
+                            ...(splitLyrics
+                              .map(({passageLine}, index) => {
+                                if (passageLine == null) {
+                                  return null;
+                                }
 
-                        return [
-                          ...(splitLyrics
-                            .map(({passageLine}, index) => {
-                              if (passageLine == null) {
-                                return null;
-                              }
-
-                              return {
-                                id: `${sharedTransitionKey}:lyrics:${index}`,
-                                animation: 'fade-in' as SharedElementAnimation,
-                              };
-                            })
-                            .filter(
-                              line => line != null,
-                            ) as SharedElementConfig[]),
-                          {
-                            id: `${sharedTransitionKey}:item_container`,
-                            animation: 'fade-in' as SharedElementAnimation,
-                          },
-                        ];
-                      }}
-                    />
-                  </Stack.Navigator>
-                </SafeAreaProvider>
-              </DeviceIdProvider>
-            </Provider>
-          </NavigationContainer>
-        </ThemeProvider>
-      </ShareablePassageProvider>
-    </GestureHandlerRootView>
+                                return {
+                                  id: `${sharedTransitionKey}:lyrics:${index}`,
+                                  animation: 'fade' as SharedElementAnimation,
+                                };
+                              })
+                              .filter(
+                                line => line != null,
+                              ) as SharedElementConfig[]),
+                            {
+                              id: `${sharedTransitionKey}:buttons`,
+                              animation: 'fade' as SharedElementAnimation,
+                            },
+                          ];
+                        }}
+                      />
+                    </Stack.Navigator>
+                  </SafeAreaProvider>
+                </DeviceIdProvider>
+              </NavigationContainer>
+            </ThemeProvider>
+          </SingletonPassageProvider>
+        </ShareablePassageProvider>
+      </GestureHandlerRootView>
+    </ReduxProvider>
   );
 }
 
-const forFade: StackCardStyleInterpolator = ({current}) => ({
-  cardStyle: {
-    opacity: current.progress,
-  },
-});
+const forFade: StackCardStyleInterpolator = ({current}) => {
+  return {
+    cardStyle: {
+      opacity: current.progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+      }),
+    },
+  };
+};
 
 const styles = StyleSheet.create({
   gestureHandler: {

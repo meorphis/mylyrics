@@ -9,6 +9,12 @@ import WalkthroughStepComponent from './WalkthroughStep';
 import {useWalkthroughStep} from '../../utility/walkthrough';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useSetActiveGroup} from '../../utility/active_passage';
+import {
+  allSentiments,
+  sentimentAdjectiveToNoun,
+} from '../../utility/sentiments';
+import SentimentEnumType from '../../types/sentiments';
+import {useSingletonPassage} from '../../utility/singleton_passage';
 
 type Props = {
   activeGroupKey: string | null;
@@ -22,8 +28,12 @@ const BottomBar = (props: Props) => {
   const prophecyBottomSheetRef = React.useRef<BottomSheet>(null);
 
   const setLikesAsActiveGroup = useSetActiveGroup({groupKey: 'likes'});
+  const singletonPassage = useSingletonPassage();
+  const setPreviousGroupKeyAsActiveGroup = useSetActiveGroup({
+    groupKey: singletonPassage?.previousGroupKey ?? '',
+  });
 
-  const theme = useTheme();
+  const {theme} = useTheme();
 
   const {walkthroughStepStatus, setWalkthroughStepAsCompleted} =
     useWalkthroughStep('explore');
@@ -31,23 +41,38 @@ const BottomBar = (props: Props) => {
   return (
     <React.Fragment>
       <SafeAreaView style={{...styles.menuRow, ...style}}>
+        {activeGroupKey === 'singleton_passage' && (
+          <ThemeButton
+            theme={theme}
+            onPress={() => {
+              setPreviousGroupKeyAsActiveGroup();
+            }}
+            iconName="arrow-back"
+            textStyle={styles.gridButtonText}
+            style={styles.button}
+          />
+        )}
         <WalkthroughStepComponent
           walkthroughStepStatus={walkthroughStepStatus}
           setWalkthroughStepAsCompleted={setWalkthroughStepAsCompleted}
           text="explore lyrics from your favorite songs grouped by emotional themes">
           <ThemeButton
             text={
-              activeGroupKey && activeGroupKey !== 'likes' ? activeGroupKey : ''
+              activeGroupKey &&
+              allSentiments.includes(activeGroupKey as SentimentEnumType)
+                ? sentimentAdjectiveToNoun(
+                    activeGroupKey as SentimentEnumType,
+                  ) ?? ''
+                : ''
             }
             theme={theme}
-            useSaturatedColor={
-              activeGroupKey != null && activeGroupKey !== 'likes'
-            }
+            useSaturatedColor={allSentiments.includes(
+              activeGroupKey as SentimentEnumType,
+            )}
             onPress={() => {
               setWalkthroughStepAsCompleted();
               groupSelectorBottomSheetRef?.current?.expand();
             }}
-            background="gradient"
             iconName="grid-outline"
             textStyle={styles.gridButtonText}
             style={styles.button}
@@ -59,7 +84,6 @@ const BottomBar = (props: Props) => {
           onPress={() => {
             setLikesAsActiveGroup();
           }}
-          background="gradient"
           iconName="heart-outline"
           textStyle={styles.gridButtonText}
           style={styles.button}
@@ -69,7 +93,6 @@ const BottomBar = (props: Props) => {
           onPress={() => {
             prophecyBottomSheetRef.current?.expand();
           }}
-          background="gradient"
           iconName="eye-outline"
           textStyle={styles.gridButtonText}
           style={styles.button}

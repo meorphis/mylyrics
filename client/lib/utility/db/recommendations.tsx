@@ -21,7 +21,7 @@ import {RawPassageType} from '../../types/passage';
 import {setProphecy} from '../redux/prophecy';
 import {setSentimentGroups} from '../redux/sentiment_groups';
 import {getPassageGroups} from '../recommendations';
-import {useSetActivePassage} from '../active_passage';
+import {useSetActivePassageRaw} from '../active_passage';
 
 // Returns a function to get make a request along with the result of that request;
 // the request gets the user's recommendations from the database fetches image data
@@ -112,7 +112,7 @@ export const updateImpressions = async ({
 
 const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
   const dispatch = useDispatch();
-  const setActivePassage = useSetActivePassage();
+  const setActivePassage = useSetActivePassageRaw();
 
   const setupRecommendations = async ({
     docSnap,
@@ -143,19 +143,23 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
     );
 
     const activeGroupKey = flatSentiments[0];
-    const activePassage = passageGroups.find(p => p.groupKey === activeGroupKey)
-      ?.passageGroup[0]?.passage;
+    const activePassages = passageGroups.find(
+      p => p.groupKey === activeGroupKey,
+    )?.passageGroup;
 
-    if (activePassage == null) {
-      throw new Error(`could not find active passage for ${activeGroupKey}`);
+    if (activePassages == null) {
+      throw new Error(`could not find active passages for ${activeGroupKey}`);
     }
+
+    const activePassageKey = activePassages[0]?.passageKey;
 
     dispatch(initPassageGroups(flatSentiments));
     dispatch(addLoadedPassageGroups(passageGroups));
     dispatch(setSentimentGroups(sentimentGroups));
     setActivePassage({
       groupKey: activeGroupKey,
-      passage: activePassage,
+      passageKey: activePassageKey,
+      passages: activePassages,
     });
     dispatch(setProphecy(prophecy ?? null));
 

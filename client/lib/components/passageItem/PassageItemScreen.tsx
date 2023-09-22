@@ -1,15 +1,14 @@
 import React from 'react';
 import {PassageItemScreenProps} from '../../types/navigation';
 import ThemeBackground from '../common/ThemeBackground';
-import {Dimensions, StyleSheet} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Dimensions, StyleSheet, View} from 'react-native';
 import BottomBar from '../common/BottomBar';
-import {ThemeProvider} from '../../utility/theme';
-import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
 import ShareBottomSheet from './ShareBottomSheet/ShareBottomSheet';
 import {WithSharedTransitionKey} from './WithSharedTransitionKey';
 import {WithPassageItemMeasurement} from './WithPassageItemMeasurement';
 import PassageItem from './PassageItem';
+import {usePassageItemSize} from '../../utility/max_size';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 const PassageItemComponent = WithSharedTransitionKey(
   WithPassageItemMeasurement(PassageItem),
@@ -18,26 +17,31 @@ const PassageItemComponent = WithSharedTransitionKey(
 const PassageItemScreen = ({route}: PassageItemScreenProps) => {
   const {passage, theme} = route.params;
 
+  const {height, marginHorizontal, marginTop} = usePassageItemSize();
   const width = Dimensions.get('window').width * 0.85;
-  const maxHeight = Dimensions.get('window').height * 0.85;
 
   return (
-    <ThemeProvider initialTheme={theme}>
-      <ThemeBackground theme={theme}>
-        <SafeAreaView style={{...styles.container, width, maxHeight}}>
+    <ThemeBackground theme={theme}>
+      <SafeAreaView>
+        <View
+          style={{
+            ...styles.container,
+            width,
+            marginTop,
+            marginHorizontal,
+            maxHeight: height,
+          }}>
           <PassageItemComponent passage={passage} />
-        </SafeAreaView>
-        <BottomBar activeGroupKey={null} style={styles.bottomBar} />
-        <ShareBottomSheet />
-      </ThemeBackground>
-    </ThemeProvider>
+        </View>
+      </SafeAreaView>
+      <BottomBar activeGroupKey={null} style={styles.bottomBar} />
+      <ShareBottomSheet />
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: CAROUSEL_MARGIN_TOP,
-    marginHorizontal: 24,
     flex: 1,
   },
   bottomBar: {

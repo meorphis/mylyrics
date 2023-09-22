@@ -89,5 +89,6 @@ export default memo(
   (prev, next) =>
     _.isEqual(prev.theme, next.theme) &&
     _.isEqual(prev.scale, next.scale) &&
-    prev.scaleFinalized === next.scaleFinalized,
+    prev.scaleFinalized === next.scaleFinalized &&
+    prev.lyrics === next.lyrics,
 );

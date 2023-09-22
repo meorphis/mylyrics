@@ -5,17 +5,10 @@ import {StyleSheet, View} from 'react-native';
 import React from 'react';
 import PassageItem from '../PassageItem';
 import {PassageType} from '../../../types/passage';
-import {PassageItemMeasurementProvider} from '../../../utility/max_size';
 
 type Props = {
   passage: PassageType;
-  setHeight: ({
-    lyricCardHeight,
-    expand,
-  }: {
-    lyricCardHeight: number;
-    expand: boolean;
-  }) => void;
+  setHeight: ({lyricCardHeight}: {lyricCardHeight: number}) => void;
   viewShotRef: React.RefObject<ViewShot>;
   maxContainerHeight: number;
   sharedTransitionKey: string;
@@ -39,13 +32,7 @@ const ShareablePassageItem = (props: Props) => {
   };
 
   useEffect(() => {
-    if (localHeight > 0) {
-      setHeight({lyricCardHeight: localHeight, expand: true});
-    }
-  }, [localHeight, passage && getPassageId(passage)]);
-
-  useEffect(() => {
-    setHeight({lyricCardHeight: localHeight, expand: false});
+    setHeight({lyricCardHeight: localHeight});
   }, [localHeight]);
 
   return (
@@ -56,18 +43,15 @@ const ShareablePassageItem = (props: Props) => {
       }}>
       <ViewShot ref={viewShotRef} options={{format: 'png'}}>
         {passage && (
-          <PassageItemMeasurementProvider
-            passageId={getPassageId(props.passage)}>
-            <PassageItem
-              key={getPassageId(passage)}
-              passage={passage}
-              sharedTransitionKey={sharedTransitionKey}
-              maxContainerHeight={maxContainerHeight}
-              omitActionBar
-              ignoreFlex
-              omitBorder
-            />
-          </PassageItemMeasurementProvider>
+          <PassageItem
+            key={getPassageId(passage)}
+            passage={passage}
+            sharedTransitionKey={sharedTransitionKey}
+            maxContainerHeight={maxContainerHeight}
+            omitActionBar
+            ignoreFlex
+            omitBorder
+          />
         )}
       </ViewShot>
     </View>

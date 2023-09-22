@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import ThemeType from '../../types/theme';
-import React, {useEffect, useState} from 'react';
+import React, {memo, useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text} from 'react-native';
 import WalkthroughStepComponent from '../common/WalkthroughStep';
 import {useWalkthroughStep} from '../../utility/walkthrough';
@@ -123,4 +123,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ActionBarButton;
+export default memo(ActionBarButton);
