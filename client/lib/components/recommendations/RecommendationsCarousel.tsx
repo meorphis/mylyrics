@@ -2,15 +2,18 @@
 // responsible for listening to changes to the list of groups and active group,
 // and updating the carousel accordingly
 
-import React, {useLayoutEffect, useRef} from 'react';
+import React, {memo, useLayoutEffect, useRef} from 'react';
 import {Dimensions} from 'react-native';
-import Carousel from '../../forks/react-native-reanimated-carousel/src';
+import NativeCarousel from '../../forks/react-native-reanimated-carousel/src';
 import {RootState} from '../../utility/redux';
 import {useSelector} from 'react-redux';
 import RecommendationsGroupCarousel from './RecommendationsGroupCarousel';
 import {createSelector} from '@reduxjs/toolkit';
 import LikesCarousel from './LikesCarousel';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {SingletonPassageItem} from '../passageItem/SingletonPassageItem';
+
+const Carousel = memo(NativeCarousel, () => true);
 
 type Props = {
   activeGroupKey: string | null;
@@ -35,7 +38,11 @@ const RecommendationsCarousel = (props: Props) => {
     (joinedGroupKeys: string) => joinedGroupKeys.split(','),
   );
 
-  const passageGroupKeys = [...useSelector(passageGroupKeysSelector), 'likes'];
+  const passageGroupKeys = [
+    ...useSelector(passageGroupKeysSelector),
+    'likes',
+    'singleton_passage',
+  ];
 
   // const [localActiveGroupKey, setLocalActiveGroupKey] =
   //   React.useState<string>(activeGroupKey);
@@ -95,17 +102,19 @@ const RecommendationsCarousel = (props: Props) => {
       // itemWidth={Dimensions.get('window').width}
       // sliderWidth={Dimensions.get('window').width}
       width={Dimensions.get('window').width}
-      height={Dimensions.get('window').height - insets.top - insets.bottom - 62}
+      height={Dimensions.get('window').height}
       enabled={false}
       // keyExtractor={(item: string) => 'carousel-item-' + item}
-      renderItem={({item: passageGroupKey}: {item: string}) => {
+      renderItem={({item: passageGroupKey}: {item: unknown}) => {
         if (passageGroupKey === 'likes') {
           return <LikesCarousel />;
+        } else if (passageGroupKey === 'singleton_passage') {
+          return <SingletonPassageItem />;
         }
         return (
           <RecommendationsGroupCarousel
-            key={passageGroupKey}
-            passageGroupKey={passageGroupKey}
+            key={passageGroupKey as string}
+            passageGroupKey={passageGroupKey as string}
           />
         );
       }}

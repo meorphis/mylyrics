@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo} from 'react';
+import React, {memo, useCallback, useMemo} from 'react';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -61,4 +61,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProphecyBottomSheet;
+export default memo(ProphecyBottomSheet);

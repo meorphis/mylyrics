@@ -67,11 +67,18 @@ const MainScreen = () => {
     };
   }, []);
 
-  if (
-    recommendationsRequest.status === 'error' ||
-    getUserRequest.status === 'error' ||
-    recentLikesRequest.status === 'error'
-  ) {
+  if (recommendationsRequest.status === 'error') {
+    console.log(recommendationsRequest.error);
+    return <ErrorComponent />;
+  }
+
+  if (getUserRequest.status === 'error') {
+    console.log(getUserRequest.error);
+    return <ErrorComponent />;
+  }
+
+  if (recentLikesRequest.status === 'error') {
+    console.log(recentLikesRequest.error);
     return <ErrorComponent />;
   }
 
@@ -116,7 +123,7 @@ const MainScreenInner = (props: {showOnlyLoader: boolean}) => {
       return false;
     }
 
-    const contentReadyState = new Set(passageIds);
+    const contentReadyState = new Set(state.contentReady);
 
     const diff = passageIds.filter(p => !contentReadyState.has(p));
 

@@ -75,103 +75,60 @@ const hslToLab = (hsl: {h: number; s: number; l: number}) => {
 
 // if two colors are too similar, lighten one and darken the other until they are sufficiently different
 // will prefer lightening down to the minLightness before darkening
-export const ensureColorContrast = ({
-  lightenable,
-  darkenable,
-  preference,
-  minDistance = 4.5, // contrast ratio
-  maxLightness = 0.9, // lightness when converted to HSL
-  minLightness = 0.1, // lightness when converted to HSL
-  distanceFn = getContrastRatio,
-  lightenFn = (hslLightenable: ColorFormats.HSLA, maxLightness: number) => {
-    hslLightenable.l += Math.min(0.01, maxLightness - hslLightenable.l);
-  },
-  darkenFn = (hslDarkenable: ColorFormats.HSLA, minLightness: number) => {
-    hslDarkenable.l -= Math.min(0.01, hslDarkenable.l - minLightness);
-  },
-}: {
-  lightenable: string;
-  darkenable: string;
-  preference: 'lighten' | 'darken';
-  minDistance?: number;
-  maxLightness?: number;
-  minLightness?: number;
-  distanceFn?: (color1: ColorFormats.HSLA, color2: ColorFormats.HSLA) => number;
-  lightenFn?: (hslLightenable: ColorFormats.HSLA, maxLightness: number) => void;
-  darkenFn?: (hslDarkenable: ColorFormats.HSLA, minLightness: number) => void;
-  lightnessSaturationSwap?: boolean;
-}) => {
-  let hslLightenable = tinycolor(lightenable).toHsl();
-  let hslDarkenable = tinycolor(darkenable).toHsl();
+// export const ensureColorContrast = ({
+//   lightenable,
+//   darkenable,
+//   preference,
+//   minDistance = 4.5, // contrast ratio
+//   maxLightness = 0.9, // lightness when converted to HSL
+//   minLightness = 0.1, // lightness when converted to HSL
+//   distanceFn = getContrastRatio,
+//   lightenFn = (hslLightenable: ColorFormats.HSLA, maxLightness: number) => {
+//     hslLightenable.l += Math.min(0.01, maxLightness - hslLightenable.l);
+//   },
+//   darkenFn = (hslDarkenable: ColorFormats.HSLA, minLightness: number) => {
+//     hslDarkenable.l -= Math.min(0.01, hslDarkenable.l - minLightness);
+//   },
+// }: {
+//   lightenable: string;
+//   darkenable: string;
+//   preference: 'lighten' | 'darken';
+//   minDistance?: number;
+//   maxLightness?: number;
+//   minLightness?: number;
+//   distanceFn?: (color1: ColorFormats.HSLA, color2: ColorFormats.HSLA) => number;
+//   lightenFn?: (hslLightenable: ColorFormats.HSLA, maxLightness: number) => void;
+//   darkenFn?: (hslDarkenable: ColorFormats.HSLA, minLightness: number) => void;
+//   lightnessSaturationSwap?: boolean;
+// }) => {
+//   let hslLightenable = tinycolor(lightenable).toHsl();
+//   let hslDarkenable = tinycolor(darkenable).toHsl();
 
-  // Check color distance
-  while (distanceFn(hslLightenable, hslDarkenable) < minDistance) {
-    const canLighten = hslLightenable.l < maxLightness;
-    const canDarken = hslDarkenable.l > minLightness;
+//   // Check color distance
+//   while (distanceFn(hslLightenable, hslDarkenable) < minDistance) {
+//     const canLighten = hslLightenable.l < maxLightness;
+//     const canDarken = hslDarkenable.l > minLightness;
 
-    if ((canLighten && preference === 'lighten') || !canDarken) {
-      lightenFn(hslLightenable, maxLightness);
-    } else if ((canDarken && preference === 'darken') || !canLighten) {
-      darkenFn(hslDarkenable, minLightness);
-    } else {
-      // shouldn't happen unless the parameters are impossible to satisfy
-      throw Error(
-        `Could not adjust color contrast ${JSON.stringify(
-          hslLightenable,
-        )} ${JSON.stringify(hslDarkenable)}`,
-      );
-    }
-  }
+//     if ((canLighten && preference === 'lighten') || !canDarken) {
+//       lightenFn(hslLightenable, maxLightness);
+//     } else if ((canDarken && preference === 'darken') || !canLighten) {
+//       darkenFn(hslDarkenable, minLightness);
+//     } else {
+//       // shouldn't happen unless the parameters are impossible to satisfy
+//       throw Error(
+//         `Could not adjust color contrast ${JSON.stringify(
+//           hslLightenable,
+//         )} ${JSON.stringify(hslDarkenable)}`,
+//       );
+//     }
+//   }
 
-  // Convert back to string and return
-  lightenable = tinycolor(hslLightenable).toHexString();
-  darkenable = tinycolor(hslDarkenable).toHexString();
+//   // Convert back to string and return
+//   lightenable = tinycolor(hslLightenable).toHexString();
+//   darkenable = tinycolor(hslDarkenable).toHexString();
 
-  return {lightenable, darkenable};
-};
-
-// similar to ensureColorContrast, but will pre-select which color to lighten/darken, and then
-// decide which to do based on the shouldDarkenFn
-export const ensureColorContrast2 = ({
-  changeable,
-  unchangeable,
-  shouldDarkenFn = ({unchangeable}: {unchangeable: string}) =>
-    isColorLight(unchangeable),
-  minDistance = 4.5,
-  distanceFn,
-  lightenFn,
-  darkenFn,
-}: {
-  changeable: string;
-  unchangeable: string;
-  shouldDarkenFn?: ({
-    changeable,
-    unchangeable,
-  }: {
-    changeable: string;
-    unchangeable: string;
-  }) => boolean;
-  minDistance?: number;
-  distanceFn?: (color1: ColorFormats.HSLA, color2: ColorFormats.HSLA) => number;
-  lightenFn?: (hslLightenable: ColorFormats.HSLA, maxLightness: number) => void;
-  darkenFn?: (hslDarkenable: ColorFormats.HSLA, minLightness: number) => void;
-}) => {
-  const shouldDarken = shouldDarkenFn({changeable, unchangeable});
-
-  const contrastedColors = ensureColorContrast({
-    lightenable: shouldDarken ? unchangeable : changeable,
-    darkenable: shouldDarken ? changeable : unchangeable,
-    preference: shouldDarken ? 'darken' : 'lighten',
-    minDistance,
-    distanceFn,
-    lightenFn,
-    darkenFn,
-  });
-
-  return shouldDarken
-    ? contrastedColors.darkenable
-    : contrastedColors.lightenable;
-};
+//   return {lightenable, darkenable};
+// };
 
 // converts a color to greyscale using the classic formula
 export const colorToGreyscale = (color: string) => {

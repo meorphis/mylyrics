@@ -1,19 +1,39 @@
-import React, {memo} from 'react';
-import {Dimensions, StyleSheet, View} from 'react-native';
-import Carousel from '../../forks/react-native-reanimated-carousel/src';
+import React, {memo, useEffect} from 'react';
+import {Dimensions, StyleSheet} from 'react-native';
+import NativeCarousel from '../../forks/react-native-reanimated-carousel/src';
 import {PassageType} from '../../types/passage';
 import {WithSharedTransitionKey} from '../passageItem/WithSharedTransitionKey';
 import {WithPassageItemMeasurement} from '../passageItem/WithPassageItemMeasurement';
 import PassageItem from '../passageItem/PassageItem';
-import {useSetActivePassage} from '../../utility/active_passage';
-import {useUpdateSequentialWalkthroughStep} from '../../utility/walkthrough';
+import {
+  useIsActiveGroup,
+  useSetActivePassage,
+} from '../../utility/active_passage';
+// import {useUpdateSequentialWalkthroughStep} from '../../utility/walkthrough';
+import {useThemeUpdate} from '../../utility/theme';
+import {usePassageItemSize} from '../../utility/max_size';
+
+const Carousel = memo(NativeCarousel, (prev, next) => {
+  if (prev.data.length !== next.data.length) {
+    return false;
+  }
+
+  prev.data.forEach((d, i) => {
+    if (
+      (d as PassageCarouselItem).passageKey !==
+      (next.data[i] as PassageCarouselItem).passageKey
+    ) {
+      return false;
+    }
+  });
+
+  return true;
+});
 
 const PassageItemComponent = memo(
   WithSharedTransitionKey(WithPassageItemMeasurement(PassageItem)),
   () => true,
 );
-
-export const CAROUSEL_MARGIN_TOP = 12;
 
 type PassageCarouselItem = {
   passageKey: string;
@@ -21,16 +41,40 @@ type PassageCarouselItem = {
 };
 
 type Props = {
+  groupKey: string;
   data: PassageCarouselItem[];
 };
 
 const PassageItemCarousel = (props: Props) => {
   console.log('rendering PassageItemCarousel');
 
-  const setActivePassage = useSetActivePassage();
-  const updateSequentialWalkthroughStep = useUpdateSequentialWalkthroughStep();
+  const {groupKey} = props;
+  const {sharedProgress} = useThemeUpdate();
+  const {
+    marginTop,
+    marginHorizontal,
+    height: passageItemHeight,
+    carouselClearance,
+  } = usePassageItemSize();
 
   const {data} = props;
+
+  const ref = React.useRef<NativeCarousel>(null);
+  const setActivePassage = useSetActivePassage({groupKey});
+  const isActiveGroup = useIsActiveGroup(groupKey);
+  // const updateSequentialWalkthroughStep = useUpdateSequentialWalkthroughStep();
+
+  const [dataCache, setDataCache] = React.useState<PassageCarouselItem[]>(data);
+
+  useEffect(() => {
+    if (data.length !== dataCache.length) {
+      ref.current?.scrollTo({
+        animated: true,
+        count: 1,
+        onFinished: () => setDataCache(data),
+      });
+    }
+  }, [data.length]);
 
   // const [index, setIndex] = React.useState<number>(0);
 
@@ -38,15 +82,16 @@ const PassageItemCarousel = (props: Props) => {
 
   return (
     <Carousel
-      style={styles.carouselContainer}
+      ref={ref}
+      style={{...styles.carouselContainer}}
       // slideStyle={styles.slideStyle}
       loop
       // loopClonesPerSide={0}
-      data={data}
+      data={dataCache}
       // itemHeight={Dimensions.get('window').height * 0.75}
       // sliderHeight={Dimensions.get('window').height * 0.75}
-      height={Dimensions.get('window').height * 0.6}
-      width={Dimensions.get('window').width - 48}
+      height={passageItemHeight + carouselClearance}
+      width={Dimensions.get('window').width}
       // layout="stack"
       vertical
       mode="vertical-stack"
@@ -57,35 +102,43 @@ const PassageItemCarousel = (props: Props) => {
         rotateZDeg: 90,
         moveSize: Dimensions.get('window').width * 1.5,
       }}
+      onProgressChange={(__, absoluteProgress: number) => {
+        'worklet';
+        sharedProgress.value = absoluteProgress;
+      }}
       // activeAnimationType="decay"
       // firstItem={firstItem}
       // onBeforeSnapToItem={(slideIndex: number) => {
-      onBeforeSnapToItem={(slideIndex: number) => {
-        console.log('SLIDE INDEX', slideIndex);
+      onSnapToItem={(slideIndex: number) => {
         // // prevent unnecessarily fast scrolling due to performance limitations
         // setScrollEnabled(false);
         // setTimeout(() => {
         //   setScrollEnabled(true);
         // }, 250);
 
-        const {passage} = data[slideIndex];
+        const {passageKey} = dataCache[slideIndex];
 
-        setActivePassage({
-          passage,
-        });
+        if (isActiveGroup) {
+          console.log(`set active passage: ${groupKey} ${passageKey}`);
+          setActivePassage({passageKey});
+        }
 
-        setTimeout(() => {
-          updateSequentialWalkthroughStep();
-        }, 250);
+        // setTimeout(() => {
+        //   updateSequentialWalkthroughStep();
+        // }, 250);
       }}
       // enabled={scrollEnabled && data.length > 1}
-      renderItem={({item}: {item: PassageCarouselItem; index: number}) => {
-        return <PassageItemComponent passage={item.passage} />;
+      renderItem={({item}: {item: unknown}) => {
+        return (
+          <PassageItemComponent
+            passage={(item as PassageCarouselItem).passage}
+            style={{marginTop, marginHorizontal}}
+          />
+        );
       }}
-      // keyExtractor={(item: PassageCarouselItem, idx: number) =>
-      //   `${item.passageKey}:${idx}`
-      // }
-      snapEnabled
+      keyExtractor={(item: unknown) => (item as PassageCarouselItem).passageKey}
+      snapEnabled={false}
+      autoFillData={false}
       // pagingEnabled={false}
     />
   );
@@ -93,7 +146,6 @@ const PassageItemCarousel = (props: Props) => {
 
 const styles = StyleSheet.create({
   carouselContainer: {
-    marginTop: CAROUSEL_MARGIN_TOP,
     alignSelf: 'center',
     height: '100%',
   },
@@ -102,4 +154,4 @@ const styles = StyleSheet.create({
   // },
 });
 
-export default memo(PassageItemCarousel);
+export default PassageItemCarousel;

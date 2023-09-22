@@ -1,14 +1,36 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import ThemeType from '../types/theme';
 import {AlbumCoverColor} from '../types/color';
+import {colorDistance, isColorLight} from './color';
+import convert from 'color-convert';
 import {
-  colorDistanceHsl,
-  ensureColorContrast2,
-  isColorLight,
-  isColorVeryLight,
-} from './color';
-import {ColorFormats} from 'tinycolor2';
-import tinycolor from 'tinycolor2';
+  SharedValue,
+  interpolate,
+  interpolateColor,
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import {calcAPCA} from 'apca-w3';
+
+type ThemeInfo = {
+  theme: ThemeType;
+  interpolatedColors: Readonly<SharedValue<string[]>>;
+  interpolatedProgress: Readonly<SharedValue<number>>;
+};
+
+type SetThemeInfo = {
+  theme: ThemeType;
+  groupThemeInfo: {
+    groupKey: string;
+    groupLength: number;
+    passageIndex: number;
+    themes: ThemeType[];
+  };
+};
+
+type Mode = 'auto' | 'manual';
 
 // *** PUBLIC INTERFACE ***
 // should be place near the top of the component tree - allows children to set and get theme
@@ -19,20 +41,159 @@ export const ThemeProvider = ({
   initialTheme?: ThemeType;
   children: React.ReactNode;
 }) => {
-  const [theme, setTheme] = React.useState<ThemeType>(
-    initialTheme ?? {
-      backgroundColor: 'white',
-      textColors: ['white'],
-      farBackgroundColor: 'white',
-      alternateThemes: [],
+  const defaultTheme = initialTheme ?? {
+    backgroundColor: 'white',
+    textColors: ['white'],
+    farBackgroundColor: 'white',
+    alternateThemes: [],
+  };
+
+  const random = useRef<number>(Math.random());
+  const sharedRandom = useSharedValue(random.current);
+
+  const sharedProgress = useSharedValue(0);
+  const mode = useSharedValue<Mode>('manual');
+
+  // const interpolatedProgress = useDerivedValue(() => {
+  //   return interpolate([baseProgress, progress.value], [0, 1]);
+  // });
+
+  const [themeInfo, setThemeInfo] = React.useState<SetThemeInfo>({
+    theme: defaultTheme,
+    groupThemeInfo: {
+      groupKey: '',
+      groupLength: 1,
+      passageIndex: 0,
+      themes: [defaultTheme, defaultTheme],
     },
+  });
+
+  const {
+    theme,
+    groupThemeInfo: {themes: groupThemes, groupKey, groupLength, passageIndex},
+  } = themeInfo;
+
+  const colors = colorsForTheme(theme);
+  const groupColors = [...groupThemes, groupThemes[0]].map(colorsForTheme);
+
+  const sharedPrevColors = useSharedValue(colors);
+  const sharedColors = useSharedValue(colors);
+  const sharedGroupColors = useSharedValue(groupColors);
+  const sharedManualAnimationValue = useSharedValue(0);
+  const sharedDerivedProgress = useSharedValue(0);
+  const sharedGroupLength = useSharedValue(groupLength);
+
+  useEffect(() => {
+    sharedManualAnimationValue.value = 0;
+    sharedColors.value = colors;
+    sharedGroupColors.value = groupColors;
+    sharedProgress.value = passageIndex;
+
+    if (mode.value !== 'manual') {
+      mode.value = 'manual';
+    }
+    sharedManualAnimationValue.value = withTiming(
+      1,
+      {
+        duration: 500,
+        // easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      },
+      () => {
+        sharedPrevColors.value = sharedColors.value;
+      },
+    );
+    sharedGroupLength.value = withTiming(groupLength, {
+      duration: 500,
+    });
+  }, [groupKey, groupLength]);
+
+  useAnimatedReaction(
+    () => {
+      return sharedProgress.value;
+    },
+    (curr, prev) => {
+      // if curr is changing to an integer value, we might just be updating due to a
+      // passageKey change (see useEffect above), but otherwise it's a sure sign that
+      // the user is scrolling manually
+      if (curr !== prev && curr % 1 !== 0 && mode.value === 'manual') {
+        mode.value = 'auto';
+      }
+
+      // weird case where the carousel library abruptly jumps the progress to some
+      // integer different from its actual value (apparently a bug in the library)
+      if (
+        mode.value === 'auto' &&
+        curr % 1 === 0 &&
+        Math.abs(curr - (prev ?? 0)) > 0.5
+      ) {
+        return;
+      }
+
+      sharedDerivedProgress.value = curr;
+    },
+    [mode, sharedProgress],
   );
 
+  const interpolatedColors = useDerivedValue(() => {
+    const value =
+      mode.value === 'manual'
+        ? sharedManualAnimationValue.value
+        : sharedDerivedProgress.value;
+
+    let inputRange: number[];
+    let colorArrays: string[][];
+
+    switch (mode.value) {
+      case 'manual':
+        colorArrays = [sharedPrevColors.value, sharedColors.value];
+        inputRange = [0, 1];
+        break;
+      case 'auto':
+        colorArrays = sharedGroupColors.value;
+        inputRange = colorArrays.map((__, index) => index);
+        break;
+      default:
+        throw new Error('invalid mode');
+    }
+    return colorArrays[0].map((_, index) =>
+      interpolateColor(
+        value,
+        inputRange,
+        colorArrays.map(c => c[index]),
+      ),
+    );
+  });
+
+  const interpolatedProgress = useDerivedValue(() => {
+    return interpolate(
+      (sharedDerivedProgress.value + sharedRandom.value) %
+        sharedGroupLength.value,
+      [0, sharedGroupLength.value],
+      [0, 1],
+    );
+  });
+
   return (
-    <ThemeUpdateContext.Provider value={setTheme}>
-      <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+    <ThemeUpdateContext.Provider value={{setThemeInfo, sharedProgress}}>
+      <ThemeContext.Provider
+        value={{
+          theme: theme,
+          interpolatedColors,
+          interpolatedProgress,
+        }}>
+        {children}
+      </ThemeContext.Provider>
     </ThemeUpdateContext.Provider>
   );
+};
+
+const colorsForTheme = (theme: ThemeType) => {
+  return [
+    theme.alternateThemes[1]?.backgroundColor ?? theme.farBackgroundColor,
+    theme.farBackgroundColor,
+    theme.alternateThemes[0]?.backgroundColor ?? theme.farBackgroundColor,
+    theme.alternateThemes[2]?.backgroundColor ?? theme.farBackgroundColor,
+  ].sort((a, b) => convert.hex.lab(a)[0] - convert.hex.lab(b)[0]);
 };
 
 export const useTheme = () => {
@@ -52,13 +213,20 @@ export const useThemeUpdate = () => {
     throw new Error('useThemeUpdate must be used within a ThemeProvider');
   }
 
-  return context;
+  return {
+    setThemeInfo: context.setThemeInfo,
+    sharedProgress: context.sharedProgress!,
+  };
 };
 
-const ThemeContext = React.createContext<ThemeType | undefined>(undefined);
-const ThemeUpdateContext = React.createContext<
-  ((theme: ThemeType) => void) | undefined
->(undefined);
+const ThemeContext = React.createContext<ThemeInfo | undefined>(undefined);
+const ThemeUpdateContext = React.createContext<{
+  setThemeInfo: (info: SetThemeInfo) => void;
+  sharedProgress: SharedValue<number> | null;
+}>({
+  setThemeInfo: () => {},
+  sharedProgress: null,
+});
 
 export const getThemeFromAlbumColors = (
   albumCoverColors: AlbumCoverColor[],
@@ -118,39 +286,16 @@ const constructBaseTheme = ({
   foregroundColors: AlbumCoverColor[];
   invert?: boolean;
 }): Omit<ThemeType, 'invertedTheme'> & {invertedTheme?: ThemeType} => {
-  let useGrey = false;
-
-  const contrastedBackgroundColor = ensureColorContrast2({
-    changeable: backgroundColor.hex,
-    unchangeable: backgroundColor.hex,
-    shouldDarkenFn: ({unchangeable}) => isColorVeryLight(unchangeable),
-    minDistance: 10,
-    distanceFn: colorDistanceHsl,
-    lightenFn: (hslLightenable: ColorFormats.HSLA, maxLightness: number) => {
-      // if the user will perceive the color as dark grey, we don't want the contrast color to
-      // be colorful, so we just turn the contrast down to zero
-      if (useGrey || hslLightenable.l * 10 + hslLightenable.s < 0.9) {
-        hslLightenable.s = 0;
-        useGrey = true;
-      }
-      hslLightenable.l += Math.min(0.01, maxLightness - hslLightenable.l);
-    },
-    darkenFn: (hslDarkenable: ColorFormats.HSLA, minLightness: number) => {
-      if (useGrey || (1 - hslDarkenable.l) * 10 + (1 - hslDarkenable.s) < 0.9) {
-        hslDarkenable.s = 0;
-        useGrey = true;
-      }
-
-      hslDarkenable.l -= Math.min(0.01, hslDarkenable.l - minLightness);
-    },
+  const contrastBackgroundColor = getContrastBackgroundColor({
+    backgroundColorHex: backgroundColor.hex,
   });
 
   const mainBackgroundColor = invert
     ? backgroundColor.hex
-    : contrastedBackgroundColor;
+    : contrastBackgroundColor;
 
   const farBackgroundColor = invert
-    ? contrastedBackgroundColor
+    ? contrastBackgroundColor
     : backgroundColor.hex;
 
   return {
@@ -158,10 +303,36 @@ const constructBaseTheme = ({
     farBackgroundColor,
     textColors: getContrastColors({
       backgroundColor: mainBackgroundColor,
-      foregroundColors: foregroundColors.map(c => c.hex),
-    }),
+      foregroundColors: [
+        mainBackgroundColor,
+        ...foregroundColors.map(c => c.hex),
+      ],
+    })
+      .filter(
+        // remove approximate duplicates
+        (color, index, self) =>
+          !self.slice(0, index).some(c => colorDistance(c, color) < 15),
+      )
+      .slice(0, 4),
     alternateThemes: [],
   };
+};
+
+const getContrastBackgroundColor = ({
+  backgroundColorHex,
+}: {
+  backgroundColorHex: string;
+}) => {
+  const [L, a, b] = convert.hex.lab(backgroundColorHex);
+
+  const shouldDarken =
+    L > 50 || (Math.abs(a) > 50 && Math.abs(b) > 50 && L > 10);
+
+  if (shouldDarken) {
+    return `#${convert.lab.hex([L - 10, a, b])}`;
+  } else {
+    return `#${convert.lab.hex([L + 10, a, b])}`;
+  }
 };
 
 const getContrastColors = ({
@@ -171,35 +342,87 @@ const getContrastColors = ({
   backgroundColor: string;
   foregroundColors: string[];
 }) => {
-  const backgroundColorHsl = tinycolor(backgroundColor).toHsl();
-
-  if (backgroundColorHsl.l < 0.25) {
+  if (isColorLight(backgroundColor)) {
     const alternate = foregroundColors
-      .filter(color => tinycolor(color).toHsl().l < 0.9)
-      .map(color => {
-        const hsl = tinycolor(color).toHsl();
-        return tinycolor({
-          ...hsl,
-          l: Math.max((backgroundColorHsl.l + 0.05) * 3 - 0.05, hsl.l),
-        }).toHexString();
-      });
-    return ['#ffffff', ...alternate];
-  } else if (backgroundColorHsl.l < 0.5) {
-    return ['#ffffff'];
-  } else if (backgroundColorHsl.l < 0.7) {
-    return isColorLight(backgroundColor) ? ['#000000'] : ['#ffffff'];
-  } else if (backgroundColorHsl.l < 0.8) {
-    return ['#000000'];
+      .map(textHex =>
+        minimallyDarken({textHex, backgroundHex: backgroundColor}),
+      )
+      .filter(textHex => textHex != null) as string[];
+    return ['#000000', ...alternate];
   } else {
     const alternate = foregroundColors
-      .filter(color => tinycolor(color).toHsl().l > 0.1)
-      .map(color => {
-        const hsl = tinycolor(color).toHsl();
-        return tinycolor({
-          ...hsl,
-          l: Math.min((backgroundColorHsl.l - 0.05) / 3 + 0.05, hsl.l),
-        }).toHexString();
-      });
-    return ['#000000', ...alternate];
+      .map(textHex =>
+        minimallyLighten({textHex, backgroundHex: backgroundColor}),
+      )
+      .filter(textHex => textHex != null) as string[];
+    return ['#ffffff', ...alternate];
   }
+
+  // if (backgroundL < 18) {
+  //   const alternate = foregroundColors
+  //     .filter(color => convert.hex.lab(color)[0] < 90)
+  //     .map(color => {
+  //       const [foregroundL, ...foregroundRest] = convert.hex.lab(color);
+  //       const newL = Math.max((backgroundL + 5) * 3 - 5, foregroundL);
+  //       return `#${convert.lab.hex([newL, ...foregroundRest])}`;
+  //     });
+  //   return ['#ffffff', ...alternate];
+  // } else if (backgroundL < 50) {
+  //   return ['#ffffff'];
+  // } else if (backgroundL < 70) {
+  //   return isColorLight(backgroundColor) ? ['#000000'] : ['#ffffff'];
+  // } else if (backgroundL < 80) {
+  //   return ['#000000'];
+  // } else {
+  //   const alternate = foregroundColors
+  //     .filter(color => convert.hex.lab(color)[0] > 10)
+  //     .map(color => {
+  //       const [foregroundL, ...foregroundRest] = convert.hex.lab(color);
+  //       const newL = Math.min((backgroundL - 5) / 4.5 + 5, foregroundL);
+  //       return `#${convert.lab.hex([newL, ...foregroundRest])}`;
+  //     });
+  //   return ['#000000', ...alternate];
+  // }
+};
+
+const minimallyLighten = ({
+  textHex,
+  backgroundHex,
+}: {
+  textHex: string;
+  backgroundHex: string;
+}) => {
+  const [L, a, b] = convert.hex.lab(textHex);
+  let attemptedLightness = L;
+
+  while (attemptedLightness <= 100) {
+    const hex = `#${convert.lab.hex([attemptedLightness, a, b])}`;
+    if ((calcAPCA(hex, backgroundHex) as number) <= -75) {
+      return hex;
+    }
+    attemptedLightness += 1;
+  }
+
+  return null;
+};
+
+const minimallyDarken = ({
+  textHex,
+  backgroundHex,
+}: {
+  textHex: string;
+  backgroundHex: string;
+}) => {
+  const [L, a, b] = convert.hex.lab(textHex);
+  let attemptedLightness = L;
+
+  while (attemptedLightness >= 0) {
+    const hex = `#${convert.lab.hex([attemptedLightness, a, b])}`;
+    if ((calcAPCA(hex, backgroundHex) as number) >= 75) {
+      return hex;
+    }
+    attemptedLightness -= 1;
+  }
+
+  return null;
 };

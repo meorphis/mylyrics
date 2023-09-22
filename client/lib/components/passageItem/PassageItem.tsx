@@ -9,7 +9,7 @@
 // number of passage groups and M is the number of passages in each
 
 import React, {memo, useEffect, useRef} from 'react';
-import {LayoutChangeEvent, StyleSheet, View} from 'react-native';
+import {LayoutChangeEvent, StyleSheet, View, ViewStyle} from 'react-native';
 import SongInfo from './SongInfo';
 import PassageLyrics from './PassageLyrics';
 import ActionBar from './ActionBar';
@@ -17,12 +17,12 @@ import {useNavigation} from '@react-navigation/core';
 import {RootStackParamList} from '../../types/navigation';
 import ItemContainer from '../common/ItemContainer';
 import {PassageType} from '../../types/passage';
-import {CAROUSEL_MARGIN_TOP} from './PassageItemCarousel';
 import {useShareablePassageUpdate} from '../../utility/shareable_passage';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {getPassageId} from '../../utility/passage_id';
 import {
   usePassageItemMeasurement,
+  usePassageItemSize,
   useSetPassageItemMeasurement,
 } from '../../utility/max_size';
 import _ from 'lodash';
@@ -31,10 +31,7 @@ export const PASSAGE_ITEM_PADDING = 36;
 
 export type PassageItemPropsWithoutSharedTransitionKey = {
   passage: PassageType;
-  passageItemKey?: {
-    passageKey: string;
-    groupKey: string;
-  };
+  style?: ViewStyle;
   omitActionBar?: boolean;
   ignoreFlex?: boolean;
   omitBorder?: boolean;
@@ -48,27 +45,29 @@ export type PassageItemProps = PassageItemPropsWithoutSharedTransitionKey & {
 const PassageItem = (props: PassageItemProps) => {
   const {
     passage,
-    passageItemKey,
+    style,
     omitActionBar,
     ignoreFlex,
     omitBorder,
     maxContainerHeight,
     sharedTransitionKey,
   } = props;
-  const {lyrics, tags, song, theme} = passage;
+  const {lyrics, theme} = passage;
+
+  console.log('RE-RENDER P', passage.lyrics.split('\n').length);
 
   const containerRef = useRef<View>(null);
   const {setBottomSheetTriggered} = useShareablePassageUpdate();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const {lyricsYPosition} = usePassageItemMeasurement();
+  const {marginTop: passageItemMarginTop} = usePassageItemSize();
 
-  console.log(
-    `rendering PassageItem ${props.passage.song.name} ${lyricsYPosition}`,
-  );
+  console.log(`rendering PassageItem ${props.passage.song.name}`);
 
   return (
     <ItemContainer
       theme={theme}
+      style={style}
       containerRef={containerRef}
       ignoreFlex={ignoreFlex}
       omitBorder={omitBorder}>
@@ -93,21 +92,18 @@ const PassageItem = (props: PassageItemProps) => {
           <View style={styles.actionBar}>
             <ActionBar
               passage={passage}
-              tags={tags}
-              passageItemKey={passageItemKey}
               navigateToFullLyrics={(parentYPosition: number) => {
                 navigation.navigate('FullLyrics', {
-                  theme,
-                  song,
+                  originalPassage: passage,
                   sharedTransitionKey: sharedTransitionKey,
                   initiallyHighlightedPassageLyrics: lyrics,
-                  parentYPosition,
-                  onSelect: 'FULL_PAGE',
+                  parentYPosition: parentYPosition + passageItemMarginTop,
+                  onSelect: 'SINGLETON_PASSAGE',
                 });
               }}
               parentYPosition={lyricsYPosition ?? 0}
               onSharePress={() => {
-                setBottomSheetTriggered(true);
+                setBottomSheetTriggered(true, passage);
               }}
             />
           </View>
@@ -179,8 +175,8 @@ const PassageContainer = (props: PassageContainerProps) => {
           onLayout={(event: LayoutChangeEvent) => {
             passageLyricsRef.current!.measureLayout(
               containerRef.current!,
-              (_, y) => {
-                setLyricsYPosition(y + CAROUSEL_MARGIN_TOP);
+              (__, y) => {
+                setLyricsYPosition(y);
               },
             );
 
@@ -198,10 +194,6 @@ const PassageContainer = (props: PassageContainerProps) => {
   );
 };
 
-const PassageItemMemo = memo(PassageItem, (prev, next) => {
-  return _.isEqual(prev.passage.theme, next.passage.theme);
-});
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -216,6 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionBar: {
+    marginTop: 8,
     justifyContent: 'flex-end',
   },
   hidden: {
@@ -223,6 +216,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export default memo(PassageItemMemo, (prev, next) => {
-  return _.isEqual(prev.passage.theme, next.passage.theme);
+export default memo(PassageItem, (prev, next) => {
+  return (
+    _.isEqual(prev.passage.theme, next.passage.theme) &&
+    prev.passage.lyrics === next.passage.lyrics
+  );
 });

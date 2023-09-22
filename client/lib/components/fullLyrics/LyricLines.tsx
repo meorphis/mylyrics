@@ -1,6 +1,10 @@
 import LyricLine from './LyricLine';
 import React from 'react';
 import ThemeType from '../../types/theme';
+import {addColorOpacity, isColorLight} from '../../utility/color';
+import {textStyleCommon} from '../../utility/text';
+import {getLyricsColor} from '../../utility/lyrics';
+import {StyleSheet} from 'react-native';
 
 type Props = {
   splitLyrics: {
@@ -16,6 +20,7 @@ type Props = {
   sharedTransitionKey?: string;
   shouldShowAppearingText: boolean;
   skipAnimation?: boolean;
+  skipPressable?: boolean;
 };
 
 const LyricLines = (props: Props) => {
@@ -28,7 +33,47 @@ const LyricLines = (props: Props) => {
     sharedTransitionKey,
     shouldShowAppearingText,
     skipAnimation,
+    skipPressable,
   } = props;
+
+  const saturatedColor = isColorLight(theme.farBackgroundColor)
+    ? '#000000'
+    : '#ffffff';
+
+  const getBackgroundColorForLineIndex = (i: number) => {
+    if (highlightedIndexes.includes(i)) {
+      return saturatedColor;
+    } else if (
+      highlightedIndexes.includes(i - 1) ||
+      highlightedIndexes.includes(i + 1)
+    ) {
+      return addColorOpacity(saturatedColor, 0.2);
+    } else {
+      return undefined;
+    }
+  };
+
+  const getStylesForLineIndex = (i: number) => {
+    const backgroundColor = getBackgroundColorForLineIndex(i);
+    const isHighlighted = highlightedIndexes.includes(i);
+
+    return {
+      textStyle: {
+        ...textStyleCommon,
+        ...styles.lyricsLine,
+        color: isHighlighted
+          ? isColorLight(saturatedColor)
+            ? 'black'
+            : 'white'
+          : getLyricsColor({theme}),
+      },
+      pressableStyle: {
+        ...styles.lyricsLineContainer,
+        ...styles.activeLyricsLineContainer,
+        backgroundColor,
+      },
+    };
+  };
 
   return (
     <React.Fragment>
@@ -38,14 +83,9 @@ const LyricLines = (props: Props) => {
           index={index}
           lineText={lineText}
           isAppearingText={passageLine == null && !skipAnimation}
+          skipPressable={skipPressable}
           shouldShowAppearingText={shouldShowAppearingText}
-          theme={theme}
           sharedTransitionKey={sharedTransitionKey}
-          isHighlighted={highlightedIndexes.includes(index)}
-          adjacentLineIsHighlighted={
-            highlightedIndexes.includes(index - 1) ||
-            highlightedIndexes.includes(index + 1)
-          }
           setAsHighlighted={() => {
             const nextLineIsHighlighted = highlightedIndexes.includes(
               index + 1,
@@ -77,10 +117,25 @@ const LyricLines = (props: Props) => {
               onLayoutInitiallyHighlightedLyrics(event.nativeEvent.layout.y);
             }
           }}
+          {...getStylesForLineIndex(index)}
         />
       ))}
     </React.Fragment>
   );
 };
+
+const styles = StyleSheet.create({
+  activeLyricsLineContainer: {
+    borderRadius: 8,
+  },
+  lyricsLineContainer: {
+    marginVertical: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  lyricsLine: {
+    fontSize: 22,
+  },
+});
 
 export default LyricLines;

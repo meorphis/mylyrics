@@ -2,6 +2,7 @@ import React from 'react';
 import {useEffect} from 'react';
 import {LayoutChangeEvent, TextStyle} from 'react-native';
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -28,7 +29,10 @@ const AppearingComponent = (props: AppearingComponentProps) => {
   });
 
   useEffect(() => {
-    opacity.value = withTiming(1, {duration});
+    opacity.value = withTiming(1, {
+      duration,
+      easing: Easing.inOut(Easing.quad),
+    });
   }, []);
 
   return (

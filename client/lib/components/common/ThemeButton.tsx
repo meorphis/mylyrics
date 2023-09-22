@@ -12,9 +12,6 @@ import Ionicon from 'react-native-vector-icons/Ionicons';
 import React from 'react';
 import {textStyleCommon} from '../../utility/text';
 import ThemeType from '../../types/theme';
-import AnimatedLinearGradient from './AnimatedLinearGradient';
-
-type Background = 'solid' | 'gradient';
 
 type Props = {
   text?: string;
@@ -22,7 +19,6 @@ type Props = {
   useSaturatedColor?: boolean;
   isDisabled?: boolean;
   onPress: () => void;
-  background?: Background;
   iconName?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
@@ -34,45 +30,27 @@ const ThemeButton = (props: Props) => {
     useSaturatedColor = false,
     isDisabled,
     onPress,
-    background = 'solid',
     iconName,
     style,
     textStyle,
   } = props;
-
-  // const buttonColor = addColorOpacity(
-  //   baseColor,
-  //   isDisabled ? (isButtonColorLight ? 0.3 : 0.1) : 1,
-  // );
-
-  // const textColor = addColorOpacity(
-  //   isButtonColorLight ? '#000000' : '#FFFFFF',
-  //   isDisabled ? 0.5 : 1,
-  // );
-  // const borderColor = useSaturatedColor
-  //   ? addColorOpacity(
-  //       isButtonColorLight ? '#444444' : '#CCCCCC',
-  //       isDisabled ? 0.2 : 1,
-  //     )
-  //   : undefined;
-
-  const ContainerComponent =
-    background === 'solid' ? SolidBackground : GradientBackground;
 
   const borderColor = useSaturatedColor ? '#ffffff80' : '#00000040';
   const textColor = useSaturatedColor ? 'white' : 'black';
 
   return (
     <TouchableOpacity
+      // eslint-disable-next-line react-native/no-inline-styles
       style={{
         ...styles.button,
         ...style,
         ...(useSaturatedColor ? styles.saturated : styles.unsaturated),
+        opacity: isDisabled ? 0.15 : 1,
         borderColor,
       }}
       onPress={onPress}
       disabled={isDisabled}>
-      <ContainerComponent {...props}>
+      <SolidBackground {...props}>
         {iconName && <Ionicon name={iconName} size={24} color={textColor} />}
         {iconName && text && <View style={styles.textIconPadding} />}
         {text && (
@@ -86,30 +64,8 @@ const ThemeButton = (props: Props) => {
             {text}
           </Text>
         )}
-      </ContainerComponent>
+      </SolidBackground>
     </TouchableOpacity>
-  );
-};
-
-const GradientBackground = (
-  props: Props & {
-    children: React.ReactNode;
-  },
-) => {
-  const {theme, useSaturatedColor, children} = props;
-
-  const colors = useSaturatedColor
-    ? ['black', theme?.backgroundColor ?? 'white']
-    : [theme?.backgroundColor ?? 'black', 'white'];
-
-  return (
-    <AnimatedLinearGradient
-      style={styles.gradientBackground}
-      start={{x: -0.5, y: -0.5}}
-      end={{x: 1, y: 1}}
-      colors={colors}>
-      {children}
-    </AnimatedLinearGradient>
   );
 };
 
@@ -131,6 +87,46 @@ const SolidBackground = (
     </View>
   );
 };
+
+// const GradientBackground = (
+//   props: Props & {
+//     children: React.ReactNode;
+//   },
+// ) => {
+//   const {useSaturatedColor, children} = props;
+
+//   const {interpolatedColors} = useTheme();
+
+//   const sharedValue = useSharedValue(0);
+//   const sharedWhiteBlack = useDerivedValue(() =>
+//     ['white', 'black'].map(c =>
+//       interpolateColor(sharedValue.value, [0, 1], [c, 'red']),
+//     ),
+//   );
+//   const sharedUseSaturatedColor = useSharedValue(useSaturatedColor);
+
+//   useEffect(() => {
+//     sharedUseSaturatedColor.value = useSaturatedColor;
+//   }, [useSaturatedColor]);
+
+//   const derivedColors = useDerivedValue(() =>
+//     sharedUseSaturatedColor.value
+//       ? [sharedWhiteBlack.value[1], interpolatedColors.value[0]]
+//       : [interpolatedColors.value[0], sharedWhiteBlack.value[0]],
+//   );
+
+//   console.log('DERIVED COLORS', derivedColors);
+
+//   return (
+//     <AnimatedLinearGradient
+//       style={styles.gradientBackground}
+//       start={{x: -0.5, y: -0.5}}
+//       end={{x: 1, y: 1}}
+//       interpolatedColors={derivedColors}>
+//       {children}
+//     </AnimatedLinearGradient>
+//   );
+// };
 
 const styles = StyleSheet.create({
   button: {

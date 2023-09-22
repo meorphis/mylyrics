@@ -11,8 +11,8 @@ const LikesCarousel = () => {
   const likes = useSelector(
     (state: RootState) => state.recentLikes.filter(l => l.isLiked),
     (a, b) =>
-      a.map(l => getPassageId(l.passage)).join() ===
-      b.map(l => getPassageId(l.passage)).join(),
+      a.map(l => `${getPassageId(l.passage)}-${l.isLiked}`).join() ===
+      b.map(l => `${getPassageId(l.passage)}-${l.isLiked}`).join(),
   );
 
   if (likes.length === 0) {
@@ -25,6 +25,7 @@ const LikesCarousel = () => {
 
   return (
     <PassageItemCarousel
+      groupKey="likes"
       data={likes.map(l => {
         return {
           passageKey: getPassageId(l.passage),

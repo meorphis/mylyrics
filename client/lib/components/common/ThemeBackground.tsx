@@ -2,6 +2,7 @@ import React from 'react';
 import AnimatedLinearGradient from './AnimatedLinearGradient';
 import {StyleSheet} from 'react-native';
 import ThemeType from '../../types/theme';
+import {useTheme} from '../../utility/theme';
 
 type Props = {
   theme: ThemeType;
@@ -13,19 +14,17 @@ type Props = {
 const ThemeBackground = (props: Props) => {
   console.log('rendering ThemeBackground');
 
-  const {theme, children} = props;
+  const {children} = props;
+
+  const {interpolatedColors, interpolatedProgress} = useTheme();
 
   return (
     <AnimatedLinearGradient
       style={styles.gradient}
-      start={{x: 0, y: 0.0}}
-      end={{x: 1.0, y: 1.0}}
-      colors={[
-        theme.farBackgroundColor,
-        theme.alternateThemes[0]?.backgroundColor ?? theme.farBackgroundColor,
-        theme.alternateThemes[1]?.backgroundColor ?? theme.farBackgroundColor,
-        theme.alternateThemes[2]?.backgroundColor ?? theme.farBackgroundColor,
-      ]}>
+      start={{x: 1.0, y: 0.0}}
+      end={{x: 0.0, y: 1.0}}
+      interpolatedColors={interpolatedColors}
+      interpolatedProgress={interpolatedProgress}>
       {children}
     </AnimatedLinearGradient>
   );

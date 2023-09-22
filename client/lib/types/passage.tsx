@@ -37,3 +37,15 @@ export type PassageItemKeyType = {
   groupKey: string;
   passageKey: string | null;
 };
+
+export type ThemeSelection = {
+  theme: ThemeType;
+  inverted: boolean;
+};
+
+export type ShareablePassage = {
+  passage: PassageType;
+  bottomSheetTriggered: boolean;
+  themeSelection: ThemeSelection;
+  textColorSelection: string;
+};
