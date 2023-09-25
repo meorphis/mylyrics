@@ -131,6 +131,8 @@ const MainScreenInner = memo(
     const {activeBundleKey, setLoading} = props;
     const contentReady = useIsDeckFullyMeasured({bundleKey: activeBundleKey});
 
+    console.log(`CONTENT READY: ${contentReady}`);
+
     const recommendationsOpacitySharedValue = useSharedValue(0);
 
     useEffect(() => {

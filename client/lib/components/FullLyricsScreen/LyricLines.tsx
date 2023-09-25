@@ -48,7 +48,7 @@ const LyricLines = (props: Props) => {
       highlightedIndexes.includes(i - 1) ||
       highlightedIndexes.includes(i + 1)
     ) {
-      return tinycolor(saturatedColor).setAlpha(0.2).toHexString();
+      return tinycolor(saturatedColor).setAlpha(0.2).toRgbString();
     } else {
       return undefined;
     }

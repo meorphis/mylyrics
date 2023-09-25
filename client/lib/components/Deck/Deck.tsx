@@ -1,15 +1,19 @@
 import React, {memo, useEffect} from 'react';
 import {Dimensions, StyleSheet, Text, View} from 'react-native';
 import Carousel from '../../forks/react-native-reanimated-carousel/src';
-import {WithSharedTransitionKey} from '../PassageItem/hoc/WithSharedTransitionKey';
-import LyricCard from '../PassageItem/LyricCard';
-import {useBundle} from '../../utility/redux/bundles/selectors';
+import {WithSharedTransitionKey} from '../LyricCard/hoc/WithSharedTransitionKey';
+import LyricCard from '../LyricCard/LyricCard';
+import {
+  useBundle,
+  useIsActiveBundle,
+} from '../../utility/redux/bundles/selectors';
 import {useCommonSharedValues} from '../../utility/contexts/common_shared_values';
 import {useLyricCardSize} from '../../utility/helpers/lyric_card';
 import {useDispatch} from 'react-redux';
 import {setActiveBundlePassage} from '../../utility/redux/bundles/slice';
 import {BundlePassageType} from '../../types/bundle';
 import {getEmptyDeckText} from '../../utility/helpers/deck';
+import {useSharedValue} from 'react-native-reanimated';
 
 const PassageItemComponent = memo(
   WithSharedTransitionKey(LyricCard),
@@ -37,6 +41,12 @@ const Deck = (props: Props) => {
     height: passageItemHeight,
     carouselClearance,
   } = useLyricCardSize();
+
+  const isActiveBundle = useIsActiveBundle(bundleKey);
+  const sharedIsActiveBundle = useSharedValue(isActiveBundle);
+  useEffect(() => {
+    sharedIsActiveBundle.value = isActiveBundle;
+  }, [isActiveBundle]);
 
   // @ts-ignore
   const ref = React.useRef<NativeCarousel>(null);
@@ -82,11 +92,16 @@ const Deck = (props: Props) => {
       }}
       onProgressChange={(__, absoluteProgress: number) => {
         'worklet';
-        sharedDeckProgress.value = absoluteProgress;
+        if (sharedIsActiveBundle.value) {
+          sharedDeckProgress.value = absoluteProgress;
+        }
       }}
       onSnapToItem={(slideIndex: number) => {
         const item = passagesCache[slideIndex];
-        dispatch(setActiveBundlePassage(item));
+
+        if (isActiveBundle) {
+          dispatch(setActiveBundlePassage(item));
+        }
       }}
       renderItem={({item}: {item: unknown}) => {
         return (
@@ -97,7 +112,9 @@ const Deck = (props: Props) => {
           />
         );
       }}
-      keyExtractor={(item: unknown) => (item as BundlePassageType).passageKey}
+      keyExtractor={(item: unknown) =>
+        `${(item as BundlePassageType).passageKey}-${bundleKey}`
+      }
       snapEnabled={false}
       autoFillData={false}
     />

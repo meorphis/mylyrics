@@ -1,7 +1,7 @@
 import React from 'react';
 import {SafeAreaView, View} from 'react-native';
-import {WithSharedTransitionKey} from '../PassageItem/hoc/WithSharedTransitionKey';
-import LyricCard from '../PassageItem/LyricCard';
+import {WithSharedTransitionKey} from '../LyricCard/hoc/WithSharedTransitionKey';
+import LyricCard from '../LyricCard/LyricCard';
 import {useLyricCardSize} from '../../utility/helpers/lyric_card';
 import {useBundle} from '../../utility/redux/bundles/selectors';
 

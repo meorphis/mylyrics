@@ -105,6 +105,9 @@ export const useBundleIncludesPassage = ({
 export const useActiveBundleThemeInfo = () => {
   return useSelector((state: RootState) => {
     const activeBundleKey = state.bundles.activeBundleKey;
+
+    console.log(`active bundle key: ${activeBundleKey}`);
+
     const activePassageKey =
       state.bundles.bundleKeyToPassageKey[activeBundleKey];
     const activeBundle = state.bundles.bundles[activeBundleKey];
