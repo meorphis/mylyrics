@@ -54,10 +54,8 @@ const ActionBarButton = (props: Props) => {
     : defaultState;
 
   const scale = useSharedValue(1);
-  const style = useAnimatedStyle(() => {
+  const animatedStyle = useAnimatedStyle(() => {
     return {
-      ...styles.actionButton,
-      ...(isDisabled ? {opacity: 0.5} : {}),
       transform: [
         {
           scale: scale.value,
@@ -68,7 +66,11 @@ const ActionBarButton = (props: Props) => {
 
   return (
     <AnimatedPressable
-      style={style}
+      style={[
+        animatedStyle,
+        styles.actionButton,
+        isDisabled ? styles.disabled : {},
+      ]}
       onPress={() => {
         if (isDisabled) {
           return;
@@ -99,6 +101,9 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'column',
     alignItems: 'center',
+  },
+  disabled: {
+    opacity: 0.5,
   },
   actionText: {
     fontSize: 10,

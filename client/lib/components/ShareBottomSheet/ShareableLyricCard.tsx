@@ -1,7 +1,7 @@
 import ViewShot from 'react-native-view-shot';
 import {StyleSheet, View} from 'react-native';
 import React from 'react';
-import LyricCard from '../PassageItem/LyricCard';
+import LyricCard from '../LyricCard/LyricCard';
 import {PassageType} from '../../types/passage';
 
 type Props = {

@@ -4,7 +4,7 @@ import React from 'react';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {uuidv4} from '@firebase/util';
 import {Dimensions, StyleSheet, View} from 'react-native';
-import {PASSAGE_ITEM_PADDING} from '../PassageItem/LyricCard';
+import {PASSAGE_ITEM_PADDING} from '../LyricCard/LyricCard';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {isColorLight} from '../../utility/helpers/color';
 import ShareableLyricCard from './ShareableLyricCard';

@@ -61,7 +61,11 @@ const PassageLyrics = (props: Props) => {
           setContentHeight({
             globalPassageKey: passage.passageKey,
             context: measurementContext,
-            value: event.nativeEvent.layout.height,
+            // lyrics height + album image height + SongInfo bottom padding height
+            value:
+              event.nativeEvent.layout.height +
+              scale.albumImageSize +
+              scale.songNameSize,
           }),
         );
       }}

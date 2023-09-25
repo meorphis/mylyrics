@@ -62,6 +62,20 @@ const LyricCard = (props: LyricCardProps) => {
         // eslint-disable-next-line react-native/no-inline-styles
         style={{...styles.container, flex: ignoreFlex ? 0 : 1}}>
         <View
+          onLayout={event => {
+            // share bottom sheet sets this measurement manually
+            if (
+              maxContentHeight == null &&
+              measurementContext !== 'SHARE_BOTTOM_SHEET'
+            ) {
+              dispatch(
+                setMaxContentHeight({
+                  context: measurementContext,
+                  value: event.nativeEvent.layout.height,
+                }),
+              );
+            }
+          }}
           // eslint-disable-next-line react-native/no-inline-styles
           style={{
             ...styles.passageContainer,
@@ -70,29 +84,16 @@ const LyricCard = (props: LyricCardProps) => {
           <SongInfo passage={passage} measurementContext={measurementContext} />
           <View
             // eslint-disable-next-line react-native/no-inline-styles
-            style={{...styles.passageLyricsContainer, flex: ignoreFlex ? 0 : 1}}
-            onLayout={event => {
-              // share bottom sheet sets this measurement manually
-              if (
-                maxContentHeight == null &&
-                measurementContext !== 'SHARE_BOTTOM_SHEET'
-              ) {
-                dispatch(
-                  setMaxContentHeight({
-                    context: measurementContext,
-                    value: event.nativeEvent.layout.height,
-                  }),
-                );
-              }
+            style={{
+              ...styles.passageLyricsContainer,
+              flex: ignoreFlex ? 0 : 1,
             }}>
-            {maxContentHeight != null && (
-              <PassageLyrics
-                passage={passage}
-                sharedTransitionKey={sharedTransitionKey}
-                measurementContext={measurementContext}
-                containerRef={containerRef}
-              />
-            )}
+            <PassageLyrics
+              passage={passage}
+              sharedTransitionKey={sharedTransitionKey}
+              measurementContext={measurementContext}
+              containerRef={containerRef}
+            />
           </View>
         </View>
         {!omitActionBar && (

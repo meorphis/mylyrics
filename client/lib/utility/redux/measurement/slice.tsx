@@ -38,7 +38,7 @@ export const lyricCardMeasurementSlice = createSlice({
       state.measurements[getMeasurementKey({globalPassageKey, context})] =
         withReducedScale;
 
-      console.log(JSON.stringify(state.measurements, null, 2));
+      console.log(JSON.stringify(state, null, 2));
 
       return state;
     },
@@ -51,6 +51,22 @@ export const lyricCardMeasurementSlice = createSlice({
     ) => {
       const {context, value} = action.payload;
       state.maxContentHeight[context] = value;
+
+      Object.keys(state.measurements).forEach(measurementKey => {
+        if (!measurementKey.startsWith(context)) {
+          return;
+        }
+
+        const measurement = state.measurements[measurementKey];
+        if (measurement.scaleFinalized) {
+          return;
+        }
+        const withReducedScale = reduceOrFinalizeScale({
+          measurement,
+          maxContentHeight: value,
+        });
+        state.measurements[measurementKey] = withReducedScale;
+      });
     },
     setLyricsYPosition: (
       state: LyricCardMeasurementState,

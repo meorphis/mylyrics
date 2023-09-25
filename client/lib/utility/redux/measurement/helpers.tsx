@@ -42,6 +42,20 @@ export const isDeckFullyMeasured = ({
       context: 'MAIN_SCREEN',
     });
     const measurement = state.lyricCardMeasurement.measurements[measurementKey];
+
+    if (
+      !(
+        measurement &&
+        measurement.lyricsYPosition != null &&
+        measurement.scaleFinalized
+      )
+    ) {
+      console.log(
+        'missing measurement for passage: ' + p.song.name,
+        JSON.stringify(measurement, null, 2),
+      );
+    }
+
     return (
       measurement &&
       measurement.lyricsYPosition != null &&
