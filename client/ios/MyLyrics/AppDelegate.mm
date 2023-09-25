@@ -2,6 +2,7 @@
 
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTRootView.h>
+#import <React/RCTLinkingManager.h>
 #import <RNSpotifyRemote.h>
 
 @implementation AppDelegate
@@ -27,7 +28,13 @@
 
 - (BOOL)application:(UIApplication *)application openURL:(NSURL *)URL options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options
 {
-  return [[RNSpotifyRemoteAuth sharedInstance] application:application openURL:URL options:options];
+  // Check if RNSpotifyRemote can handle the URL
+  if ([[RNSpotifyRemoteAuth sharedInstance] application:application openURL:URL options:options]) {
+    return YES;
+  }
+
+  // Otherwise, let RCTLinkingManager handle it
+  return [RCTLinkingManager application:application openURL:URL options:options];
 }
 
 @end

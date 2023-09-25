@@ -3,29 +3,33 @@
 
 import {View, StyleSheet, Text, Image} from 'react-native';
 import React, {memo} from 'react';
-
-import {SongType} from '../../types/song';
-import ThemeType from '../../types/theme';
-import {textStyleCommon} from '../../utility/text';
+import {textStyleCommon} from '../../utility/helpers/text';
 import _ from 'lodash';
-import {ScaleType} from '../../utility/max_size';
+import {useScaleInfo} from '../../utility/redux/measurement/selectors';
+import {PassageType} from '../../types/passage';
+import {LyricCardMeasurementContext} from '../../types/measurement';
 
 type Props = {
-  song: SongType;
-  passageTheme: ThemeType;
-  scale: ScaleType;
-  scaleFinalized: boolean;
+  passage: PassageType;
+  measurementContext: LyricCardMeasurementContext;
 };
 
+// shows some metadata about a song including name, artist, album and album art
 const SongInfo = (props: Props) => {
-  console.log(`rendering SongInfo ${props.song.name}`);
+  console.log(`rendering SongInfo ${props.passage.song.name}`);
 
-  const {song, passageTheme, scale, scaleFinalized} = props;
+  const {passage, measurementContext} = props;
+  const {song, theme, passageKey} = passage;
+
+  const {scale, scaleFinalized} = useScaleInfo({
+    globalPassageKey: passageKey,
+    context: measurementContext,
+  });
+
   const {songNameSize, artistNameSize, albumNameSize, albumImageSize} = scale;
 
   const opacity = {opacity: scaleFinalized ? 1 : 0};
-
-  const textColor = passageTheme.textColors[0];
+  const textColor = theme.textColors[0];
 
   return (
     <View style={{...styles.metadataRow, paddingBottom: songNameSize}}>
@@ -94,9 +98,5 @@ const styles = StyleSheet.create({
 });
 
 export default memo(SongInfo, (prev, next) => {
-  return (
-    _.isEqual(prev.passageTheme, next.passageTheme) &&
-    _.isEqual(prev.scale, next.scale) &&
-    prev.scaleFinalized === next.scaleFinalized
-  );
+  return _.isEqual(prev.passage.theme, next.passage.theme);
 });

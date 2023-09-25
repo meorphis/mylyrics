@@ -5,10 +5,10 @@ import React from 'react';
 import {StyleSheet, View, ViewStyle} from 'react-native';
 import ThemeType from '../../types/theme';
 import LinearGradient from 'react-native-linear-gradient';
-import {isColorLight} from '../../utility/color';
+import {isColorLight} from '../../utility/helpers/color';
 
 type Props = {
-  theme?: ThemeType;
+  theme: ThemeType;
   style?: ViewStyle;
   containerRef?: React.RefObject<View>;
   ignoreFlex?: boolean;
@@ -21,7 +21,7 @@ export const ITEM_CONTAINER_BORDER_RADIUS = 36;
 
 const ItemContainer = (props: Props) => {
   const {theme, style, containerRef, omitBorder, ignoreFlex} = props;
-  const {backgroundColor} = theme || {backgroundColor: 'lightgrey'};
+  const {backgroundColor} = theme;
   const borderWidth = omitBorder ? 0 : ITEM_CONTAINER_BORDER_WIDTH;
   const borderColor = isColorLight(backgroundColor) ? '#00000040' : '#ffffff40';
 

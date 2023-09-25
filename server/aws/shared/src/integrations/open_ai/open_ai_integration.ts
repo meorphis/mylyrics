@@ -12,6 +12,7 @@ import {
 import { getSecretString } from "../aws";
 import { Configuration, OpenAIApi } from "openai";
 import { cachedFunction } from "../../utility/cache";
+import { addMetadataToPassage } from "../../utility/recommendations";
 
 // *** CONSTANTS ***
 const MODEL = "gpt-3.5-turbo";
@@ -62,7 +63,7 @@ export const labelPassages = async (
   if ("passages" in content && "floopters" in content) {
     return {
       sentiments: content.floopters,
-      passages: addMetadataToPassages(content.passages),
+      passages: content.passages.map(addMetadataToPassage),
       metadata: {
         labeledBy: "gpt-3.5-turbo",
       }
@@ -140,34 +141,6 @@ const _getOpenAIClient = async () => {
   return new OpenAIApi(configuration);
 }
 const getOpenAIClient = cachedFunction(_getOpenAIClient);
-
-const addMetadataToPassages = (passages: {
-  lyrics: string,
-  sentiments: string[],
-}[]): LabeledPassage[] => {
-  return passages.map((passage) => {
-    if (!("lyrics" in passage) || !("sentiments" in passage)) {
-      throw Error(`passage is missing fields
-        passage: ${JSON.stringify(passage)}
-      `);
-    }
-
-    const lines = passage.lyrics.split("\n");
-    const numLines = lines.length;
-    const numCharsPerLine = lines.map((line) => line.length);
-    const numEffectiveLines = numCharsPerLine.map(
-      (numChars) => Math.ceil(numChars / 35)
-    ).reduce((a, b) => a + b, 0);
-
-    return {
-      ...passage,
-      metadata: {
-        numLines,
-        numCharsPerLine,
-        numEffectiveLines,
-      }
-    }});
-}
 
 const passagesToText = (passages: Recommendation[]): string => {
   return passages.map(passageToText).join("\n\n");

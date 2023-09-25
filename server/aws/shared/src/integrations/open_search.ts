@@ -1,4 +1,5 @@
 import { getImageColors } from "../utility/image";
+import { addMetadataToPassage } from "../utility/recommendations";
 import { VALID_SENTIMENTS } from "../utility/sentiments";
 import { LabeledPassage, Recommendation, Song, SongWithLyrics } from "../utility/types";
 import { getSearchClient } from "./aws";
@@ -98,46 +99,54 @@ export const getRecommendationsForSentiments = async (
   }
 
   // sort by score
-  const sortedFilteredResults = filteredResults.sort((a, b) => b.score - a.score);
+  return await parseSearchResults({results: filteredResults});
+}
 
-  const startImageDownload = Date.now();
-  const colors = await Promise.all(sortedFilteredResults.map(async (passage) => {
-    const {album} = passage.song;
-    const {image} = album;
-    return await getImageColors({url: image.url});
-  }));
-  console.log(`took ${Date.now() - startImageDownload}ms to download and parse images`);
-
-  return sortedFilteredResults.map(({song, passage, score}, idx) => {
-    return {
-      lyrics: passage.lyrics,
-      song: {
-        id: song.id,
-        album: {
-          name: song.album.name,
-          image: {
-            url: song.album.image.url,
-            colors: colors[idx],
-          }
-        },
-        artists: song.artists.map((artist) => {
-          return {
-            id: artist.id,
-            name: artist.name,
-          }
-        }),
-        name: song.name,
-        lyrics: song.lyrics,
-      },
-      tags: passage.sentiments.map((sentiment) => {
-        return {
-          type: "sentiment",
-          sentiment,
+// looks up a particular passage by song name, artist name, and line numbers
+export const lookupPassage = async (
+  {songName, artistName, lineNumbers}:
+  {songName: string, artistName: string, lineNumbers: {start: number, end: number}}
+): Promise<Recommendation | null> => {
+  const searchClient = getSearchClient();
+  const query = {
+    index: "song-lyric-songs",
+    body: {
+      "query": {
+        "bool": {
+          "filter": [
+            {"match": {"name": songName}},
+            {"match": {"primaryArtist.name": artistName}},
+          ]
         }
-      }),
-      score,
+      },
+      "size": 1,
     }
+  };
+  const results = await searchClient.search(query);
+
+  const {hits} = results.body.hits;
+  if (hits.length === 0) {
+    return null;
+  }
+  const {_source, _id} = hits[0];
+
+  const song = {
+    id: _id,
+    ..._source
+  };
+
+  const passage: LabeledPassage = addMetadataToPassage({
+    lyrics: song.lyrics.split("\n").slice(lineNumbers.start, lineNumbers.end).join("\n"),
+    sentiments: [],
   });
+
+  return (await parseSearchResults({results: [{
+    song,
+    passage,
+    score: 0,
+  }]
+  })
+  )[0];
 }
 
 export const getSemanticMatchesForTerm = async (
@@ -350,6 +359,51 @@ export const getScoredSentiments = async (
 };
 
 // *** PRIVATE HELPERS ***
+const parseSearchResults = async (
+  {results}: {results: SearchResult[]}
+): Promise<Recommendation[]> => {
+  const sortedFilteredResults = results.sort((a, b) => b.score - a.score);
+
+  const startImageDownload = Date.now();
+  const colors = await Promise.all(sortedFilteredResults.map(async (passage) => {
+    const {album} = passage.song;
+    const {image} = album;
+    return await getImageColors({url: image.url});
+  }));
+  console.log(`took ${Date.now() - startImageDownload}ms to download and parse images`);
+
+  return sortedFilteredResults.map(({song, passage, score}, idx) => {
+    return {
+      lyrics: passage.lyrics,
+      song: {
+        id: song.id,
+        album: {
+          name: song.album.name,
+          image: {
+            url: song.album.image.url,
+            colors: colors[idx],
+          }
+        },
+        artists: song.artists.map((artist) => {
+          return {
+            id: artist.id,
+            name: artist.name,
+          }
+        }),
+        name: song.name,
+        lyrics: song.lyrics,
+      },
+      tags: passage.sentiments.map((sentiment) => {
+        return {
+          type: "sentiment",
+          sentiment,
+        }
+      }),
+      score,
+    }
+  });
+}
+
 const getBoostsTerm = (
   {recentListens} : 
   {

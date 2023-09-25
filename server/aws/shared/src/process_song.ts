@@ -168,7 +168,7 @@ const addSongToSearch = async (
     unvectorizedPassages: LabeledPassage[],
     vectorizedPassages: VectorizedAndLabeledPassage[],
     labelingMetadata: {
-      labeledBy: string,
+      labeledBy: string | null,
     }
   }
 ) => {

@@ -2,10 +2,10 @@ import {useState} from 'react';
 import {RequestType} from '../../types/request';
 import {UserType, SetUserType} from '../../types/user';
 import db from './firestore';
-import {useDeviceId} from '../device_id';
+import {useDeviceId} from '../contexts/device_id';
 import {collection, doc, getDoc, onSnapshot, setDoc} from '@firebase/firestore';
 
-// Returns a function to get make a request along with the result of that request;
+// returns a function to get make a request along with the result of that request;
 // the request gets the user's settings data from the database
 export const useGetUserRequest = () => {
   const [getUserRequest, setUserRequest] = useState<RequestType<UserType>>({

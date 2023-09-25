@@ -12,17 +12,20 @@ import {
 import {PassageType} from '../../types/passage';
 import db from './firestore';
 import {v5 as uuidv5} from 'uuid';
-import {useDeviceId} from '../device_id';
+import {useDeviceId} from '../contexts/device_id';
 import {RequestType, RequestTypeWithPartial} from '../../types/request';
 import {useEffect, useState} from 'react';
-import {RootState} from '../redux';
-import {useDispatch, useSelector} from 'react-redux';
-import {getPassageId} from '../passage_id';
-import {addRecentLikes, removeRecentLike} from '../redux/recent_likes';
+import {useDispatch} from 'react-redux';
+import {useBundleIncludesPassage} from '../redux/bundles/selectors';
+import {
+  addBundles,
+  addToBundle,
+  removeFromBundle,
+} from '../redux/bundles/slice';
 
 const getLikeId = (deviceId: string, passage: PassageType): string => {
   return uuidv5(
-    deviceId + getPassageId(passage),
+    deviceId + passage.passageKey,
     '450e0e22-a68f-46bf-a413-e23cfbd11072',
   );
 };
@@ -31,12 +34,9 @@ export const useLikeRequest = (passage: PassageType) => {
   const deviceId = useDeviceId();
   const dispatch = useDispatch();
 
-  const isRecentlyLiked = useSelector((state: RootState) => {
-    const likeData = state.recentLikes.find(
-      like => getPassageId(like.passage) === getPassageId(passage),
-    );
-
-    return likeData?.isLiked ?? null;
+  const isRecentlyLiked = useBundleIncludesPassage({
+    bundleKey: 'likes',
+    passageKey: passage.passageKey,
   });
 
   let initialState: RequestTypeWithPartial<boolean> = {
@@ -96,15 +96,19 @@ export const useLikeRequest = (passage: PassageType) => {
 
     // update local state
     if (oldState) {
-      dispatch(removeRecentLike(passage));
+      dispatch(
+        removeFromBundle({
+          bundleKey: 'likes',
+          passageKey: passage.passageKey,
+        }),
+      );
     } else {
       dispatch(
-        addRecentLikes([
-          {
-            passage: passage,
-            timestamp: now,
-          },
-        ]),
+        addToBundle({
+          ...passage,
+          bundleKey: 'likes',
+          sortKey: now,
+        }),
       );
     }
 
@@ -115,17 +119,13 @@ export const useLikeRequest = (passage: PassageType) => {
       } else {
         transaction.set(doc(db, 'user-likes', getLikeId(deviceId, passage)), {
           deviceId,
-          passageId: getPassageId(passage),
+          passageId: passage.passageKey,
           passage: passage,
           timestamp: now,
         });
       }
     });
   };
-
-  console.log(
-    `passage: ${passage.song.name}, isRecentlyLiked: ${request.data}`,
-  );
 
   return {request, toggleLike};
 };
@@ -150,14 +150,24 @@ export const useRecentLikesRequest = () => {
 
       const snapshot = await getDocs(d);
 
-      const likes = snapshot.docs.map(entry => {
-        return {
-          passage: entry.data().passage,
-          timestamp: entry.data().timestamp,
-        };
-      });
-
-      dispatch(addRecentLikes(likes));
+      dispatch(
+        addBundles([
+          {
+            bundleKey: 'likes',
+            passages: snapshot.docs.map(entry => {
+              return {
+                ...entry.data().passage,
+                bundleKey: 'likes',
+                sortKey: entry.data().timestamp,
+              };
+            }),
+            creator: {
+              type: 'machine',
+            },
+            sortOrder: 'desc',
+          },
+        ]),
+      );
 
       setRequest({
         status: 'loaded',

@@ -8,7 +8,7 @@ type LabeledPassageMetadata = {
 }
 
 export type LabelingMetadata = {
-    labeledBy: "gpt-3.5-turbo",
+    labeledBy: "gpt-3.5-turbo" | null,
 }
 
 // a passage of lyrics that has been labeled with sentiments
