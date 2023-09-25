@@ -1,3 +1,5 @@
+export type RequestStatus = 'init' | 'loading' | 'loaded' | 'error';
+
 export type RequestType<T> =
   | {
       status: 'init';

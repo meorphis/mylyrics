@@ -1,41 +1,41 @@
-import React, {memo} from 'react';
+import React, {memo, useRef} from 'react';
 import {LayoutChangeEvent, StyleSheet, Text, View} from 'react-native';
-import {textStyleCommon} from '../../utility/text';
-import ThemeType from '../../types/theme';
+import {textStyleCommon} from '../../utility/helpers/text';
 import {
   cleanLyrics,
-  getLyricsColor,
   splitLyricsWithPassages,
-} from '../../utility/lyrics';
-import {SharedElement} from 'react-navigation-shared-element';
-import {SongType} from '../../types/song';
+} from '../../utility/helpers/lyrics';
 import _ from 'lodash';
-import {ScaleType} from '../../utility/max_size';
+import {PassageType} from '../../types/passage';
+import {LyricCardMeasurementContext} from '../../types/measurement';
+import {useScaleInfo} from '../../utility/redux/measurement/selectors';
+import {useDispatch} from 'react-redux';
+import {
+  setContentHeight,
+  setLyricsYPosition,
+} from '../../utility/redux/measurement/slice';
 
 type Props = {
-  song: SongType;
-  lyrics: string;
-  theme: ThemeType;
-  scale: ScaleType;
-  scaleFinalized: boolean;
+  passage: PassageType;
   sharedTransitionKey: string;
-  onLayout: (event: LayoutChangeEvent) => void;
-  viewRef: React.RefObject<View>;
+  measurementContext: LyricCardMeasurementContext;
+  containerRef: React.RefObject<View>;
 };
 
+// renders the lyrics for a passage, including performing some measurements that are
+// used for scaling and aligning screen transitions
 const PassageLyrics = (props: Props) => {
-  console.log(`rendering PassageLyrics ${props.song.name}`);
+  console.log(`rendering PassageLyrics for ${props.passage.song.name}`);
 
-  const {
-    song,
-    lyrics,
-    theme,
-    scale,
-    scaleFinalized,
-    sharedTransitionKey,
-    onLayout,
-    viewRef,
-  } = props;
+  const {passage, measurementContext, containerRef} = props;
+  const {song, lyrics, theme, passageKey} = passage;
+  const {scale, scaleFinalized} = useScaleInfo({
+    globalPassageKey: passageKey,
+    context: measurementContext,
+  });
+
+  const ref = useRef<View>(null);
+  const dispatch = useDispatch();
 
   const splitLyrics = splitLyricsWithPassages({
     songLyrics: cleanLyrics(song.lyrics),
@@ -45,7 +45,27 @@ const PassageLyrics = (props: Props) => {
   const {lyricsFontSize} = scale;
 
   return (
-    <View style={styles.container} onLayout={onLayout} ref={viewRef}>
+    <View
+      style={styles.container}
+      onLayout={(event: LayoutChangeEvent) => {
+        ref.current!.measureLayout(containerRef.current!, (__, y) => {
+          dispatch(
+            setLyricsYPosition({
+              globalPassageKey: passage.passageKey,
+              context: measurementContext,
+              value: y,
+            }),
+          );
+        });
+        dispatch(
+          setContentHeight({
+            globalPassageKey: passage.passageKey,
+            context: measurementContext,
+            value: event.nativeEvent.layout.height,
+          }),
+        );
+      }}
+      ref={ref}>
       {splitLyrics
         .map(({lineText, passageLine}, index) => {
           if (passageLine == null) {
@@ -53,27 +73,40 @@ const PassageLyrics = (props: Props) => {
           }
 
           return (
-            <SharedElement
+            // <Animated.View
+            //   key={index}
+            //   sharedTransitionTag={`${sharedTransitionKey}:lyrics:${passageLine}:view`}>
+            <Text
+              // sharedTransitionTag={`${sharedTransitionKey}:lyrics:${passageLine}:text`}
+              // sharedTransitionStyle={lyricsTransition}
               key={index}
-              id={`${sharedTransitionKey}:lyrics:${index}`}>
-              <Text
-                // eslint-disable-next-line react-native/no-inline-styles
-                style={{
-                  ...textStyleCommon,
-                  ...styles.lyricsLine,
-                  fontSize: lyricsFontSize,
-                  color: getLyricsColor({theme}),
-                  opacity: scaleFinalized ? 1 : 0,
-                }}>
-                {lineText}
-              </Text>
-            </SharedElement>
+              // eslint-disable-next-line react-native/no-inline-styles
+              style={{
+                ...textStyleCommon,
+                ...styles.lyricsLine,
+                fontSize: lyricsFontSize,
+                color: theme.textColors[0],
+                opacity: scaleFinalized ? 1 : 0,
+              }}>
+              {lineText}
+            </Text>
+            // </Animated.View>
           );
         })
         .filter(line => line !== null)}
     </View>
   );
 };
+
+// export const lyricsTransition = SharedTransition.custom(values => {
+//   'worklet';
+//   return {
+//     width: withSpring(values.targetWidth, {duration: 100}),
+//     height: withSpring(values.targetHeight, {duration: 100}),
+//     originX: withSpring(values.targetOriginX, {duration: 100}),
+//     originY: withSpring(values.targetOriginY, {duration: 100}),
+//   };
+// });
 
 const styles = StyleSheet.create({
   container: {
@@ -87,8 +120,6 @@ const styles = StyleSheet.create({
 export default memo(
   PassageLyrics,
   (prev, next) =>
-    _.isEqual(prev.theme, next.theme) &&
-    _.isEqual(prev.scale, next.scale) &&
-    prev.scaleFinalized === next.scaleFinalized &&
-    prev.lyrics === next.lyrics,
+    _.isEqual(prev.passage.theme, next.passage.theme) &&
+    prev.passage.lyrics === next.passage.lyrics,
 );

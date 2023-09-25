@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {useDeviceId} from '../device_id';
+import {useDeviceId} from '../contexts/device_id';
 import db from './firestore';
 import {
   doc,
@@ -12,18 +12,13 @@ import {
 } from '@firebase/firestore';
 import {RequestType} from '../../types/request';
 import {useDispatch} from 'react-redux';
-import {
-  addLoadedPassageGroups,
-  initPassageGroups,
-} from '../redux/recommendations';
-import {errorToString} from '../error';
+import {errorToString} from '../helpers/error';
 import {RawPassageType} from '../../types/passage';
-import {setProphecy} from '../redux/prophecy';
-import {setSentimentGroups} from '../redux/sentiment_groups';
-import {getPassageGroups} from '../recommendations';
-import {useSetActivePassageRaw} from '../active_passage';
+import {setProphecy} from '../redux/prophecy/slice';
+import {getBundlesFromFlatPassages} from '../helpers/recommendations';
+import {addBundles, setActiveBundlePassage} from '../redux/bundles/slice';
 
-// Returns a function to get make a request along with the result of that request;
+// returns a function to get make a request along with the result of that request;
 // the request gets the user's recommendations from the database fetches image data
 // for each recommendation, and dispatches the data to the redux store;
 // recommendationsRequest.data is true if recommendations were found, false otherwise
@@ -95,15 +90,14 @@ export const updateImpressions = async ({
     const impressions = data?.impressions ?? {};
     passages.forEach(rec => {
       const songId = rec.song.id;
-      const sentiments = rec.tags.map(({sentiment}) => sentiment);
-      sentiments.forEach(sentiment => {
-        if (impressions[sentiment] == null) {
-          impressions[sentiment] = [];
+      rec.bundleKeys.forEach(bundleKey => {
+        if (impressions[bundleKey] == null) {
+          impressions[bundleKey] = [];
         }
-        if (impressions[sentiment].includes(songId)) {
+        if (impressions[bundleKey].includes(songId)) {
           return;
         }
-        impressions[sentiment].push(songId);
+        impressions[bundleKey].push(songId);
       });
     });
     transaction.set(docRef, {value: impressions}, {merge: true});
@@ -112,7 +106,6 @@ export const updateImpressions = async ({
 
 const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
   const dispatch = useDispatch();
-  const setActivePassage = useSetActivePassageRaw();
 
   const setupRecommendations = async ({
     docSnap,
@@ -124,47 +117,51 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
     }
 
     const data = docSnap.data();
-    const sentimentGroups = data.sentiments as {
-      group: string;
-      sentiments: string[];
-    }[];
-    const flatSentiments = sentimentGroups
-      .map(({sentiments}) => sentiments)
-      .flat();
 
-    const flatRecommendations = data.recommendations as RawPassageType[];
+    const {flatRecommendations, bundleGroups} = transformData(data);
     const prophecy = data.prophecy as string;
 
     updateImpressions({deviceId, passages: flatRecommendations});
 
-    const passageGroups = await getPassageGroups(
+    const bundles = await getBundlesFromFlatPassages(
       flatRecommendations,
-      flatSentiments,
+      bundleGroups,
     );
 
-    const activeGroupKey = flatSentiments[0];
-    const activePassages = passageGroups.find(
-      p => p.groupKey === activeGroupKey,
-    )?.passageGroup;
-
-    if (activePassages == null) {
-      throw new Error(`could not find active passages for ${activeGroupKey}`);
-    }
-
-    const activePassageKey = activePassages[0]?.passageKey;
-
-    dispatch(initPassageGroups(flatSentiments));
-    dispatch(addLoadedPassageGroups(passageGroups));
-    dispatch(setSentimentGroups(sentimentGroups));
-    setActivePassage({
-      groupKey: activeGroupKey,
-      passageKey: activePassageKey,
-      passages: activePassages,
-    });
+    dispatch(addBundles(bundles));
+    dispatch(setActiveBundlePassage(bundles[0].passages[0]));
     dispatch(setProphecy(prophecy ?? null));
 
     return true;
   };
 
   return setupRecommendations;
+};
+
+// a temporary function to transform the format currently saved by the server into the format
+// that we will soon migrate to
+const transformData = (data: DocumentData) => {
+  const flatRecommendations = data.recommendations.map((r: any) => {
+    return {
+      ...r,
+      bundleKeys: r.tags.map(({sentiment}: {sentiment: string}) => sentiment),
+    } as RawPassageType;
+  }) as RawPassageType[];
+
+  const bundleGroups = (
+    data.sentiments as {
+      group: string;
+      sentiments: string[];
+    }[]
+  ).map(({group, sentiments}) => {
+    return {
+      groupName: group,
+      bundleKeys: sentiments,
+    };
+  });
+
+  return {
+    flatRecommendations,
+    bundleGroups,
+  };
 };

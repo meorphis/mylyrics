@@ -10,12 +10,10 @@ import {
 } from 'react-native';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import React from 'react';
-import {textStyleCommon} from '../../utility/text';
-import ThemeType from '../../types/theme';
+import {textStyleCommon} from '../../utility/helpers/text';
 
 type Props = {
   text?: string;
-  theme?: ThemeType;
   useSaturatedColor?: boolean;
   isDisabled?: boolean;
   onPress: () => void;
@@ -87,46 +85,6 @@ const SolidBackground = (
     </View>
   );
 };
-
-// const GradientBackground = (
-//   props: Props & {
-//     children: React.ReactNode;
-//   },
-// ) => {
-//   const {useSaturatedColor, children} = props;
-
-//   const {interpolatedColors} = useTheme();
-
-//   const sharedValue = useSharedValue(0);
-//   const sharedWhiteBlack = useDerivedValue(() =>
-//     ['white', 'black'].map(c =>
-//       interpolateColor(sharedValue.value, [0, 1], [c, 'red']),
-//     ),
-//   );
-//   const sharedUseSaturatedColor = useSharedValue(useSaturatedColor);
-
-//   useEffect(() => {
-//     sharedUseSaturatedColor.value = useSaturatedColor;
-//   }, [useSaturatedColor]);
-
-//   const derivedColors = useDerivedValue(() =>
-//     sharedUseSaturatedColor.value
-//       ? [sharedWhiteBlack.value[1], interpolatedColors.value[0]]
-//       : [interpolatedColors.value[0], sharedWhiteBlack.value[0]],
-//   );
-
-//   console.log('DERIVED COLORS', derivedColors);
-
-//   return (
-//     <AnimatedLinearGradient
-//       style={styles.gradientBackground}
-//       start={{x: -0.5, y: -0.5}}
-//       end={{x: 1, y: 1}}
-//       interpolatedColors={derivedColors}>
-//       {children}
-//     </AnimatedLinearGradient>
-//   );
-// };
 
 const styles = StyleSheet.create({
   button: {

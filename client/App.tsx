@@ -7,31 +7,23 @@
 
 import React from 'react';
 // import {useSpotifyAuthentication} from './lib/spotify_auth';
-import {DeviceIdProvider} from './lib/utility/device_id';
+import {DeviceIdProvider} from './lib/utility/contexts/device_id';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {Provider as ReduxProvider} from 'react-redux';
 import {store} from './lib/utility/redux';
 import {NavigationContainer} from '@react-navigation/native';
-import {StackCardStyleInterpolator} from '@react-navigation/stack';
-import FullLyrics from './lib/components/fullLyrics/FullLyricsScreen';
-import MainScreen from './lib/components/main/MainScreen';
+import FullLyrics from './lib/components/FullLyricsScreen/FullLyricsScreen';
+import MainScreen from './lib/components/HomeScreen/MainScreen';
 import {RootStackParamList} from './lib/types/navigation';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {StyleSheet} from 'react-native';
-import {
-  SharedElementAnimation,
-  SharedElementConfig,
-  createSharedElementStackNavigator,
-} from 'react-navigation-shared-element';
-import {cleanLyrics, splitLyricsWithPassages} from './lib/utility/lyrics';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import {Dirs} from 'react-native-file-access';
-import {ShareablePassageProvider} from './lib/utility/shareable_passage';
-import {ThemeProvider} from './lib/utility/theme';
-import {PassageType} from './lib/types/passage';
-import {SingletonPassageProvider} from './lib/utility/singleton_passage';
+import {useBundleLink} from './lib/utility/helpers/bundle_links';
+import {CommonSharedValuesProvider} from './lib/utility/contexts/common_shared_values';
 
-const Stack = createSharedElementStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 CacheManager.config = {
   baseDir: `${Dirs.CacheDir}/images_cache/`,
@@ -45,92 +37,88 @@ function App(): JSX.Element {
   return (
     <ReduxProvider store={store}>
       <GestureHandlerRootView style={styles.gestureHandler}>
-        <ShareablePassageProvider>
-          <SingletonPassageProvider>
-            <ThemeProvider>
-              <NavigationContainer>
-                <DeviceIdProvider>
-                  <SafeAreaProvider>
-                    <Stack.Navigator>
-                      <Stack.Screen
-                        name="Main"
-                        component={MainScreen}
-                        options={{
-                          headerShown: false,
-                          cardStyleInterpolator: forFade,
-                        }}
-                      />
-                      <Stack.Screen
-                        name="FullLyrics"
-                        component={FullLyrics}
-                        options={{
-                          headerShown: false,
-                          cardStyleInterpolator: forFade,
-                        }}
-                        sharedElements={(route, _, showing) => {
-                          if (route.name !== 'FullLyrics' || !showing) {
-                            return [];
-                          }
-                          const {
-                            originalPassage,
-                            sharedTransitionKey,
-                            initiallyHighlightedPassageLyrics,
-                          } = route.params as {
-                            originalPassage: PassageType;
-                            sharedTransitionKey: string;
-                            initiallyHighlightedPassageLyrics: string;
-                          };
-
-                          const splitLyrics = splitLyricsWithPassages({
-                            songLyrics: cleanLyrics(
-                              originalPassage.song.lyrics,
-                            ),
-                            passageLyrics: initiallyHighlightedPassageLyrics,
-                          });
-
-                          return [
-                            ...(splitLyrics
-                              .map(({passageLine}, index) => {
-                                if (passageLine == null) {
-                                  return null;
-                                }
-
-                                return {
-                                  id: `${sharedTransitionKey}:lyrics:${index}`,
-                                  animation: 'fade' as SharedElementAnimation,
-                                };
-                              })
-                              .filter(
-                                line => line != null,
-                              ) as SharedElementConfig[]),
-                            {
-                              id: `${sharedTransitionKey}:buttons`,
-                              animation: 'fade' as SharedElementAnimation,
-                            },
-                          ];
-                        }}
-                      />
-                    </Stack.Navigator>
-                  </SafeAreaProvider>
-                </DeviceIdProvider>
-              </NavigationContainer>
-            </ThemeProvider>
-          </SingletonPassageProvider>
-        </ShareablePassageProvider>
+        <NavigationContainer>
+          <DeviceIdProvider>
+            <CommonSharedValuesProvider>
+              <SafeAreaProvider>
+                <AppInner />
+              </SafeAreaProvider>
+            </CommonSharedValuesProvider>
+          </DeviceIdProvider>
+        </NavigationContainer>
       </GestureHandlerRootView>
     </ReduxProvider>
   );
 }
 
-const forFade: StackCardStyleInterpolator = ({current}) => {
-  return {
-    cardStyle: {
-      opacity: current.progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 1],
-      }),
-    },
-  };
+const AppInner = () => {
+  useBundleLink();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        animation: 'fade',
+      }}>
+      <Stack.Screen
+        name="Main"
+        component={MainScreen}
+        options={{
+          headerShown: false,
+          // cardStyleInterpolator: forFade,
+        }}
+      />
+      <Stack.Screen
+        name="FullLyrics"
+        component={FullLyrics}
+        options={{
+          headerShown: false,
+          // cardStyleInterpolator: forFade,
+        }}
+        // sharedElements={(route, _, showing) => {
+        //   if (route.name !== 'FullLyrics' || !showing) {
+        //     return [];
+        //   }
+        //   const {
+        //     originalPassage,
+        //     sharedTransitionKey,
+        //     initiallyHighlightedPassageLyrics,
+        //   } = route.params as {
+        //     originalPassage: PassageType;
+        //     sharedTransitionKey: string;
+        //     initiallyHighlightedPassageLyrics: string;
+        //   };
+
+        //   const splitLyrics = splitLyricsWithPassages({
+        //     songLyrics: cleanLyrics(
+        //       originalPassage.song.lyrics,
+        //     ),
+        //     passageLyrics: initiallyHighlightedPassageLyrics,
+        //   });
+
+        //   return [
+        //     ...(splitLyrics
+        //       .map(({passageLine}, index) => {
+        //         if (passageLine == null) {
+        //           return null;
+        //         }
+
+        //         return {
+        //           id: `${sharedTransitionKey}:lyrics:${index}`,
+        //           animation: 'fade' as SharedElementAnimation,
+        //         };
+        //       })
+        //       .filter(
+        //         line => line != null,
+        //       ) as SharedElementConfig[]),
+        //     {
+        //       id: `${sharedTransitionKey}:buttons`,
+        //       animation: 'fade' as SharedElementAnimation,
+        //     },
+        //   ];
+        // }}
+      />
+    </Stack.Navigator>
+  );
 };
 
 const styles = StyleSheet.create({

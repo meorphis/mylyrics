@@ -1,3 +1,5 @@
+// one of potentially several colors extracted from a particular album cover; matches
+// the shape computed in the server
 export type AlbumCoverColor = {
   area: number;
   blue: number;

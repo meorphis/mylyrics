@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>MyLyrics</string>
+	<string>Fine Lines</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -34,7 +34,7 @@
 			<string>com.meorphis.mylyrics</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>mylyrics</string>
+				<string>finelines</string>
 			</array>
 		</dict>
 	</array>

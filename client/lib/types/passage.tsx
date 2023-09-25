@@ -1,51 +1,34 @@
-import {RequestTypeWithPartial} from './request';
 import {RawSongType, SongType} from './song';
-import TagType from './tag';
-import ThemeType from './theme';
+import ThemeType, {ThemeSelection} from './theme';
 
+// the format that we use to load and save passages to/from the DB; we load the image
+// blob, compute the theme, and assign a key on the client side to convert this into a
+// PassageType
 export type RawPassageType = {
   lyrics: string;
-  tags: TagType[];
   song: RawSongType;
+  bundleKeys: string[];
 };
 
+// contains a single passage of lyrics with metadata, providing enough info to be
+// rendered in a LyricCard component
 export type PassageType = {
   lyrics: string;
-  tags: TagType[];
   song: SongType;
   theme: ThemeType;
-};
-
-export type PassageGroupType = {
   passageKey: string;
-  passage: PassageType;
-}[];
-
-export type PassageGroupsType = {
-  groupKey: string;
-  passageGroup: PassageGroupType;
-}[];
-
-export type PassageGroupRequestType = RequestTypeWithPartial<PassageGroupType>;
-
-export type PassageGroupRequestsType = {
-  groupKey: string;
-  passageGroupRequest: PassageGroupRequestType;
-}[];
-
-export type PassageItemKeyType = {
-  groupKey: string;
-  passageKey: string | null;
 };
 
-export type ThemeSelection = {
-  theme: ThemeType;
-  inverted: boolean;
+// a passage with some optional customization metadata to alter its rendering
+export type CustomizablePassageType = {
+  passage: PassageType;
+  customization: {
+    themeSelection: ThemeSelection;
+    textColorSelection: string;
+  };
 };
 
-export type ShareablePassage = {
-  passage: PassageType;
+export type ShareablePassageState = {
+  passage: CustomizablePassageType;
   bottomSheetTriggered: boolean;
-  themeSelection: ThemeSelection;
-  textColorSelection: string;
 };
