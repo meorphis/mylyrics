@@ -23,6 +23,7 @@ export const requestBundleChangeSlice = createSlice({
       state.currentlyRequestedBundleKey = bundleKey;
       if (!state.allRequestedBundleKeys.includes(bundleKey)) {
         state.allRequestedBundleKeys.push(bundleKey);
+        state.allRequestedBundleKeys.sort();
       }
     },
   },

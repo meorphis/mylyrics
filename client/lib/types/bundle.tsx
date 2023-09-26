@@ -30,6 +30,10 @@ export type BundleType = {
 export type BundlesState = {
   bundles: {[bundleKey: string]: BundleType};
   activeBundleKey: string;
+  // slightly delayed after activeBundleKey changes, this is set once the animations
+  // are ready and we actually want to scroll
+  scrollToBundleIndex: number;
+  // used for the back button
   previousActiveBundleKey: string | null;
   bundleKeyToPassageKey: {
     [bundleKey: string]: string;

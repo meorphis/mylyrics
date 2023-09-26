@@ -99,7 +99,10 @@ const Deck = (props: Props) => {
       onSnapToItem={(slideIndex: number) => {
         const item = passagesCache[slideIndex];
 
+        console.log(`SNAP TO ${slideIndex}`);
+
         if (isActiveBundle) {
+          console.log(`set active bundle passage: ${item.passageKey}`);
           dispatch(setActiveBundlePassage(item));
         }
       }}
