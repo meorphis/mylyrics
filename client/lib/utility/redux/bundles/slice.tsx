@@ -70,6 +70,13 @@ export const bundlesSlice = createSlice({
         ...bundle.passages.slice(0, index),
         ...bundle.passages.slice(index + 1),
       ];
+
+      // keep the same index (or zero if the index is now out of bounds) to
+      // essentially go to the next passage
+      if (state.bundleKeyToPassageKey[bundleKey] === passageKey) {
+        state.bundleKeyToPassageKey[bundleKey] =
+          bundle.passages[index % bundle.passages.length].passageKey;
+      }
     },
     setActiveBundlePassage: (
       state: BundlesState,
@@ -104,6 +111,12 @@ export const bundlesSlice = createSlice({
         state.previousActiveBundleKey = currentlyActiveBundleKey;
       }
     },
+    setScrollToBundleIndex: (
+      state: BundlesState,
+      action: PayloadAction<number>,
+    ) => {
+      state.scrollToBundleIndex = action.payload;
+    },
   },
 });
 
@@ -112,6 +125,7 @@ export const {
   addToBundle,
   removeFromBundle,
   setActiveBundlePassage,
+  setScrollToBundleIndex,
 } = bundlesSlice.actions;
 
 export default bundlesSlice.reducer as Reducer<BundlesState>;

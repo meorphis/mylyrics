@@ -7,9 +7,11 @@ export const CommonSharedValuesProvider = (props: {
   children: JSX.Element | JSX.Element[];
 }) => {
   const sharedDeckProgress = useSharedValue(0);
+  const sharedDecksCarouselProgress = useSharedValue(0);
 
   return (
-    <CommonSharedValuesContext.Provider value={{sharedDeckProgress}}>
+    <CommonSharedValuesContext.Provider
+      value={{sharedDeckProgress, sharedDecksCarouselProgress}}>
       {props.children}
     </CommonSharedValuesContext.Provider>
   );
@@ -24,4 +26,5 @@ export const useCommonSharedValues = () => {
 
 const CommonSharedValuesContext = React.createContext<{
   sharedDeckProgress: SharedValue<number>;
+  sharedDecksCarouselProgress: SharedValue<number>;
 } | null>(null);

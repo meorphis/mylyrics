@@ -38,8 +38,6 @@ export const lyricCardMeasurementSlice = createSlice({
       state.measurements[getMeasurementKey({globalPassageKey, context})] =
         withReducedScale;
 
-      console.log(JSON.stringify(state, null, 2));
-
       return state;
     },
     setMaxContentHeight: (

@@ -1,16 +1,14 @@
-import React, {memo, useEffect, useLayoutEffect, useRef} from 'react';
+import React, {memo, useLayoutEffect, useRef} from 'react';
 import {Dimensions} from 'react-native';
 import NativeCarousel from '../../forks/react-native-reanimated-carousel/src';
 import {SingletonLyricCard} from './SingletonLyricCard';
 import _ from 'lodash';
 import Animated, {useAnimatedStyle} from 'react-native-reanimated';
 import {useSharedDecksOpacity} from '../../utility/helpers/deck';
-import {
-  useActiveBundleKey,
-  useAllBundleKeys,
-} from '../../utility/redux/bundles/selectors';
+import {useScrollToBundleIndex} from '../../utility/redux/bundles/selectors';
 import {useAllRequestedBundleKeys} from '../../utility/redux/requested_bundle_change/selectors';
 import Deck from './Deck';
+import {useCommonSharedValues} from '../../utility/contexts/common_shared_values';
 
 const Carousel = memo(NativeCarousel, (prev, next) => {
   return _.isEqual(prev.data, next.data);
@@ -21,46 +19,50 @@ const Carousel = memo(NativeCarousel, (prev, next) => {
 const DeckCarousel = () => {
   console.log('rendering DeckCarousel');
 
-  const allBundleKeys = useAllBundleKeys();
-  const activeBundleKey = useActiveBundleKey();
+  const scrollToBundleIndex = useScrollToBundleIndex();
   const selectedGroupOpacity = useSharedDecksOpacity();
-  const allRequestedBundleKeys = new Set(useAllRequestedBundleKeys());
 
   // to reduce up front computation, only render decks once their bundles have
   // been requested
-  const visibleBundleKeys = allBundleKeys.filter(bundleKey => {
-    const isVisible = allRequestedBundleKeys.has(bundleKey);
-    return isVisible ? bundleKey : null;
-  });
-
-  const [data, setData] = React.useState<string[]>(visibleBundleKeys);
-
-  useEffect(() => {
-    setData((prevData: string[]) => {
-      const newData = [...prevData];
-      visibleBundleKeys.forEach(bundleKey => {
-        if (!newData.includes(bundleKey)) {
-          newData.push(bundleKey);
-        }
-      });
-
-      return newData;
-    });
-  }, [visibleBundleKeys.sort().join(',')]);
+  const allRequestedBundleKeys = useAllRequestedBundleKeys();
+  const {sharedDecksCarouselProgress} = useCommonSharedValues();
 
   // @ts-ignore
   const carouselRef = useRef<Carousel>(null);
 
-  // scroll to the active bundle when it changes
-  const activeIndex = data.findIndex(groupKey => groupKey === activeBundleKey);
+  const previouslyRequestedBundleKeys = useRef<string[]>([]);
+
   useLayoutEffect(() => {
-    if (carouselRef.current?.getCurrentIndex() !== activeIndex) {
+    // find the index of the newly requested bundle key
+    const newlyBundleKeyIndex = allRequestedBundleKeys.findIndex(
+      bundleKey => !previouslyRequestedBundleKeys.current.includes(bundleKey),
+    );
+
+    if (newlyBundleKeyIndex === -1) {
+      return;
+    }
+
+    previouslyRequestedBundleKeys.current = allRequestedBundleKeys;
+
+    console.log(
+      `newly requested bundle key index: ${newlyBundleKeyIndex}, current index: ${carouselRef.current?.getCurrentIndex()}`,
+    );
+
+    if (newlyBundleKeyIndex <= carouselRef.current?.getCurrentIndex()) {
+      carouselRef.current?.next({
+        animated: false,
+      });
+    }
+  }, [allRequestedBundleKeys]);
+
+  useLayoutEffect(() => {
+    if (carouselRef.current?.getCurrentIndex() !== scrollToBundleIndex) {
       carouselRef.current?.scrollTo({
-        index: activeIndex,
+        index: scrollToBundleIndex,
         animated: true,
       });
     }
-  }, [activeIndex]);
+  }, [scrollToBundleIndex]);
 
   // we sometimes reduce the opacity if a bundle has been requested but is not
   // ready to be shown yet (see useSharedDecksOpacity implementation)
@@ -74,14 +76,17 @@ const DeckCarousel = () => {
     <Animated.View style={style}>
       <Carousel
         ref={carouselRef}
-        data={data}
+        data={allRequestedBundleKeys}
         loop={false}
         width={Dimensions.get('window').width}
         height={Dimensions.get('window').height}
         enabled={false}
-        // keyExtractor={(item: unknown, idx: number) =>
-        //   'carousel-item-' + (item as string) + `-${idx}`
-        // }
+        scrollAnimationDuration={500}
+        keyExtractor={(item: unknown) => 'carousel-item-' + (item as string)}
+        onProgressChange={(__, absoluteProgress: number) => {
+          'worklet';
+          sharedDecksCarouselProgress.value = absoluteProgress;
+        }}
         renderItem={({item: bundleKey}: {item: unknown}) => {
           if (bundleKey === null) {
             return <React.Fragment />;

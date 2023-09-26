@@ -22,6 +22,7 @@ import {
   addToBundle,
   removeFromBundle,
 } from '../redux/bundles/slice';
+import {getPassageId} from '../helpers/passage';
 
 const getLikeId = (deviceId: string, passage: PassageType): string => {
   return uuidv5(
@@ -155,10 +156,14 @@ export const useRecentLikesRequest = () => {
           {
             bundleKey: 'likes',
             passages: snapshot.docs.map(entry => {
-              return {
+              const passage = {
                 ...entry.data().passage,
                 bundleKey: 'likes',
                 sortKey: entry.data().timestamp,
+              };
+              return {
+                ...passage,
+                passageKey: getPassageId(entry.data().passage),
               };
             }),
             creator: {
