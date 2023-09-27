@@ -1,20 +1,23 @@
 import React from 'react';
 import {SafeAreaView, StyleSheet, View} from 'react-native';
-import RecommendationsCarousel from '../Deck/DecksCarousel';
+import DecksCarousel from '../Deck/DecksCarousel';
 import AnimatedThemeBackground from '../common/AnimatedThemeBackground';
 import BottomBar from '../BottomBar/BottomBar';
 import ShareBottomSheet from '../ShareBottomSheet/ShareBottomSheet';
+import {ThemeAnimationProvider} from '../../utility/contexts/theme_animation';
 
 const Recommendations = () => {
   return (
     <View style={styles.container}>
-      <AnimatedThemeBackground>
-        <SafeAreaView style={styles.safearea}>
-          <RecommendationsCarousel />
-          <BottomBar />
-        </SafeAreaView>
-        <ShareBottomSheet />
-      </AnimatedThemeBackground>
+      <ThemeAnimationProvider>
+        <AnimatedThemeBackground>
+          <SafeAreaView style={styles.safearea}>
+            <DecksCarousel />
+            <BottomBar />
+          </SafeAreaView>
+          <ShareBottomSheet />
+        </AnimatedThemeBackground>
+      </ThemeAnimationProvider>
     </View>
   );
 };

@@ -17,18 +17,11 @@ const ProphecyView = (props: Props) => {
   const {cards, prophecy} = props;
 
   const {requestStatus, makeProphecyRequest} = useProphecyRequest();
-  const textColor = 'black';
   const trigger = `${prophecy != null}-${requestStatus === 'loading'}`;
 
   const renderContent = () => {
     if (prophecy) {
-      return (
-        <ComputedProphecyView
-          prophecy={prophecy}
-          backgroundColor="#00000040"
-          textColor={textColor}
-        />
-      );
+      return <ComputedProphecyView prophecy={prophecy} />;
     }
 
     if (requestStatus === 'loading') {
@@ -40,7 +33,6 @@ const ProphecyView = (props: Props) => {
     return (
       <ProphecyCardsView
         cards={cards}
-        backgroundColor="#00000040"
         onSubmit={() => makeProphecyRequest(cards)}
       />
     );

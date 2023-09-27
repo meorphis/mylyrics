@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 import {Linking, StyleSheet, Text, View} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {textStyleCommon} from '../../utility/helpers/text';
@@ -12,14 +12,6 @@ type Props = {
 
 const PendingRecommendations = (props: Props) => {
   const {notificationStatus} = props;
-  const [showAdditionalContext, setShowAdditionalContext] =
-    React.useState<boolean>(false);
-
-  useEffect(() => {
-    setTimeout(() => {
-      setShowAdditionalContext(true);
-    }, 1000);
-  }, []);
 
   return (
     <View style={styles.container}>
@@ -37,31 +29,32 @@ const PendingRecommendations = (props: Props) => {
           style={styles.connectedBadge}
         />
       </AppearingView>
-      {showAdditionalContext && (
-        <AppearingView duration={1000} style={styles.recommendationsContainer}>
+      <AppearingView
+        delay={500}
+        duration={1000}
+        style={styles.recommendationsContainer}>
+        <Text style={{...textStyleCommon, ...styles.recommendationsText}}>
+          we are computing your recommendations...
+        </Text>
+        {notificationStatus === 'granted' ? (
           <Text style={{...textStyleCommon, ...styles.recommendationsText}}>
-            we are computing your recommendations...
+            you will receive your first notification shortly
           </Text>
-          {notificationStatus === 'granted' ? (
-            <Text style={{...textStyleCommon, ...styles.recommendationsText}}>
-              you will receive your first notification shortly
-            </Text>
-          ) : (
-            <TextLink
-              textStyle={{...textStyleCommon, ...styles.recommendationsText}}
-              textLinkStyle={{...textStyleCommon, ...styles.linkText}}
-              pressingLinkStyle={styles.linkText}
-              links={[
-                {
-                  text: 'enable notifications',
-                  onPress: () => Linking.openSettings(),
-                },
-              ]}>
-              enable notifications to be notified when they are ready
-            </TextLink>
-          )}
-        </AppearingView>
-      )}
+        ) : (
+          <TextLink
+            textStyle={{...textStyleCommon, ...styles.recommendationsText}}
+            textLinkStyle={{...textStyleCommon, ...styles.linkText}}
+            pressingLinkStyle={styles.linkText}
+            links={[
+              {
+                text: 'enable notifications',
+                onPress: () => Linking.openSettings(),
+              },
+            ]}>
+            enable notifications to be notified when they are ready
+          </TextLink>
+        )}
+      </AppearingView>
     </View>
   );
 };
@@ -76,7 +69,7 @@ const styles = StyleSheet.create({
   },
   connectedBadge: {
     backgroundColor: '#148255',
-    marginBottom: 18,
+    marginBottom: 12,
     paddingLeft: 16,
     paddingRight: 24,
   },
@@ -88,7 +81,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   recommendationsContainer: {
-    maxWidth: '100%',
+    maxWidth: '80%',
   },
   recommendationsText: {
     fontSize: 18,

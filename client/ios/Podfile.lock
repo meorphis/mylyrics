@@ -36,6 +36,7 @@ PODS:
   - hermes-engine (0.72.3):
     - hermes-engine/Pre-built (= 0.72.3)
   - hermes-engine/Pre-built (0.72.3)
+  - HMSegmentedControl (1.5.6)
   - ImageColors (2.3.0):
     - ExpoModulesCore
   - libevent (2.1.12)
@@ -471,6 +472,19 @@ PODS:
   - ReactNativeFileAccess (3.0.4):
     - React-Core
     - ZIPFoundation (= 0.9.11)
+  - ReactNativeNavigation (7.37.0-hotfix.1):
+    - HMSegmentedControl
+    - React-Core
+    - React-CoreModules
+    - React-RCTImage
+    - React-RCTText
+    - ReactNativeNavigation/Core (= 7.37.0-hotfix.1)
+  - ReactNativeNavigation/Core (7.37.0-hotfix.1):
+    - HMSegmentedControl
+    - React-Core
+    - React-CoreModules
+    - React-RCTImage
+    - React-RCTText
   - RNCMaskedView (0.1.11):
     - React
   - RNFastImage (8.6.3):
@@ -478,6 +492,8 @@ PODS:
     - SDWebImage (~> 5.11.1)
     - SDWebImageWebPCoder (~> 0.8.4)
   - RNGestureHandler (2.12.0):
+    - React-Core
+  - RNReactNativeHapticFeedback (2.2.0):
     - React-Core
   - RNReanimated (3.4.2):
     - DoubleConversion
@@ -582,9 +598,11 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeFileAccess (from `../node_modules/react-native-file-access`)
+  - ReactNativeNavigation (from `../node_modules/react-native-navigation`)
   - "RNCMaskedView (from `../node_modules/@react-native-community/masked-view`)"
   - RNFastImage (from `../node_modules/react-native-fast-image`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNReactNativeHapticFeedback (from `../node_modules/react-native-haptic-feedback`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNShare (from `../node_modules/react-native-share`)
@@ -595,6 +613,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - fmt
+    - HMSegmentedControl
     - libevent
     - libwebp
     - MMKV
@@ -710,12 +729,16 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeFileAccess:
     :path: "../node_modules/react-native-file-access"
+  ReactNativeNavigation:
+    :path: "../node_modules/react-native-navigation"
   RNCMaskedView:
     :path: "../node_modules/@react-native-community/masked-view"
   RNFastImage:
     :path: "../node_modules/react-native-fast-image"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNReactNativeHapticFeedback:
+    :path: "../node_modules/react-native-haptic-feedback"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -746,6 +769,7 @@ SPEC CHECKSUMS:
   fmt: ff9d55029c625d3757ed641535fd4a75fedc7ce9
   glog: 04b94705f318337d7ead9e6d17c019bd9b1f6b1b
   hermes-engine: 10fbd3f62405c41ea07e71973ea61e1878d07322
+  HMSegmentedControl: 34c1f54d822d8308e7b24f5d901ec674dfa31352
   ImageColors: bce1dff849de75dc22a226cab709aabb072d5e4a
   libevent: 4049cae6c81cdb3654a443be001fb9bdceff7913
   libwebp: f62cb61d0a484ba548448a4bd52aabf150ff6eef
@@ -787,9 +811,11 @@ SPEC CHECKSUMS:
   React-utils: bcb57da67eec2711f8b353f6e3d33bd8e4b2efa3
   ReactCommon: 3ccb8fb14e6b3277e38c73b0ff5e4a1b8db017a9
   ReactNativeFileAccess: 4530e3be4d5069454c6c6389096d8cb78c897f2c
+  ReactNativeNavigation: 3bf96607854b1a278560a41d892cef773353953e
   RNCMaskedView: 0e1bc4bfa8365eba5fbbb71e07fbdc0555249489
   RNFastImage: 5c9c9fed9c076e521b3f509fe79e790418a544e8
   RNGestureHandler: dec4645026e7401a0899f2846d864403478ff6a5
+  RNReactNativeHapticFeedback: ec56a5f81c3941206fd85625fa669ffc7b4545f9
   RNReanimated: 726395a2fa2f04cea340274ba57a4e659bc0d9c1
   RNScreens: 6a8a3c6b808aa48dca1780df7b73ea524f602c63
   RNShare: da6d90b6dc332f51f86498041d6e34211f96b630

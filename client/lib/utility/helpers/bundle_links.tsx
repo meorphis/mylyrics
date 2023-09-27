@@ -44,6 +44,9 @@ export const useBundleLink = () => {
           nickname: string;
         };
         title: string;
+        recipient?: {
+          nickname: string;
+        };
       };
       const {passages: rawPassages, creator, title} = data;
       const passages = await Promise.all(rawPassages.map(hydratePassage));
@@ -58,6 +61,7 @@ export const useBundleLink = () => {
           ...creator,
           type: 'user',
         },
+        recipient: data.recipient,
         title,
       };
 

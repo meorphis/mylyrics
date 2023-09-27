@@ -50,6 +50,25 @@ export const useActiveBundleKey = () => {
   return bundleKey;
 };
 
+// returns the bundle object that is currently active
+export const useActiveBundle = () => {
+  return useSelector((state: RootState) => {
+    return state.bundles.bundles[state.bundles.activeBundleKey];
+  });
+};
+
+export const useActivePassageKeyForBundle = ({
+  bundleKey,
+}: {
+  bundleKey: string;
+}) => {
+  const passageKey = useSelector((state: RootState) => {
+    return state.bundles.bundleKeyToPassageKey[bundleKey];
+  });
+
+  return passageKey;
+};
+
 // returns the index of the bundle that the desk carousel should be scrolled to
 export const useScrollToBundleIndex = () => {
   const bundleKey = useSelector((state: RootState) => {
@@ -112,37 +131,29 @@ export const useBundleIncludesPassage = ({
 // active bundle and active passage - used to perform computations for the
 // AnimatedThemeBackground component
 export const useActiveBundleThemeInfo = () => {
-  return useSelector(
-    (state: RootState) => {
-      const activeBundleKey = state.bundles.activeBundleKey;
+  return useSelector((state: RootState) => {
+    const activeBundleKey = state.bundles.activeBundleKey;
+    const activePassageKey =
+      state.bundles.bundleKeyToPassageKey[activeBundleKey];
 
-      console.log(`active bundle key: ${activeBundleKey}`);
-
-      const activePassageKey =
-        state.bundles.bundleKeyToPassageKey[activeBundleKey];
-      const activeBundle = state.bundles.bundles[activeBundleKey];
-      const activePassageIndex = activeBundle.passages.findIndex(
-        p => p.passageKey === activePassageKey,
+    const activeBundle = state.bundles.bundles[activeBundleKey];
+    const activePassageIndex = activePassageKey
+      ? activeBundle.passages.findIndex(p => p.passageKey === activePassageKey)
+      : 0;
+    const activeBundleIndex =
+      state.requestedBundleChange.allRequestedBundleKeys.findIndex(
+        bundleKey => bundleKey === activeBundleKey,
       );
-      const activeBundleIndex =
-        state.requestedBundleChange.allRequestedBundleKeys.findIndex(
-          bundleKey => bundleKey === activeBundleKey,
-        );
 
-      return {
-        themes: state.requestedBundleChange.allRequestedBundleKeys.map(
-          bundleKey =>
-            state.bundles.bundles[bundleKey].passages.map(p => p.theme),
-        ),
-        activeBundleIndex,
-        activePassageIndex,
-      };
-    },
-    (prev, curr) => {
-      return (
-        prev.activeBundleIndex === curr.activeBundleIndex &&
-        prev.activePassageIndex === curr.activePassageIndex
-      );
-    },
-  );
+    return {
+      themes: state.requestedBundleChange.allRequestedBundleKeys.map(
+        bundleKey => {
+          const passages = state.bundles.bundles[bundleKey].passages;
+          return passages.length > 0 ? passages.map(p => p.theme) : [null];
+        },
+      ),
+      activeBundleIndex,
+      activePassageIndex,
+    };
+  }, _.isEqual);
 };

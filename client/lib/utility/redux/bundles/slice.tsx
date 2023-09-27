@@ -21,7 +21,7 @@ export const bundlesSlice = createSlice({
         }
         state.bundles[bundle.bundleKey] = bundle;
         state.bundleKeyToPassageKey[bundle.bundleKey] =
-          bundle.passages[0].passageKey;
+          bundle.passages[0]?.passageKey ?? null;
       });
     },
     addToBundle: (
@@ -49,6 +49,7 @@ export const bundlesSlice = createSlice({
           ...bundle.passages.slice(index),
         ];
       }
+      state.bundleKeyToPassageKey[passage.bundleKey] = passage.passageKey;
     },
     removeFromBundle: (
       state: BundlesState,
@@ -111,6 +112,13 @@ export const bundlesSlice = createSlice({
         state.previousActiveBundleKey = currentlyActiveBundleKey;
       }
     },
+    setEmptyBundle: (
+      state: BundlesState,
+      action: PayloadAction<{bundleKey: string}>,
+    ) => {
+      state.activeBundleKey = action.payload.bundleKey;
+      state.bundleKeyToPassageKey[action.payload.bundleKey] = null;
+    },
     setScrollToBundleIndex: (
       state: BundlesState,
       action: PayloadAction<number>,
@@ -125,6 +133,7 @@ export const {
   addToBundle,
   removeFromBundle,
   setActiveBundlePassage,
+  setEmptyBundle,
   setScrollToBundleIndex,
 } = bundlesSlice.actions;
 

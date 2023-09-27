@@ -8,6 +8,7 @@ import Animated, {
 import ThemeType from '../../../types/theme';
 import React, {useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text} from 'react-native';
+import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -26,12 +27,22 @@ type Props = {
     IconClass: React.ComponentType<any>;
   };
   isDisabled?: boolean;
+  disableIfActive?: boolean;
 };
 
 // base component to be used for buttons in the ActionBar
 const ActionBarButton = (props: Props) => {
-  const {onPress, theme, isDisabled, isActive, defaultState, activeState} =
-    props;
+  const {
+    onPress,
+    theme,
+    defaultState,
+    isActive,
+    activeState,
+    isDisabled: isDisabledProp,
+    disableIfActive,
+  } = props;
+
+  const isDisabled = isDisabledProp || (disableIfActive && isActive);
 
   if (isActive != null && activeState == null) {
     throw new Error(
@@ -54,6 +65,15 @@ const ActionBarButton = (props: Props) => {
     : defaultState;
 
   const scale = useSharedValue(1);
+  const opacity = useSharedValue(isDisabled ? 0.5 : 1);
+  useEffect(() => {
+    if (isDisabled) {
+      opacity.value = withTiming(0.5, {duration: 200});
+    } else {
+      opacity.value = 1;
+    }
+  }, [isDisabled]);
+
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -61,20 +81,19 @@ const ActionBarButton = (props: Props) => {
           scale: scale.value,
         },
       ],
+      opacity: opacity.value,
     };
   });
 
   return (
     <AnimatedPressable
-      style={[
-        animatedStyle,
-        styles.actionButton,
-        isDisabled ? styles.disabled : {},
-      ]}
+      style={[animatedStyle, styles.actionButton]}
       onPress={() => {
         if (isDisabled) {
           return;
         }
+
+        triggerHapticFeedback('impactLight');
 
         if (isActive != null) {
           setIsOptimisticActive(a => !a);
@@ -87,6 +106,9 @@ const ActionBarButton = (props: Props) => {
             () =>
               (scale.value = withTiming(1, {duration: 200}, runOnJS(onPress))),
           );
+          if (disableIfActive) {
+            opacity.value = withTiming(0.5, {duration: 200});
+          }
         });
       }}>
       <IconClass name={icon} size={40} color={theme.textColors[0]} />
@@ -101,9 +123,6 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'column',
     alignItems: 'center',
-  },
-  disabled: {
-    opacity: 0.5,
   },
   actionText: {
     fontSize: 10,

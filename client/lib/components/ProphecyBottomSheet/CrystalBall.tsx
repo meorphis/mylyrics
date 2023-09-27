@@ -21,7 +21,6 @@ const CrystalBall = (props: Props) => {
   const fadeAnim = useSharedValue(0);
   const rotateAnim = useSharedValue(0);
   const scaleAnim = useSharedValue(1);
-  const crystalBallOpacityAnim = useSharedValue(1);
 
   useEffect(() => {
     fadeAnim.value = withRepeat(
@@ -62,38 +61,17 @@ const CrystalBall = (props: Props) => {
       -1,
       true,
     );
-
-    crystalBallOpacityAnim.value = withRepeat(
-      withSequence(
-        withTiming(0.8, {
-          duration: 2000 * (0.5 + Math.random()),
-          easing: Easing.ease,
-        }),
-        withTiming(1, {
-          duration: 2000 * (0.5 + Math.random()),
-          easing: Easing.ease,
-        }),
-      ),
-      -1,
-      true,
-    );
   }, []);
-
-  const animatedCrystalBallStyle = useAnimatedStyle(() => {
-    return {
-      opacity: crystalBallOpacityAnim.value,
-    };
-  });
 
   return (
     <View style={styles.container}>
       <View style={styles.crystalBallContainer}>
-        <Animated.View style={animatedCrystalBallStyle}>
+        <View>
           <Image
             source={require('../../assets/crystal_ball.png')}
             style={styles.crystalBallImage}
           />
-        </Animated.View>
+        </View>
       </View>
       {imageUrls.map((asset, index) => (
         <AlbumCover

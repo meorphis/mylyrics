@@ -21,9 +21,6 @@ const GroupSelectorBottomSheet = (props: Props) => {
   const activeBundleKey = useActiveBundleKey();
   const groupedBundleKeys = useGroupedBundleKeys();
   const groupsToShow = Object.keys(groupedBundleKeys);
-
-  const textColor = 'black';
-  const groupBackgroundColor = '#00000040';
   const selectedGroup = activeBundleKey
     ? groupsToShow.find(group =>
         (groupedBundleKeys[group] as SentimentEnumType[]).includes(
@@ -43,17 +40,14 @@ const GroupSelectorBottomSheet = (props: Props) => {
       enablePanDownToClose
       backgroundStyle={styles.bottomSheet}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
-        <Text
-          style={{...textStyleCommon, ...styles.titleText, color: textColor}}>
-          ✨ your daily vibes ✨
+        <Text style={{...textStyleCommon, ...styles.titleText}}>
+          🎶 your daily vibes 🎶
         </Text>
 
         {putAtFrontOfArray(groupsToShow, selectedGroup).map(group => (
           <View
             style={{
               ...styles.group,
-              backgroundColor: groupBackgroundColor,
-              borderColor: textColor,
             }}
             key={group}>
             <View style={styles.groupLabel}>
@@ -61,11 +55,14 @@ const GroupSelectorBottomSheet = (props: Props) => {
                 style={{
                   ...textStyleCommon,
                   ...styles.groupLabelText,
-                  color: textColor,
                 }}>
                 {group}
               </Text>
-              <Text style={styles.groupLabelEmoji}>{groupEmojis[group]}</Text>
+              <View style={styles.groupLabelEmoji}>
+                <Text style={styles.groupLabelEmojiText}>
+                  {groupEmojis[group]}
+                </Text>
+              </View>
             </View>
             <View style={styles.tagsContainer}>
               {(
@@ -107,26 +104,34 @@ const putAtFrontOfArray = (array: any[], item: any) => {
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 12,
     flexDirection: 'column',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
   bottomSheet: {
-    backgroundColor: 'lightgrey',
+    backgroundColor: '#CCC',
   },
   titleText: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     paddingBottom: 16,
     textAlign: 'center',
+    color: '#333',
   },
   group: {
     flexDirection: 'column',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 24,
-    marginBottom: 16,
-    borderWidth: 0.2,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    marginBottom: 20,
+    backgroundColor: '#00000040',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    borderWidth: 3,
+    borderColor: '#00000040',
   },
   groupLabel: {
     flexDirection: 'row',
@@ -134,12 +139,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   groupLabelText: {
-    fontSize: 20,
+    fontSize: 24,
     paddingRight: 8,
-    fontWeight: 'bold',
+    color: '#333',
+    fontWeight: '600',
   },
   groupLabelEmoji: {
-    fontSize: 24,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.4,
+    shadowRadius: 2,
+  },
+  groupLabelEmojiText: {
+    fontSize: 28,
   },
   tagsContainer: {
     flex: 1,
@@ -148,7 +160,7 @@ const styles = StyleSheet.create({
   },
   tagContainer: {
     marginHorizontal: 4,
-    paddingTop: 8,
+    paddingTop: 12,
   },
 });
 
@@ -158,9 +170,10 @@ const groupEmojis: {[key: string]: string} = {
   gut: '🤢',
   heart: '💖',
   mind: '🧠',
-  skin: '👄',
+  skin: '🫦',
   soul: '🕊️',
   spine: '🦾',
+  essentials: '🤠',
 };
 
 export default memo(GroupSelectorBottomSheet, () => true);

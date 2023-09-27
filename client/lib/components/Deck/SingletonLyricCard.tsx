@@ -14,7 +14,8 @@ export const SingletonLyricCard = () => {
 
   const singletonPassage = useBundle({bundleKey: 'singleton_passage'})
     .passages[0];
-  const {height, marginHorizontal, marginTop} = useLyricCardSize();
+  const {deckHeight, marginHorizontal, deckMarginTop, itemMarginTop} =
+    useLyricCardSize();
 
   if (!singletonPassage) {
     return null;
@@ -24,9 +25,9 @@ export const SingletonLyricCard = () => {
     <SafeAreaView>
       <View
         style={{
-          marginTop,
+          marginTop: deckMarginTop + itemMarginTop,
           marginHorizontal,
-          height,
+          height: deckHeight,
         }}>
         <LyricCardComponent
           passage={singletonPassage}

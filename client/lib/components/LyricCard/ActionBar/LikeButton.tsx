@@ -20,7 +20,10 @@ const LikeButton = (props: Props) => {
           return;
         }
 
-        toggleLike();
+        // disable unliking for now
+        if (!likeRequest.data) {
+          toggleLike();
+        }
       }}
       theme={passage.theme}
       defaultState={{
@@ -34,6 +37,8 @@ const LikeButton = (props: Props) => {
         icon: 'heart',
         IconClass: Ionicon,
       }}
+      // disable unliking for now
+      disableIfActive
     />
   );
 };

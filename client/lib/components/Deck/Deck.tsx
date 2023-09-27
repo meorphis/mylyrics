@@ -4,16 +4,18 @@ import Carousel from '../../forks/react-native-reanimated-carousel/src';
 import {WithSharedTransitionKey} from '../LyricCard/hoc/WithSharedTransitionKey';
 import LyricCard from '../LyricCard/LyricCard';
 import {
+  useActivePassageKeyForBundle,
   useBundle,
   useIsActiveBundle,
 } from '../../utility/redux/bundles/selectors';
-import {useCommonSharedValues} from '../../utility/contexts/common_shared_values';
+import {useThemeProgress} from '../../utility/contexts/theme_animation';
 import {useLyricCardSize} from '../../utility/helpers/lyric_card';
 import {useDispatch} from 'react-redux';
 import {setActiveBundlePassage} from '../../utility/redux/bundles/slice';
 import {BundlePassageType} from '../../types/bundle';
 import {getEmptyDeckText} from '../../utility/helpers/deck';
 import {useSharedValue} from 'react-native-reanimated';
+import AnimatedThemeText from '../common/AnimatedThemeText';
 
 const PassageItemComponent = memo(
   WithSharedTransitionKey(LyricCard),
@@ -33,14 +35,12 @@ const Deck = (props: Props) => {
   const bundle = useBundle({bundleKey});
   const {passages} = bundle;
 
+  const activePassageKeyForBundle = useActivePassageKeyForBundle({bundleKey});
+
   const dispatch = useDispatch();
-  const {sharedDeckProgress} = useCommonSharedValues();
-  const {
-    marginTop,
-    marginHorizontal,
-    height: passageItemHeight,
-    carouselClearance,
-  } = useLyricCardSize();
+  const {sharedDeckProgress} = useThemeProgress();
+  const {deckHeight, marginHorizontal, itemMarginTop, deckMarginTop} =
+    useLyricCardSize();
 
   const isActiveBundle = useIsActiveBundle(bundleKey);
   const sharedIsActiveBundle = useSharedValue(isActiveBundle);
@@ -51,19 +51,18 @@ const Deck = (props: Props) => {
   // @ts-ignore
   const ref = React.useRef<NativeCarousel>(null);
 
-  // if a passage is removed from the bundle, continue to show and trigger a scroll,
-  // removing it only after it has scrolled out of view
-  const [passagesCache, setPassagesCache] =
-    React.useState<BundlePassageType[]>(passages);
   useEffect(() => {
-    if (passages.length !== passagesCache.length) {
+    const expectedIndex = passages.findIndex(
+      p => p.passageKey === activePassageKeyForBundle,
+    );
+
+    if (expectedIndex !== ref.current?.getCurrentIndex()) {
       ref.current?.scrollTo({
-        animated: true,
-        count: 1,
-        onFinished: () => setPassagesCache(passages),
+        animated: false,
+        index: expectedIndex,
       });
     }
-  }, [passages.length]);
+  }, [activePassageKeyForBundle, ref.current?.getCurrentIndex()]);
 
   if (passages.length === 0) {
     return (
@@ -74,53 +73,55 @@ const Deck = (props: Props) => {
   }
 
   return (
-    <Carousel
-      ref={ref}
-      style={{...styles.carouselContainer}}
-      loop
-      data={passagesCache}
-      height={passageItemHeight + carouselClearance}
-      width={Dimensions.get('window').width}
-      vertical
-      mode="vertical-stack"
-      modeConfig={{
-        stackInterval: 30,
-        scaleInterval: 0.04,
-        opacityInterval: 0.3,
-        rotateZDeg: 90,
-        moveSize: Dimensions.get('window').width * 1.5,
-      }}
-      onProgressChange={(__, absoluteProgress: number) => {
-        'worklet';
-        if (sharedIsActiveBundle.value) {
-          sharedDeckProgress.value = absoluteProgress;
-        }
-      }}
-      onSnapToItem={(slideIndex: number) => {
-        const item = passagesCache[slideIndex];
+    <React.Fragment>
+      {isActiveBundle && bundle.creator.type === 'user' && (
+        <AnimatedThemeText />
+      )}
 
-        console.log(`SNAP TO ${slideIndex}`);
+      <Carousel
+        ref={ref}
+        style={{...styles.carouselContainer, marginTop: deckMarginTop}}
+        loop
+        data={passages}
+        height={deckHeight}
+        width={Dimensions.get('window').width}
+        vertical
+        mode="vertical-stack"
+        modeConfig={{
+          stackInterval: passages.length > 1 ? 30 : 0,
+          scaleInterval: 0.04,
+          opacityInterval: 0.3,
+          rotateZDeg: 90,
+          moveSize: Dimensions.get('window').width * 1.5,
+        }}
+        onProgressChange={(__, absoluteProgress: number) => {
+          'worklet';
+          if (sharedIsActiveBundle.value) {
+            sharedDeckProgress.value = absoluteProgress;
+          }
+        }}
+        onSnapToItem={(slideIndex: number) => {
+          const item = passages[slideIndex];
 
-        if (isActiveBundle) {
-          console.log(`set active bundle passage: ${item.passageKey}`);
-          dispatch(setActiveBundlePassage(item));
+          if (isActiveBundle) {
+            dispatch(setActiveBundlePassage(item));
+          }
+        }}
+        renderItem={({item}: {item: unknown}) => {
+          return (
+            <PassageItemComponent
+              passage={item as BundlePassageType}
+              measurementContext="MAIN_SCREEN"
+              style={{marginTop: itemMarginTop, marginHorizontal}}
+            />
+          );
+        }}
+        keyExtractor={(item: unknown, index: number) =>
+          `${(item as BundlePassageType).passageKey}-${bundleKey}-${index}`
         }
-      }}
-      renderItem={({item}: {item: unknown}) => {
-        return (
-          <PassageItemComponent
-            passage={item as BundlePassageType}
-            measurementContext="MAIN_SCREEN"
-            style={{marginTop, marginHorizontal}}
-          />
-        );
-      }}
-      keyExtractor={(item: unknown) =>
-        `${(item as BundlePassageType).passageKey}-${bundleKey}`
-      }
-      snapEnabled={false}
-      autoFillData={false}
-    />
+        enabled={passages.length > 1}
+      />
+    </React.Fragment>
   );
 };
 

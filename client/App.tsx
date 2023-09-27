@@ -21,7 +21,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import {Dirs} from 'react-native-file-access';
 import {useBundleLink} from './lib/utility/helpers/bundle_links';
-import {CommonSharedValuesProvider} from './lib/utility/contexts/common_shared_values';
+import {ThemeProgressProvider} from './lib/utility/contexts/theme_animation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -39,11 +39,11 @@ function App(): JSX.Element {
       <GestureHandlerRootView style={styles.gestureHandler}>
         <NavigationContainer>
           <DeviceIdProvider>
-            <CommonSharedValuesProvider>
+            <ThemeProgressProvider>
               <SafeAreaProvider>
                 <AppInner />
               </SafeAreaProvider>
-            </CommonSharedValuesProvider>
+            </ThemeProgressProvider>
           </DeviceIdProvider>
         </NavigationContainer>
       </GestureHandlerRootView>

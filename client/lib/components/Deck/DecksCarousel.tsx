@@ -3,12 +3,12 @@ import {Dimensions} from 'react-native';
 import NativeCarousel from '../../forks/react-native-reanimated-carousel/src';
 import {SingletonLyricCard} from './SingletonLyricCard';
 import _ from 'lodash';
-import Animated, {useAnimatedStyle} from 'react-native-reanimated';
+import Animated, {Easing, useAnimatedStyle} from 'react-native-reanimated';
 import {useSharedDecksOpacity} from '../../utility/helpers/deck';
 import {useScrollToBundleIndex} from '../../utility/redux/bundles/selectors';
 import {useAllRequestedBundleKeys} from '../../utility/redux/requested_bundle_change/selectors';
 import Deck from './Deck';
-import {useCommonSharedValues} from '../../utility/contexts/common_shared_values';
+import {useThemeProgress} from '../../utility/contexts/theme_animation';
 
 const Carousel = memo(NativeCarousel, (prev, next) => {
   return _.isEqual(prev.data, next.data);
@@ -16,7 +16,7 @@ const Carousel = memo(NativeCarousel, (prev, next) => {
 
 // renders a carousel of Decks (which are themselves carousels of LyricCards)
 // responsible for responding to changes to some state changes in the bundles
-const DeckCarousel = () => {
+const DecksCarousel = () => {
   console.log('rendering DeckCarousel');
 
   const scrollToBundleIndex = useScrollToBundleIndex();
@@ -25,35 +25,35 @@ const DeckCarousel = () => {
   // to reduce up front computation, only render decks once their bundles have
   // been requested
   const allRequestedBundleKeys = useAllRequestedBundleKeys();
-  const {sharedDecksCarouselProgress} = useCommonSharedValues();
+  const {sharedDecksCarouselProgress} = useThemeProgress();
 
   // @ts-ignore
   const carouselRef = useRef<Carousel>(null);
 
-  const previouslyRequestedBundleKeys = useRef<string[]>([]);
+  // const previouslyRequestedBundleKeys = useRef<string[]>([]);
 
-  useLayoutEffect(() => {
-    // find the index of the newly requested bundle key
-    const newlyBundleKeyIndex = allRequestedBundleKeys.findIndex(
-      bundleKey => !previouslyRequestedBundleKeys.current.includes(bundleKey),
-    );
+  // useLayoutEffect(() => {
+  //   // find the index of the newly requested bundle key
+  //   const newlyBundleKeyIndex = allRequestedBundleKeys.findIndex(
+  //     bundleKey => !previouslyRequestedBundleKeys.current.includes(bundleKey),
+  //   );
 
-    if (newlyBundleKeyIndex === -1) {
-      return;
-    }
+  //   if (newlyBundleKeyIndex === -1) {
+  //     return;
+  //   }
 
-    previouslyRequestedBundleKeys.current = allRequestedBundleKeys;
+  //   previouslyRequestedBundleKeys.current = allRequestedBundleKeys;
 
-    console.log(
-      `newly requested bundle key index: ${newlyBundleKeyIndex}, current index: ${carouselRef.current?.getCurrentIndex()}`,
-    );
+  //   console.log(
+  //     `newly requested bundle key index: ${newlyBundleKeyIndex}, current index: ${carouselRef.current?.getCurrentIndex()}`,
+  //   );
 
-    if (newlyBundleKeyIndex <= carouselRef.current?.getCurrentIndex()) {
-      carouselRef.current?.next({
-        animated: false,
-      });
-    }
-  }, [allRequestedBundleKeys]);
+  //   if (newlyBundleKeyIndex <= carouselRef.current?.getCurrentIndex()) {
+  //     carouselRef.current?.next({
+  //       animated: false,
+  //     });
+  //   }
+  // }, [allRequestedBundleKeys]);
 
   useLayoutEffect(() => {
     if (carouselRef.current?.getCurrentIndex() !== scrollToBundleIndex) {
@@ -81,7 +81,13 @@ const DeckCarousel = () => {
         width={Dimensions.get('window').width}
         height={Dimensions.get('window').height}
         enabled={false}
-        scrollAnimationDuration={500}
+        scrollAnimationDuration={750}
+        withAnimation={{
+          type: 'timing',
+          config: {
+            easing: Easing.inOut(Easing.quad),
+          },
+        }}
         keyExtractor={(item: unknown) => 'carousel-item-' + (item as string)}
         onProgressChange={(__, absoluteProgress: number) => {
           'worklet';
@@ -103,4 +109,4 @@ const DeckCarousel = () => {
   );
 };
 
-export default DeckCarousel;
+export default DecksCarousel;

@@ -3,6 +3,7 @@ import {StyleSheet, TextStyle, ViewStyle} from 'react-native';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import {Text} from 'react-native';
 import {textStyleCommon} from '../../utility/helpers/text';
+import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 
 type Props = {
   text?: string;
@@ -18,7 +19,12 @@ const IconButton = (props: Props) => {
   return (
     <TouchableOpacity
       style={{...(onPress ? styles.button : null), ...styles.badge, ...style}}
-      onPress={onPress}
+      onPress={() => {
+        if (onPress) {
+          triggerHapticFeedback('impactLight');
+          onPress();
+        }
+      }}
       disabled={!onPress}>
       {icon}
       {text == null ? null : (

@@ -7,11 +7,11 @@ import ProphecyBottomSheet from '../ProphecyBottomSheet/ProphecyBottomSheet';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {
   allSentiments,
-  sentimentAdjectiveToNoun,
+  sentimentToEmojiMap,
 } from '../../utility/helpers/sentiments';
 import SentimentEnumType from '../../types/sentiments';
 import {
-  useActiveBundleKey,
+  useActiveBundle,
   usePreviouslyActiveBundleKey,
 } from '../../utility/redux/bundles/selectors';
 import {useDispatch} from 'react-redux';
@@ -27,62 +27,76 @@ const BottomBar = (props: Props) => {
 
   const groupSelectorBottomSheetRef = React.useRef<BottomSheet>(null);
   const prophecyBottomSheetRef = React.useRef<BottomSheet>(null);
-  const activeBundleKey = useActiveBundleKey();
+  const activeBundle = useActiveBundle();
+  const {bundleKey: activeBundleKey} = activeBundle ?? {bundleKey: null};
   const previouslyActiveBundleKey = usePreviouslyActiveBundleKey();
   const dispatch = useDispatch();
+
+  const shouldShowBackButton =
+    (activeBundleKey === 'singleton_passage' ||
+      activeBundle.creator.type !== 'machine') &&
+    previouslyActiveBundleKey != null;
+  const shouldShowGroupSelectorButton = activeBundle.creator.type === 'machine';
+  const shouldShowLikesButton = activeBundle.creator.type === 'machine';
+  const shouldShowProphecyButton = activeBundle.creator.type === 'machine';
 
   return (
     <React.Fragment>
       <SafeAreaView style={{...styles.menuRow, ...style}}>
-        {activeBundleKey === 'singleton_passage' &&
-          previouslyActiveBundleKey && (
-            <ThemeButton
-              onPress={() => {
-                dispatch(
-                  requestBundleChange({bundleKey: previouslyActiveBundleKey}),
-                );
-              }}
-              iconName="arrow-back"
-              textStyle={styles.gridButtonText}
-              style={styles.button}
-            />
-          )}
-        <ThemeButton
-          text={
-            activeBundleKey &&
-            allSentiments.includes(activeBundleKey as SentimentEnumType)
-              ? sentimentAdjectiveToNoun(
-                  activeBundleKey as SentimentEnumType,
-                ) ?? ''
-              : ''
-          }
-          useSaturatedColor={allSentiments.includes(
-            activeBundleKey as SentimentEnumType,
-          )}
-          onPress={() => {
-            groupSelectorBottomSheetRef?.current?.expand();
-          }}
-          iconName="grid-outline"
-          textStyle={styles.gridButtonText}
-          style={styles.button}
-        />
-        <ThemeButton
-          useSaturatedColor={activeBundleKey === 'likes'}
-          onPress={() => {
-            dispatch(requestBundleChange({bundleKey: 'likes'}));
-          }}
-          iconName="heart-outline"
-          textStyle={styles.gridButtonText}
-          style={styles.button}
-        />
-        <ThemeButton
-          onPress={() => {
-            prophecyBottomSheetRef.current?.expand();
-          }}
-          iconName="eye-outline"
-          textStyle={styles.gridButtonText}
-          style={styles.button}
-        />
+        {shouldShowBackButton && (
+          <ThemeButton
+            onPress={() => {
+              dispatch(
+                requestBundleChange({bundleKey: previouslyActiveBundleKey}),
+              );
+            }}
+            iconName="arrow-back"
+            textStyle={styles.buttonText}
+            style={styles.button}
+          />
+        )}
+        {shouldShowGroupSelectorButton && (
+          <ThemeButton
+            text={
+              activeBundleKey &&
+              allSentiments.includes(activeBundleKey as SentimentEnumType)
+                ? sentimentToEmojiMap[activeBundleKey as SentimentEnumType] ??
+                  ''
+                : ''
+            }
+            useSaturatedColor={allSentiments.includes(
+              activeBundleKey as SentimentEnumType,
+            )}
+            onPress={() => {
+              groupSelectorBottomSheetRef?.current?.expand();
+            }}
+            iconName="grid-outline"
+            textStyle={styles.buttonText}
+            textContainerStyle={styles.groupSelectorButtonTextContainer}
+            style={styles.button}
+          />
+        )}
+        {shouldShowLikesButton && (
+          <ThemeButton
+            useSaturatedColor={activeBundleKey === 'likes'}
+            onPress={() => {
+              dispatch(requestBundleChange({bundleKey: 'likes'}));
+            }}
+            iconName="heart-outline"
+            textStyle={styles.buttonText}
+            style={styles.button}
+          />
+        )}
+        {shouldShowProphecyButton && (
+          <ThemeButton
+            onPress={() => {
+              prophecyBottomSheetRef.current?.expand();
+            }}
+            iconName="eye-outline"
+            textStyle={styles.buttonText}
+            style={styles.button}
+          />
+        )}
       </SafeAreaView>
       <GroupSelectorBottomSheet bottomSheetRef={groupSelectorBottomSheetRef} />
       <ProphecyBottomSheet bottomSheetRef={prophecyBottomSheetRef} />
@@ -102,9 +116,15 @@ const styles = StyleSheet.create({
     padding: 0,
     marginBottom: 8,
   },
-  gridButtonText: {
-    fontSize: 18,
+  buttonText: {
+    fontSize: 20,
     fontWeight: '500',
+  },
+  groupSelectorButtonTextContainer: {
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.7,
+    shadowRadius: 2,
   },
   button: {
     padding: 0,

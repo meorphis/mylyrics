@@ -28,7 +28,7 @@ export type LyricCardProps = {
 // NOTE: because we have a nested carousel of carousels, we end up with a lot
 // of LyricCards. to ensure good performance, we need to be careful about
 // re-renders - in particular, no action should result in O(N*M) re-renders
-// of PassageItem or any component nested beneath PassageItem, where N is the
+// of LyricCard or any component nested beneath LyricCard, where N is the
 // number of passage groups and M is the number of passages in each
 const LyricCard = (props: LyricCardProps) => {
   const {
@@ -40,7 +40,7 @@ const LyricCard = (props: LyricCardProps) => {
     ignoreFlex,
     omitBorder,
   } = props;
-  console.log(`rendering PassageItem ${props.passage.song.name}`);
+  console.log(`rendering LyricCard ${props.passage.song.name}`);
 
   const {theme} = passage;
   const dispatch = useDispatch();
@@ -60,7 +60,11 @@ const LyricCard = (props: LyricCardProps) => {
       omitBorder={omitBorder}>
       <View
         // eslint-disable-next-line react-native/no-inline-styles
-        style={{...styles.container, flex: ignoreFlex ? 0 : 1}}>
+        style={{
+          ...styles.container,
+          flex: ignoreFlex ? 0 : 1,
+          paddingBottom: omitActionBar ? undefined : 24,
+        }}>
         <View
           onLayout={event => {
             // share bottom sheet sets this measurement manually

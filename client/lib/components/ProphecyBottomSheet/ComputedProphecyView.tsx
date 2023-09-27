@@ -1,57 +1,68 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {textStyleCommon} from '../../utility/helpers/text';
+import {ScrollView} from 'react-native-gesture-handler';
 
 type Props = {
   prophecy: string;
-  backgroundColor: string;
-  textColor: string;
 };
 
 // view to show once a prophecy has been computed
 const ComputedProphecyView = (props: Props) => {
-  const {prophecy, backgroundColor, textColor} = props;
+  const {prophecy} = props;
 
   return (
-    <View>
-      <Text style={{...textStyleCommon, ...styles.titleText, color: textColor}}>
+    <ScrollView style={styles.container}>
+      <Text style={{...textStyleCommon, ...styles.titleText}}>
         🔮 your prophecy 🔮
       </Text>
       <View
         style={{
           ...styles.prophecyContainer,
-          backgroundColor,
         }}>
         <Text
           style={{
             ...textStyleCommon,
             ...styles.prophecyText,
-            color: textColor,
           }}>
           {prophecy}
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    marginTop: 12,
+  },
   titleText: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    paddingBottom: 16,
     textAlign: 'center',
+    color: '#333',
   },
   prophecyContainer: {
     flexDirection: 'column',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 30,
+    margin: 12,
+    marginTop: 18,
+    marginBottom: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+    backgroundColor: '#00000040',
+    borderWidth: 3,
+    borderColor: '#00000040',
   },
   prophecyText: {
-    fontSize: 20,
-    fontWeight: '200',
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: '300',
+    textAlign: 'center',
   },
 });
 
