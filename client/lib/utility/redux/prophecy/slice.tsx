@@ -16,7 +16,8 @@ export const prophecySlice = createSlice({
   reducers: {
     addCard: (state: ProphecyState, action: PayloadAction<PassageType>) => {
       if (state.cards.length >= 3) {
-        throw new Error('Cannot add more than 3 cards to prophecy');
+        console.warn('Cannot add more than 3 cards to prophecy');
+        return;
       }
 
       state.cards.push(action.payload);
@@ -25,8 +26,11 @@ export const prophecySlice = createSlice({
       const index = state.cards.findIndex(
         card => card.passageKey === action.payload.passageKey,
       );
+
+      // could be a race condition from user mashing the button
       if (index === -1) {
-        throw new Error('Cannot remove card that is not in prophecy');
+        console.warn('Could not find card to remove from prophecy');
+        return;
       }
 
       state.cards.splice(index, 1);

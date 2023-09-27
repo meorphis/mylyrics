@@ -21,6 +21,9 @@ export type BundleType = {
   passages: BundlePassageType[];
   groupName?: string;
   title?: string;
+  recipient?: {
+    nickname: string;
+  };
   sortOrder?: 'asc' | 'desc';
 };
 
@@ -36,6 +39,6 @@ export type BundlesState = {
   // used for the back button
   previousActiveBundleKey: string | null;
   bundleKeyToPassageKey: {
-    [bundleKey: string]: string;
+    [bundleKey: string]: string | null;
   };
 };

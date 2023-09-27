@@ -1,7 +1,7 @@
 // a measurement of a lyric card, used for scaling down font size for longer passages
 // as well as aligning elements during screen transitions
 export type LyricCardMeasurement = {
-  contentHeight?: number;
+  contentHeight?: number[];
   lyricsYPosition?: number;
   scaleIndex: number;
   scaleFinalized: boolean;

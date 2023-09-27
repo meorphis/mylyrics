@@ -4,7 +4,11 @@ import {
   LyricCardMeasurementContext,
   LyricCardMeasurementState,
 } from '../../../types/measurement';
-import {getMeasurementKey, totalNumberOfScales} from './helpers';
+import {
+  getMeasurementKey,
+  getScaleForIndex,
+  totalNumberOfScales,
+} from './helpers';
 
 // allows setting and finalized the layout measurement of a lyric card
 export const lyricCardMeasurementSlice = createSlice({
@@ -28,7 +32,17 @@ export const lyricCardMeasurementSlice = createSlice({
         globalPassageKey,
         context,
       });
-      measurement.contentHeight = value;
+
+      // this is a duplicate measurement - do not update
+      if (
+        measurement.contentHeight![measurement.scaleIndex] != null ||
+        (measurement.scaleIndex > 0 &&
+          value >= measurement.contentHeight![measurement.scaleIndex - 1])
+      ) {
+        return;
+      }
+
+      measurement.contentHeight!.push(value);
 
       const withReducedScale = reduceOrFinalizeScale({
         measurement,
@@ -92,17 +106,23 @@ const reduceOrFinalizeScale = ({
   measurement: LyricCardMeasurement;
   maxContentHeight: number | null;
 }): LyricCardMeasurement => {
+  const scale = getScaleForIndex(measurement.scaleIndex);
+
   if (
     measurement.contentHeight != null &&
     maxContentHeight != null &&
-    measurement.contentHeight > maxContentHeight
+    measurement.contentHeight[measurement.scaleIndex] +
+      scale.albumImageSize +
+      scale.songNameSize >
+      maxContentHeight
   ) {
+    console.log(JSON.stringify(measurement, null, 2));
     if (measurement.scaleIndex < totalNumberOfScales - 1) {
-      // the content height and y position are invalid for the new scale size, so
-      // do not retain them
+      // the y position is invalid for the new scale size, so do not retain it
       return {
         scaleIndex: measurement.scaleIndex + 1,
         scaleFinalized: false,
+        contentHeight: measurement.contentHeight,
       };
     } else {
       // unlikely (we'd be using 1pt font at this point), but at this point we
@@ -140,6 +160,7 @@ const extractMeasurementFromState = ({
     state.measurements[measurementKey] = {
       scaleIndex: 0,
       scaleFinalized: false,
+      contentHeight: [],
     } as LyricCardMeasurement;
   }
   return state.measurements[measurementKey];

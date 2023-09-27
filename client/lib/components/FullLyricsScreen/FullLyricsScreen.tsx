@@ -44,6 +44,7 @@ import {useDispatch} from 'react-redux';
 import {setLyrics} from '../../utility/redux/shareable_passage/slice';
 import {setActiveBundlePassage} from '../../utility/redux/bundles/slice';
 import {getPassageId} from '../../utility/helpers/passage';
+import {ThemeAnimationProvider} from '../../utility/contexts/theme_animation';
 
 const CONTAINER_PADDING = 12;
 
@@ -216,142 +217,144 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
     ITEM_CONTAINER_BORDER_WIDTH;
 
   return (
-    <AnimatedThemeBackground>
-      <View
-        style={{
-          ...styles.container,
-          // for some reason SafeAreaView doesn't play well with the animation
-          // so we create the padding manually
-          paddingTop: CONTAINER_PADDING + safeAreaInsets.top,
-          paddingBottom: CONTAINER_PADDING + safeAreaInsets.bottom,
-        }}>
-        <ItemContainer theme={theme}>
-          {scrollViewOffset == null ? (
-            <React.Fragment>
-              <SwapableScrollView
-                key="initial"
-                isInitialVersion={true}
-                innerScrollViewPaddingTop={innerScrollViewPaddingTop}
-                showSpacer={true}
-                topSpacerHeight={topSpacerHeight}
-                song={song}
-                splitLyrics={splitLyrics}
-                highlightedIndexes={highlightedIndexes}
-                setHighlightedIndexes={setHighlightedIndexes}
-                theme={theme}
-                sharedTransitionKey={sharedTransitionKey}
-                isTemporaryView
-              />
-              <View style={styles.invisibleScrollView}>
+    <ThemeAnimationProvider>
+      <AnimatedThemeBackground>
+        <View
+          style={{
+            ...styles.container,
+            // for some reason SafeAreaView doesn't play well with the animation
+            // so we create the padding manually
+            paddingTop: CONTAINER_PADDING + safeAreaInsets.top,
+            paddingBottom: CONTAINER_PADDING + safeAreaInsets.bottom,
+          }}>
+          <ItemContainer theme={theme}>
+            {scrollViewOffset == null ? (
+              <React.Fragment>
                 <SwapableScrollView
-                  key="hidden"
-                  isInitialVersion={false}
-                  onScroll={onScroll}
-                  onInnerViewLayout={
-                    setInnerScrollViewLayoutAfterAppearingTextIsRendered
-                  }
-                  onLayoutInitiallyHighlightedLyrics={
-                    setTopOfInitiallyHighlightedLyricsPosition
-                  }
+                  key="initial"
+                  isInitialVersion={true}
                   innerScrollViewPaddingTop={innerScrollViewPaddingTop}
-                  showSpacer={showSpacer}
+                  showSpacer={true}
                   topSpacerHeight={topSpacerHeight}
                   song={song}
                   splitLyrics={splitLyrics}
                   highlightedIndexes={highlightedIndexes}
                   setHighlightedIndexes={setHighlightedIndexes}
                   theme={theme}
+                  sharedTransitionKey={sharedTransitionKey}
                   isTemporaryView
-                  skipAnimation={true}
                 />
-              </View>
-            </React.Fragment>
-          ) : showSpacer ? (
-            <SwapableScrollView
-              key="intermediate"
-              isInitialVersion={false}
-              verticalOffset={scrollViewOffset.initial}
-              scrollTo={scrollViewOffset.scrollTo ?? undefined}
-              onMomentumScrollEnd={() => setShowSpacer(false)}
-              innerScrollViewPaddingTop={innerScrollViewPaddingTop}
-              showSpacer={showSpacer}
-              topSpacerHeight={topSpacerHeight}
-              song={song}
-              splitLyrics={splitLyrics}
-              highlightedIndexes={highlightedIndexes}
-              setHighlightedIndexes={setHighlightedIndexes}
-              theme={theme}
-              isTemporaryView
-            />
-          ) : (
-            <SwapableScrollView
-              key="final"
-              isInitialVersion={false}
-              skipAnimation={scrollViewOffset.scrollTo != null}
-              verticalOffset={
-                scrollViewOffset.scrollTo != null
-                  ? scrollViewOffset.scrollTo - topSpacerHeight
-                  : scrollViewOffset.initial
-              }
-              innerScrollViewPaddingTop={innerScrollViewPaddingTop}
-              showSpacer={showSpacer}
-              topSpacerHeight={topSpacerHeight}
-              song={song}
-              splitLyrics={splitLyrics}
-              highlightedIndexes={highlightedIndexes}
-              setHighlightedIndexes={setHighlightedIndexes}
-              theme={theme}
-            />
-          )}
-
-          <View
-            onLayout={event => {
-              setScrollViewHeight(event.nativeEvent.layout.y);
-            }}
-            style={{
-              ...styles.buttonContainer,
-              backgroundColor: theme.backgroundColor,
-            }}>
-            <BackButton
-              style={styles.button}
-              onPress={() => navigation.goBack()}
-            />
-            <SelectionButton
-              highlightedIndexes={highlightedIndexes}
-              style={{...styles.button, ...styles.selectionButton}}
-              onPress={() => {
-                const selectedLyrics = highlightedIndexes
-                  .map(index => splitLyrics[index].lineText)
-                  .join('\n');
-
-                switch (onSelect) {
-                  case 'ADD_SINGLETON_PASSAGE':
-                    const newPassage = {
-                      ...passage,
-                      lyrics: selectedLyrics,
-                      bundleKey: 'singleton_passage',
-                      sortKey: 0,
-                    };
-
-                    dispatch(
-                      setActiveBundlePassage({
-                        ...newPassage,
-                        passageKey: getPassageId(newPassage),
-                      }),
-                    );
-                    navigation.goBack();
-                    break;
-                  case 'UPDATE_SHAREABLE':
-                    dispatch(setLyrics(selectedLyrics));
-                    navigation.goBack();
-                    break;
+                <View style={styles.invisibleScrollView}>
+                  <SwapableScrollView
+                    key="hidden"
+                    isInitialVersion={false}
+                    onScroll={onScroll}
+                    onInnerViewLayout={
+                      setInnerScrollViewLayoutAfterAppearingTextIsRendered
+                    }
+                    onLayoutInitiallyHighlightedLyrics={
+                      setTopOfInitiallyHighlightedLyricsPosition
+                    }
+                    innerScrollViewPaddingTop={innerScrollViewPaddingTop}
+                    showSpacer={showSpacer}
+                    topSpacerHeight={topSpacerHeight}
+                    song={song}
+                    splitLyrics={splitLyrics}
+                    highlightedIndexes={highlightedIndexes}
+                    setHighlightedIndexes={setHighlightedIndexes}
+                    theme={theme}
+                    isTemporaryView
+                    skipAnimation={true}
+                  />
+                </View>
+              </React.Fragment>
+            ) : showSpacer ? (
+              <SwapableScrollView
+                key="intermediate"
+                isInitialVersion={false}
+                verticalOffset={scrollViewOffset.initial}
+                scrollTo={scrollViewOffset.scrollTo ?? undefined}
+                onMomentumScrollEnd={() => setShowSpacer(false)}
+                innerScrollViewPaddingTop={innerScrollViewPaddingTop}
+                showSpacer={showSpacer}
+                topSpacerHeight={topSpacerHeight}
+                song={song}
+                splitLyrics={splitLyrics}
+                highlightedIndexes={highlightedIndexes}
+                setHighlightedIndexes={setHighlightedIndexes}
+                theme={theme}
+                isTemporaryView
+              />
+            ) : (
+              <SwapableScrollView
+                key="final"
+                isInitialVersion={false}
+                skipAnimation={scrollViewOffset.scrollTo != null}
+                verticalOffset={
+                  scrollViewOffset.scrollTo != null
+                    ? scrollViewOffset.scrollTo - topSpacerHeight
+                    : scrollViewOffset.initial
                 }
+                innerScrollViewPaddingTop={innerScrollViewPaddingTop}
+                showSpacer={showSpacer}
+                topSpacerHeight={topSpacerHeight}
+                song={song}
+                splitLyrics={splitLyrics}
+                highlightedIndexes={highlightedIndexes}
+                setHighlightedIndexes={setHighlightedIndexes}
+                theme={theme}
+              />
+            )}
+
+            <View
+              onLayout={event => {
+                setScrollViewHeight(event.nativeEvent.layout.y);
               }}
-            />
-          </View>
-        </ItemContainer>
-      </View>
-    </AnimatedThemeBackground>
+              style={{
+                ...styles.buttonContainer,
+                backgroundColor: theme.backgroundColor,
+              }}>
+              <BackButton
+                style={styles.button}
+                onPress={() => navigation.goBack()}
+              />
+              <SelectionButton
+                highlightedIndexes={highlightedIndexes}
+                style={{...styles.button, ...styles.selectionButton}}
+                onPress={() => {
+                  const selectedLyrics = highlightedIndexes
+                    .map(index => splitLyrics[index].lineText)
+                    .join('\n');
+
+                  switch (onSelect) {
+                    case 'ADD_SINGLETON_PASSAGE':
+                      const newPassage = {
+                        ...passage,
+                        lyrics: selectedLyrics,
+                        bundleKey: 'singleton_passage',
+                        sortKey: 0,
+                      };
+
+                      dispatch(
+                        setActiveBundlePassage({
+                          ...newPassage,
+                          passageKey: getPassageId(newPassage),
+                        }),
+                      );
+                      navigation.goBack();
+                      break;
+                    case 'UPDATE_SHAREABLE':
+                      dispatch(setLyrics(selectedLyrics));
+                      navigation.goBack();
+                      break;
+                  }
+                }}
+              />
+            </View>
+          </ItemContainer>
+        </View>
+      </AnimatedThemeBackground>
+    </ThemeAnimationProvider>
   );
 };
 

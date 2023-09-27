@@ -1,5 +1,5 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
-import {setActiveBundlePassage} from '../bundles/slice';
+import {setActiveBundlePassage, setEmptyBundle} from '../bundles/slice';
 
 type State = {
   currentlyRequestedBundleKey: string | null;
@@ -23,12 +23,20 @@ export const requestBundleChangeSlice = createSlice({
       state.currentlyRequestedBundleKey = bundleKey;
       if (!state.allRequestedBundleKeys.includes(bundleKey)) {
         state.allRequestedBundleKeys.push(bundleKey);
-        state.allRequestedBundleKeys.sort();
       }
     },
   },
   extraReducers: builder => {
     builder.addCase(setActiveBundlePassage, (state, action) => {
+      const {bundleKey} = action.payload;
+      if (state.currentlyRequestedBundleKey === bundleKey) {
+        state.currentlyRequestedBundleKey = null;
+      }
+      if (!state.allRequestedBundleKeys.includes(bundleKey)) {
+        state.allRequestedBundleKeys.push(bundleKey);
+      }
+    });
+    builder.addCase(setEmptyBundle, (state, action) => {
       const {bundleKey} = action.payload;
       if (state.currentlyRequestedBundleKey === bundleKey) {
         state.currentlyRequestedBundleKey = null;

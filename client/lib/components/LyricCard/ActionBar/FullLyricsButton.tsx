@@ -19,7 +19,10 @@ const FullLyricsButton = (props: Props) => {
   const {passage, sharedTransitionKey} = props;
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const {marginTop: lyricCardMarginTop} = useLyricCardSize();
+  const {
+    deckMarginTop: lyricCardDeckMarginTop,
+    itemMarginTop: lyricCardMarginTop,
+  } = useLyricCardSize();
 
   return (
     <ActionBarButton
@@ -30,7 +33,7 @@ const FullLyricsButton = (props: Props) => {
             customization: getDefaultCustomizationForPassage(passage),
           },
           lyricCardMeasurementContext: 'MAIN_SCREEN',
-          lyricsYPositionOffset: lyricCardMarginTop,
+          lyricsYPositionOffset: lyricCardDeckMarginTop + lyricCardMarginTop,
           sharedTransitionKey,
           onSelect: 'ADD_SINGLETON_PASSAGE',
         });

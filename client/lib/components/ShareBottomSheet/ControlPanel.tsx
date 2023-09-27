@@ -31,6 +31,7 @@ import {
   setTheme,
 } from '../../utility/redux/shareable_passage/slice';
 import {useShareablePassage} from '../../utility/redux/shareable_passage/selectors';
+import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 
 export const CONTROL_PANEL_HEIGHTS = {
   margin_top: 24,
@@ -166,6 +167,7 @@ const ControlPanel = (props: Props) => {
         <Animated.View style={[styles.themeEditor, themeEditorOpacity]}>
           <TouchableOpacity
             onPress={() => {
+              triggerHapticFeedback('impactLight');
               setEditThemeMode(false);
             }}
             style={styles.closePaletteEditorButton}>
@@ -234,7 +236,12 @@ const EditorButton = (props: {
   const {onPress, IconClass, iconName, text} = props;
 
   return (
-    <TouchableOpacity onPress={onPress} style={styles.editorButton}>
+    <TouchableOpacity
+      onPress={() => {
+        triggerHapticFeedback('impactLight');
+        onPress();
+      }}
+      style={styles.editorButton}>
       <IconClass name={iconName} size={24} />
       <Text style={styles.editorButtonText}>{text}</Text>
     </TouchableOpacity>

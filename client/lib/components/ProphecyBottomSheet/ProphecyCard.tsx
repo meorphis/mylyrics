@@ -5,17 +5,17 @@ import {textStyleCommon} from '../../utility/helpers/text';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import {useDispatch} from 'react-redux';
 import {removeCard} from '../../utility/redux/prophecy/slice';
+import {isColorLight} from '../../utility/helpers/color';
+import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 
 type Props = {
   card: PassageType | undefined;
   index: number;
-  textColor: string;
-  backgroundColor: string;
 };
 
 // a phophecy card that has been drawn with a button to remove it
 const ProphecyCard = (props: Props) => {
-  const {card, index, textColor, backgroundColor} = props;
+  const {card, index} = props;
 
   const dispatch = useDispatch();
 
@@ -25,14 +25,11 @@ const ProphecyCard = (props: Props) => {
         style={{
           ...styles.container,
           ...styles.placeholderContainer,
-          borderColor: textColor,
-          backgroundColor,
         }}>
         <Text
           style={{
             ...textStyleCommon,
             ...styles.placeholderText,
-            color: textColor,
           }}>
           {index + 1}
         </Text>
@@ -40,14 +37,18 @@ const ProphecyCard = (props: Props) => {
     );
   }
 
-  const {song, lyrics} = card;
+  const {song, lyrics, theme} = card;
+  const {backgroundColor} = theme;
+  const textColor = isColorLight(backgroundColor) ? 'black' : 'white';
+  const borderColor = isColorLight(backgroundColor) ? '#00000040' : '#ffffff40';
 
   return (
     <View
       style={{
         ...styles.container,
         ...styles.activeContainer,
-        borderColor: textColor,
+        borderColor,
+        backgroundColor: theme.backgroundColor,
       }}>
       <Image source={{uri: song.album.image.blob}} style={styles.albumImage} />
       <Text style={{...textStyleCommon, ...styles.lyrics, color: textColor}}>
@@ -56,6 +57,7 @@ const ProphecyCard = (props: Props) => {
       <Pressable
         style={styles.removeButton}
         onPress={() => {
+          triggerHapticFeedback('impactLight');
           dispatch(removeCard(card));
         }}>
         <Ionicon name="close-circle-outline" size={24} color={textColor} />
@@ -66,38 +68,42 @@ const ProphecyCard = (props: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-    borderRadius: 12,
-    borderWidth: 1.0,
-    marginHorizontal: 8,
+    marginBottom: 24,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
   },
   activeContainer: {
     flexDirection: 'row',
-    padding: 12,
+    padding: 16,
+    borderWidth: 3,
   },
   albumImage: {
-    marginTop: 2,
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
   },
   lyrics: {
-    marginLeft: 12,
-    marginRight: 24,
-    flexShrink: 1,
+    marginLeft: 20,
+    flex: 1,
+    fontSize: 14,
   },
   removeButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
+    marginLeft: 12,
   },
   placeholderContainer: {
     borderStyle: 'dashed',
-    height: 60,
+    height: 80,
     justifyContent: 'center',
+    backgroundColor: '#E9E9E9',
+    borderWidth: 1.5,
   },
   placeholderText: {
     alignSelf: 'center',
-    fontSize: 18,
+    fontSize: 24,
   },
 });
 

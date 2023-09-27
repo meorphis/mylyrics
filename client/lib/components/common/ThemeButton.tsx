@@ -11,6 +11,7 @@ import {
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import React from 'react';
 import {textStyleCommon} from '../../utility/helpers/text';
+import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 
 type Props = {
   text?: string;
@@ -20,6 +21,8 @@ type Props = {
   iconName?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  textContainerStyle?: ViewStyle;
+  triggerHapticFeedback?: boolean;
 };
 
 const ThemeButton = (props: Props) => {
@@ -31,10 +34,11 @@ const ThemeButton = (props: Props) => {
     iconName,
     style,
     textStyle,
+    textContainerStyle,
   } = props;
 
   const borderColor = useSaturatedColor ? '#ffffff80' : '#00000040';
-  const textColor = useSaturatedColor ? 'white' : 'black';
+  const textColor = useSaturatedColor ? 'white' : '#333';
 
   return (
     <TouchableOpacity
@@ -42,25 +46,29 @@ const ThemeButton = (props: Props) => {
       style={{
         ...styles.button,
         ...style,
-        ...(useSaturatedColor ? styles.saturated : styles.unsaturated),
         opacity: isDisabled ? 0.15 : 1,
         borderColor,
       }}
-      onPress={onPress}
+      onPress={() => {
+        triggerHapticFeedback('impactLight');
+        onPress();
+      }}
       disabled={isDisabled}>
       <SolidBackground {...props}>
-        {iconName && <Ionicon name={iconName} size={24} color={textColor} />}
+        {iconName && <Ionicon name={iconName} size={28} color={textColor} />}
         {iconName && text && <View style={styles.textIconPadding} />}
         {text && (
-          <Text
-            style={{
-              ...textStyleCommon,
-              ...styles.text,
-              ...textStyle,
-              color: textColor,
-            }}>
-            {text}
-          </Text>
+          <View style={textContainerStyle}>
+            <Text
+              style={{
+                ...textStyleCommon,
+                ...styles.text,
+                ...textStyle,
+                color: textColor,
+              }}>
+              {text}
+            </Text>
+          </View>
         )}
       </SolidBackground>
     </TouchableOpacity>
@@ -79,7 +87,7 @@ const SolidBackground = (
       // eslint-disable-next-line react-native/no-inline-styles
       style={{
         ...styles.solidBackground,
-        backgroundColor: useSaturatedColor ? 'black' : 'white',
+        backgroundColor: useSaturatedColor ? '#444444c0' : '#ffffffc0',
       }}>
       {children}
     </View>
@@ -89,11 +97,6 @@ const SolidBackground = (
 const styles = StyleSheet.create({
   button: {
     borderRadius: 18,
-  },
-  unsaturated: {
-    borderWidth: 3,
-  },
-  saturated: {
     borderWidth: 3,
   },
   text: {
@@ -104,13 +107,6 @@ const styles = StyleSheet.create({
   },
   textIconPadding: {
     width: 8,
-  },
-  gradientBackground: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    borderRadius: 15,
   },
   solidBackground: {
     flexDirection: 'row',

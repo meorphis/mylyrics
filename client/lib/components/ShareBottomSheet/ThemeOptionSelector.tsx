@@ -2,6 +2,7 @@ import React from 'react';
 import {StyleSheet, TouchableOpacity, View} from 'react-native';
 import Ionicon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 
 type Props<T> = {
   icon: string;
@@ -55,6 +56,7 @@ const ThemeOptionSelector = <T,>(props: Props<T>) => {
                 }}
                 key={index}
                 onPress={() => {
+                  triggerHapticFeedback('impactLight');
                   setSelected(option);
                 }}>
                 {isSelected && (
@@ -77,6 +79,7 @@ const ThemeOptionSelector = <T,>(props: Props<T>) => {
                 }}>
                 <TouchableOpacity
                   onPress={() => {
+                    triggerHapticFeedback('impactLight');
                     invert();
                   }}>
                   <Ionicon

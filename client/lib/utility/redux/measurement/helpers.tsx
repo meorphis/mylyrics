@@ -67,7 +67,7 @@ export const isDeckFullyMeasured = ({
 const scales: ScaleType[] = [
   {
     index: 0,
-    lyricsFontSize: 20,
+    lyricsFontSize: 24,
     songNameSize: 18,
     artistNameSize: 16,
     albumNameSize: 14,
@@ -75,6 +75,22 @@ const scales: ScaleType[] = [
   },
   {
     index: 1,
+    lyricsFontSize: 22,
+    songNameSize: 18,
+    artistNameSize: 16,
+    albumNameSize: 14,
+    albumImageSize: 100,
+  },
+  {
+    index: 2,
+    lyricsFontSize: 20,
+    songNameSize: 18,
+    artistNameSize: 16,
+    albumNameSize: 14,
+    albumImageSize: 100,
+  },
+  {
+    index: 3,
     lyricsFontSize: 18,
     songNameSize: 16,
     artistNameSize: 15,
@@ -82,7 +98,7 @@ const scales: ScaleType[] = [
     albumImageSize: 90,
   },
   {
-    index: 2,
+    index: 4,
     lyricsFontSize: 16,
     songNameSize: 15,
     artistNameSize: 13,
@@ -90,7 +106,7 @@ const scales: ScaleType[] = [
     albumImageSize: 80,
   },
   {
-    index: 3,
+    index: 5,
     lyricsFontSize: 14,
     songNameSize: 14,
     artistNameSize: 12,
@@ -98,7 +114,7 @@ const scales: ScaleType[] = [
     albumImageSize: 70,
   },
   {
-    index: 4,
+    index: 6,
     lyricsFontSize: 12,
     songNameSize: 13,
     artistNameSize: 11,
@@ -106,7 +122,7 @@ const scales: ScaleType[] = [
     albumImageSize: 60,
   },
   {
-    index: 5,
+    index: 7,
     lyricsFontSize: 10,
     songNameSize: 12,
     artistNameSize: 10,
@@ -114,7 +130,7 @@ const scales: ScaleType[] = [
     albumImageSize: 50,
   },
   {
-    index: 6,
+    index: 8,
     lyricsFontSize: 8,
     songNameSize: 10,
     artistNameSize: 8,
@@ -122,7 +138,7 @@ const scales: ScaleType[] = [
     albumImageSize: 40,
   },
   {
-    index: 7,
+    index: 9,
     lyricsFontSize: 6,
     songNameSize: 8,
     artistNameSize: 6,
@@ -130,7 +146,7 @@ const scales: ScaleType[] = [
     albumImageSize: 32,
   },
   {
-    index: 8,
+    index: 10,
     lyricsFontSize: 4,
     songNameSize: 8,
     artistNameSize: 6,
@@ -138,7 +154,7 @@ const scales: ScaleType[] = [
     albumImageSize: 32,
   },
   {
-    index: 9,
+    index: 11,
     lyricsFontSize: 2,
     songNameSize: 8,
     artistNameSize: 6,
@@ -146,7 +162,7 @@ const scales: ScaleType[] = [
     albumImageSize: 32,
   },
   {
-    index: 10,
+    index: 12,
     lyricsFontSize: 1,
     songNameSize: 8,
     artistNameSize: 6,

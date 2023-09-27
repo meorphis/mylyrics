@@ -57,15 +57,13 @@ const PassageLyrics = (props: Props) => {
             }),
           );
         });
+
         dispatch(
           setContentHeight({
             globalPassageKey: passage.passageKey,
             context: measurementContext,
             // lyrics height + album image height + SongInfo bottom padding height
-            value:
-              event.nativeEvent.layout.height +
-              scale.albumImageSize +
-              scale.songNameSize,
+            value: event.nativeEvent.layout.height,
           }),
         );
       }}

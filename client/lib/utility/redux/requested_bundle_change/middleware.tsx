@@ -1,7 +1,7 @@
 import {AnyAction, Dispatch, MiddlewareAPI} from '@reduxjs/toolkit';
 import {RootState} from '..';
 import {isDeckFullyMeasured} from '../measurement/helpers';
-import {setActiveBundlePassage} from '../bundles/slice';
+import {setActiveBundlePassage, setEmptyBundle} from '../bundles/slice';
 
 // each time the state changes, checks to see if the currently requested bundle
 // is ready to be set as active and does so if it is
@@ -21,9 +21,14 @@ export const requestedBundleChangeMiddleware =
     if (isDeckFullyMeasured({state, passages: requestedBundle.passages})) {
       const requestedBundlePassageKey =
         state.bundles.bundleKeyToPassageKey[requestedBundleKey];
-      const requestedBundlePassage = requestedBundle.passages.find(
-        p => p.passageKey === requestedBundlePassageKey,
-      )!;
-      store.dispatch(setActiveBundlePassage(requestedBundlePassage));
+
+      if (requestedBundlePassageKey === null) {
+        store.dispatch(setEmptyBundle({bundleKey: requestedBundleKey}));
+      } else {
+        const requestedBundlePassage = requestedBundle.passages.find(
+          p => p.passageKey === requestedBundlePassageKey,
+        )!;
+        store.dispatch(setActiveBundlePassage(requestedBundlePassage));
+      }
     }
   };

@@ -27,9 +27,12 @@ const GroupSelectorButton = (props: Props) => {
     <ThemeButton
       text={sentimentAdjectiveToNoun(bundleKey as SentimentEnumType)!}
       textStyle={styles.buttonText}
+      textContainerStyle={styles.buttonTextContainer}
       useSaturatedColor={isActiveBundle}
       onPress={() => {
-        dispatch(requestBundleChange({bundleKey}));
+        // allow some time for the animation to close the bundle sheet since it
+        // runs on JS and changing the bundle is expensive
+        setTimeout(() => dispatch(requestBundleChange({bundleKey})), 50);
 
         if (onPress) {
           onPress();
@@ -41,8 +44,14 @@ const GroupSelectorButton = (props: Props) => {
 
 const styles = StyleSheet.create({
   buttonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonTextContainer: {
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
 });
 

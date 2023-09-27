@@ -51,6 +51,7 @@ type SentimentEnumType =
   | 'surreal'
   | 'triumphant'
   | 'violent'
-  | 'vulnerable';
+  | 'vulnerable'
+  | 'top spins';
 
 export default SentimentEnumType;

@@ -14,11 +14,13 @@ type AppearingComponentProps = {
   style?: TextStyle;
   onLayout?: (event: LayoutChangeEvent) => void;
   skipAnimation?: boolean;
+  delay?: number;
   children: React.ReactNode;
 };
 
 const AppearingComponent = (props: AppearingComponentProps) => {
-  const {Component, duration, style, onLayout, skipAnimation, children} = props;
+  const {Component, duration, style, onLayout, skipAnimation, delay, children} =
+    props;
   const opacity = useSharedValue(skipAnimation ? 1 : 0);
 
   const animatedStyles = useAnimatedStyle(() => {
@@ -29,10 +31,12 @@ const AppearingComponent = (props: AppearingComponentProps) => {
   });
 
   useEffect(() => {
-    opacity.value = withTiming(1, {
-      duration,
-      easing: Easing.inOut(Easing.quad),
-    });
+    setTimeout(() => {
+      opacity.value = withTiming(1, {
+        duration,
+        easing: Easing.inOut(Easing.quad),
+      });
+    }, delay ?? 0);
   }, []);
 
   return (

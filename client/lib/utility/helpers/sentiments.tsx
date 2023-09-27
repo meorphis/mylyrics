@@ -225,4 +225,5 @@ export const sentimentToEmojiMap: Record<SentimentEnumType, string> = {
   triumphant: '🏆',
   violent: '🔫',
   vulnerable: '😳',
+  'top spins': '🎧',
 };
