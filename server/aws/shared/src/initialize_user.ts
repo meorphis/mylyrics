@@ -26,6 +26,7 @@ export const initializeUser = async (
   await createRefreshUserTask({
     userId,
     numRetries: 5,
+    alwaysFeatureVeryTopUser: true,
     delaySeconds: 60,
   })
 }

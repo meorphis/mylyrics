@@ -56,9 +56,7 @@ export const allSentiments: SentimentEnumType[] = [
   'vulnerable',
 ];
 
-export const sentimentAdjectiveToNoun = (
-  adjective: SentimentEnumType | null,
-) => {
+export const bundleKeyDisplayName = (adjective: string | null) => {
   switch (adjective) {
     case 'affectionate':
       return 'affection';
@@ -79,7 +77,7 @@ export const sentimentAdjectiveToNoun = (
     case 'chaotic':
       return 'chaos';
     case 'conflicted':
-      return 'conflict';
+      return 'turmoil';
     case 'desperate':
       return 'desperation';
     case 'determined':
@@ -118,6 +116,8 @@ export const sentimentAdjectiveToNoun = (
       return 'joy';
     case 'liberating':
       return 'liberation';
+    case 'likes':
+      return 'recent likes';
     case 'lonely':
       return 'loneliness';
     case 'loyal':
@@ -171,7 +171,7 @@ export const sentimentAdjectiveToNoun = (
   }
 };
 
-export const sentimentToEmojiMap: Record<SentimentEnumType, string> = {
+export const sentimentToEmojiMap: Record<string, string> = {
   affectionate: '🥰',
   alienated: '👽',
   angry: '😡',
@@ -201,6 +201,7 @@ export const sentimentToEmojiMap: Record<SentimentEnumType, string> = {
   introspective: '🔍',
   joyful: '🥳',
   liberating: '🦋',
+  likes: '❤️',
   lonely: '🌘',
   loyal: '🐶',
   lustful: '🥵',
@@ -225,5 +226,5 @@ export const sentimentToEmojiMap: Record<SentimentEnumType, string> = {
   triumphant: '🏆',
   violent: '🔫',
   vulnerable: '😳',
-  'top spins': '🎧',
+  'top spins': '🥇',
 };

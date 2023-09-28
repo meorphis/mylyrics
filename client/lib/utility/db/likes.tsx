@@ -170,6 +170,7 @@ export const useRecentLikesRequest = () => {
               type: 'machine',
             },
             sortOrder: 'desc',
+            groupName: 'essentials',
           },
         ]),
       );

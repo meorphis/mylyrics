@@ -84,10 +84,15 @@ export const updateImpressions = async ({
   passages: RawPassageType[];
 }) => {
   const docRef = doc(collection(db, 'user-impressions-today'), deviceId);
+
+  // there's a possible race condition where the user's impressions are updated here
+  // after we've cleared them out in refreshUser on the back-end (but before the user
+  // sees the new daily recs); this seems rare enough that it's fine to ignore for now
   await runTransaction(db, async transaction => {
     const docSnap = await transaction.get(docRef);
     const data = docSnap.data();
     const impressions = data?.impressions ?? {};
+    let itemsAdded = false;
     passages.forEach(rec => {
       const songId = rec.song.id;
       rec.bundleKeys.forEach(bundleKey => {
@@ -98,9 +103,12 @@ export const updateImpressions = async ({
           return;
         }
         impressions[bundleKey].push(songId);
+        itemsAdded = true;
       });
     });
-    transaction.set(docRef, {value: impressions}, {merge: true});
+    if (itemsAdded) {
+      transaction.set(docRef, {value: impressions}, {merge: true});
+    }
   });
 };
 
@@ -141,10 +149,22 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
 // a temporary function to transform the format currently saved by the server into the format
 // that we will soon migrate to
 const transformData = (data: DocumentData) => {
+  let featuredArtist = null;
+
   const flatRecommendations = data.recommendations.map((r: any) => {
+    const bundleKeys = r.tags.map(
+      ({sentiment}: {sentiment: string}) => sentiment,
+    );
+    if (r.type === 'top_passage') {
+      bundleKeys.push('top spins');
+    }
+    if (r.type === 'featured_artist') {
+      featuredArtist = r.song.artists[0].name.toLowerCase();
+      bundleKeys.push(featuredArtist);
+    }
     return {
       ...r,
-      bundleKeys: r.tags.map(({sentiment}: {sentiment: string}) => sentiment),
+      bundleKeys,
     } as RawPassageType;
   }) as RawPassageType[];
 
@@ -158,6 +178,11 @@ const transformData = (data: DocumentData) => {
       groupName: group,
       bundleKeys: sentiments,
     };
+  });
+
+  bundleGroups.push({
+    groupName: 'essentials',
+    bundleKeys: ['top spins', ...(featuredArtist ? [featuredArtist] : [])],
   });
 
   return {

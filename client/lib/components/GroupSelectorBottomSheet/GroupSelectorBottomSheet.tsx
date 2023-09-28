@@ -8,7 +8,6 @@ import {
   useActiveBundleKey,
   useGroupedBundleKeys,
 } from '../../utility/redux/bundles/selectors';
-import {allSentiments} from '../../utility/helpers/sentiments';
 import GroupSelectorButton from './GroupSelectorButton';
 
 type Props = {
@@ -20,11 +19,14 @@ const GroupSelectorBottomSheet = (props: Props) => {
   const {bottomSheetRef} = props;
   const activeBundleKey = useActiveBundleKey();
   const groupedBundleKeys = useGroupedBundleKeys();
+
+  console.log(`grouped bundle keys: ${JSON.stringify(groupedBundleKeys)}`);
+
   const groupsToShow = Object.keys(groupedBundleKeys);
   const selectedGroup = activeBundleKey
     ? groupsToShow.find(group =>
-        (groupedBundleKeys[group] as SentimentEnumType[]).includes(
-          activeBundleKey as SentimentEnumType,
+        (groupedBundleKeys[group] as string[]).includes(
+          activeBundleKey as string,
         ),
       )
     : null;
@@ -41,7 +43,7 @@ const GroupSelectorBottomSheet = (props: Props) => {
       backgroundStyle={styles.bottomSheet}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
         <Text style={{...textStyleCommon, ...styles.titleText}}>
-          🎶 your daily vibes 🎶
+          🎶 your daily lines 🎶
         </Text>
 
         {putAtFrontOfArray(groupsToShow, selectedGroup).map(group => (
@@ -67,9 +69,7 @@ const GroupSelectorBottomSheet = (props: Props) => {
             <View style={styles.tagsContainer}>
               {(
                 putAtFrontOfArray(
-                  groupedBundleKeys[group].filter(s =>
-                    allSentiments.includes(s as SentimentEnumType),
-                  ) as SentimentEnumType[],
+                  groupedBundleKeys[group],
                   activeBundleKey,
                 ) as SentimentEnumType[]
               ).map(sentiment => (
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   group: {
     flexDirection: 'column',
     paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 30,
     marginBottom: 20,
     backgroundColor: '#00000040',

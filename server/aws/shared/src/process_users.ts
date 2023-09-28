@@ -8,6 +8,7 @@ import {
 import { getFirestoreDb } from "./integrations/firebase";
 import { DocumentData } from "firebase-admin/firestore";
 import { createRefreshUserTask } from "./refresh_user";
+import stringSimilarity from "string-similarity-js";
 
 // *** CONSTANTS ***
 // when we've never indexed any data for an artist, we add several top tracks (in addition to the
@@ -170,8 +171,8 @@ export const processOneUser = async (
   const songsToProcess = await getSongsToProcess({
     indexedSongIds,
     recentListens: recentListensToRecord,
-    topSongsForArtists: topSongsForArtists.flat(),
-  })
+    topSongsForArtists: topSongsForArtists.flat()
+  });
 
   const enrichedSongsToProcess = await getEnrichedSongs({
     spotifyAccessToken,
@@ -293,7 +294,7 @@ const getSongsToProcess = async (
 ) => {
   // helper variables to prevent duplicates and respect limits
   const songIdsInList: Set<string> = new Set([]);
-  const numSongsForArtist: {[key: string]: number} = {};
+  const songNamesForArtists: {[key: string]: string[]} = {};
   
   // actual list of songs we will be processing
   const songsToProcess: SimplifiedSong[] = [];
@@ -304,7 +305,7 @@ const getSongsToProcess = async (
     {song, isFromTopSongsForArtists}:
       {song: SimplifiedSong, isFromTopSongsForArtists: boolean}
   ) => {
-    const numSongs = numSongsForArtist[song.primaryArtist.id] || 0;
+    const songNamesForArtist = songNamesForArtists[song.primaryArtist.id] || [];
   
     // don't add songs that we've already added
     if (songIdsInList.has(song.id)) {
@@ -315,15 +316,23 @@ const getSongsToProcess = async (
     if (indexedSongIds.includes(song.id)) {
       return;
     }
+
+    // probably a remix or alternative version of a song we already added
+    if (songNamesForArtist.some((name) => stringSimilarity(
+      name, song.name
+    ) > 0.3)) {
+      return;
+    }
   
     // don't add songs from top songs for artists that would take us over the limit
-    if (isFromTopSongsForArtists && numSongs >= MAX_SONGS_PER_ARTIST ) {
+    if (isFromTopSongsForArtists && songNamesForArtist.length >= MAX_SONGS_PER_ARTIST ) {
       return;
     }
   
     // update helpers
     songIdsInList.add(song.id);
-    numSongsForArtist[song.primaryArtist.id] = numSongs + 1;
+    songNamesForArtist.push(song.name);
+    songNamesForArtists[song.primaryArtist.id] = songNamesForArtist;
   
     // update canonical list
     songsToProcess.push(song);
