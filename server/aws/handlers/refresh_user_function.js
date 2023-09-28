@@ -15,12 +15,13 @@ export async function handler(event) {
         const json = JSON.parse(body);
         userId = json.userId;
         numRetries = json.numRetries;
+        alwaysFeatureVeryTopUser = json.alwaysFeatureVeryTopUser;
     } catch (e) {
         return buildResponse(400, {error: `Invalid JSON: "${body}"`});
     }
 
     try {
-        await refreshUser({userId, numRetries});
+        await refreshUser({userId, numRetries, alwaysFeatureVeryTopUser});
         return buildResponse(200, {});
     } catch (e) {
         return buildResponse(500, {message: "Unexpected error refreshing user", error: getErrorAsObject(e)});

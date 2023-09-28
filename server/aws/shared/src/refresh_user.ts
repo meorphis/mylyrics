@@ -1,17 +1,28 @@
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getFirestoreDb } from "./integrations/firebase";
-import { getRecommendationsForSentiments, getScoredSentiments } from "./integrations/open_search";
+import { getScoredSentiments, getDailyRecommendations } from "./integrations/open_search";
 import { SENTIMENT_GROUPS, SENTIMENT_TO_GROUP } from "./utility/sentiments";
 import { sqs } from "./integrations/aws";
 import { sendRecommendationNotif } from "./integrations/notifications";
+import { getTopArtistsForUser } from "./integrations/spotify/spotify_data";
+import { getFreshSpotifyResponse } from "./integrations/spotify/spotify_auth";
+import { Recommendation } from "./utility/types";
 
 // *** CONSTANTS ***
-// note that these are not hard limits - we never delete records from the last week, only
-// earlier than that
+// recent listens: note that recent listen limits are not hard limits - we never delete records from
+// the last week, only earlier than that
 const MAX_NUM_SONGS_TO_REMEMBER = 5000;
 const MAX_NUM_ARTISTS_TO_REMEMBER = 250;
-const MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER = 250;
+
+// impressions: we keep track of impressions for each sentiment, for all sentiments, and for top
+// tracks; these are hard limits
 const MAX_IMPRESSIONS_TO_REMEMBER = 5000;
+const MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER = 250;
+// we only use the first 50 of these, but we keep more in case we want to change this logic later
+const MAX_TOP_TRACK_IMPRESSIONS_TO_REMEMBER = 250;
+
+const MAX_NOTIFICATIONS_TO_REMEMBER = 500;
+const MAX_FEATURED_ARTISTS_TO_REMEMBER = 10;
 
 // *** PUBLIC INTERFACE ***
 // run daily (or as part of NUX) to give the user new content for the day
@@ -19,14 +30,24 @@ const MAX_IMPRESSIONS_TO_REMEMBER = 5000;
 // - finds the user's recommended sentiments
 // - puts the most relevant passages for the top sentiment in the user's recommendations
 // - sends a notification to the user with the top recommendation
-export const refreshUser = async ({userId, numRetries} : {userId: string, numRetries: number}) => {
+export const refreshUser = async ({
+  userId, numRetries, alwaysFeatureVeryTopArtist = false
+} : {userId: string, numRetries: number, alwaysFeatureVeryTopArtist?: boolean}) => {
   // make sure we have all the environment variables we need
   assertEnvironmentVariables();
 
   const db = await getFirestoreDb();
-  const userRecommendations = (
-    await db.collection("user-recommendations").doc(userId).get()
-  ).data() || {};
+  const [userRecommendationsSnap, userDataSnap] = await db.getAll(
+    db.collection("user-recommendations").doc(userId),
+    db.collection("users").doc(userId),
+  );
+
+  if (!userDataSnap.exists) {
+    console.log(`user ${userId} does not exist`);
+    return;
+  }
+
+  const userRecommendations = userRecommendationsSnap.data() || {};
 
   const {
     lastRefreshedAt,
@@ -63,9 +84,12 @@ export const refreshUser = async ({userId, numRetries} : {userId: string, numRet
 
   await Promise.all(promises);
 
+  const recentListens = (await db.collection("user-recent-listens").doc(userId).get()).data() ?? {};
+
   const recommendedSentiments = await getRecommendedSentiments({
     userId,
     previouslyRecommendedSentiments: sentiments,
+    recentListens,
   });
 
   console.log(
@@ -81,12 +105,47 @@ export const refreshUser = async ({userId, numRetries} : {userId: string, numRet
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const spotifyResponse = await getFreshSpotifyResponse(userDataSnap.data()!);
+
+  if (spotifyResponse == null) {
+    console.log(`no spotify access token for user ${userId}`);
+    return;
+  }
+  
+  if (spotifyResponse.status !== 200) {
+    throw new Error(
+      `error getting spotify access token for user ${userId}: ${JSON.stringify(spotifyResponse)}`
+    );
+  }
+  
+  const {access_token: spotifyAccessToken} = spotifyResponse.data;
+  
+  const recentlyFeaturedArtists = userRecommendations.featuredArtistHistory ?? [];
+  const topSpotifyArtists = await getTopArtistsForUser({spotifyAccessToken, limit: 15});
+
+  let featuredArtist;
+
+  if (alwaysFeatureVeryTopArtist) {
+    featuredArtist = topSpotifyArtists[0];
+  } else {
+    const artistsEligibleForFeature = topSpotifyArtists.filter((artist) => {
+      return !recentlyFeaturedArtists.includes(artist.id);
+    });
+    featuredArtist = artistsEligibleForFeature[
+      Math.floor(Math.random() * artistsEligibleForFeature.length)
+    ];
+  }
+
   const flatSentiments = recommendedSentiments.map((s) => s.sentiments).flat();
 
-  const recommendations = await getRecommendationsForSentiments(
+  const recommendations = await getDailyRecommendations(
     {
       userId,
-      sentiments: flatSentiments,
+      recentListens,
+      topSpotifyArtists,
+      featuredArtist,
+      recommendedSentiments: flatSentiments,
     }
   );
 
@@ -95,20 +154,39 @@ export const refreshUser = async ({userId, numRetries} : {userId: string, numRet
     return;
   }
 
+  const recommendationIndex = findRecommendationsIndexForNotif({
+    recommendations,
+    notificationHistory: new Set(userRecommendations.notificationHistory ?? []),
+  });
+
+  const reorderedRecommendations = [
+    recommendations[recommendationIndex],
+    ...recommendations.slice(0, recommendationIndex),
+    ...recommendations.slice(recommendationIndex + 1),
+  ]
+
   await Promise.all([
     db.collection("user-recommendations").doc(userId).set({
-      recommendations,
+      recommendations: reorderedRecommendations,
       sentiments: recommendedSentiments,
       lastRefreshedAt: Date.now(),
+      notificationHistory: [
+        reorderedRecommendations[0].song.id,
+        ...userRecommendations.notificationHistory || [],
+      ].slice(0, MAX_NOTIFICATIONS_TO_REMEMBER),
+      featuredArtistHistory: [
+        featuredArtist.id,
+        ...userRecommendations.featuredArtistHistory || [],
+      ].slice(0, MAX_FEATURED_ARTISTS_TO_REMEMBER),
     }, {merge: true}),
-    sendRecommendationNotif({recommendation: recommendations[0], userId}),
+    sendRecommendationNotif({recommendation: reorderedRecommendations[0], userId}),
   ]);
 };
 
 // creates a task to run refreshUser
 export const createRefreshUserTask = async (
-  {userId, numRetries = 0, delaySeconds}:
-  {userId: string, numRetries?: number, delaySeconds?: number}
+  {userId, numRetries = 0, alwaysFeatureVeryTopUser = false, delaySeconds}:
+  {userId: string, numRetries?: number, alwaysFeatureVeryTopUser?: boolean, delaySeconds?: number}
 ) => {
 
   try {
@@ -117,6 +195,7 @@ export const createRefreshUserTask = async (
       MessageBody: JSON.stringify({
         userId,
         numRetries,
+        alwaysFeatureVeryTopUser,
       }),
       DelaySeconds: delaySeconds,
     }));
@@ -246,7 +325,10 @@ const pushBackUserImpressions = async (
       batch.set(db.doc(`user-impressions/${userId}-${key}`), {
         value: Array.from(
           new Set([...existingValue, ...newData])
-        ).slice(0, MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER),
+        ).slice(
+          0, key === "top" ? MAX_TOP_TRACK_IMPRESSIONS_TO_REMEMBER :
+            MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER
+        ),
       });
     }
   });
@@ -268,10 +350,14 @@ const pushBackUserImpressions = async (
 // gets a map from group -> sentiment comprised of sentiments that are highly represented
 // in the user's recent listening activity
 const getRecommendedSentiments = async (
-  {userId, previouslyRecommendedSentiments} : 
-  {userId: string, previouslyRecommendedSentiments?: Record<string, string[]>},
+  {userId, previouslyRecommendedSentiments, recentListens} : 
+  {
+    userId: string,
+    previouslyRecommendedSentiments?: Record<string, string[]>
+    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+  },
 ): Promise<{group: string, sentiments: string[]}[] | null> => {
-  const scoredSentiments = await getScoredSentiments({userId});
+  const scoredSentiments = await getScoredSentiments({userId, recentListens});
 
   if (scoredSentiments.length === 0) {
     console.log(`no scored sentiments for user ${userId}`);
@@ -359,4 +445,41 @@ const singleWeightedRandomChoice = (options: Record<string, number>) => {
       break;
   
   return items[i];
+}
+
+const findRecommendationsIndexForNotif = ({
+  recommendations,
+  notificationHistory,
+}: {
+  recommendations: Recommendation[],
+  notificationHistory: Set<string>,
+}) => {
+
+
+  const topPassageIndex = recommendations.findIndex(
+    (r) => !notificationHistory.has(r.song.id) && r.type === "top_passage"
+  );
+
+  if (topPassageIndex !== -1) {
+    return topPassageIndex;
+  }
+
+  const featuredArtistIndex = recommendations.findIndex(
+    (r) => !notificationHistory.has(r.song.id) && r.type === "featured_artist"
+  );
+
+  if (featuredArtistIndex !== -1) {
+    return featuredArtistIndex;
+  }
+
+  const sentimentIndex = recommendations.findIndex(
+    (r) => !notificationHistory.has(r.song.id) && r.type === "sentiment"
+  );
+
+  if (sentimentIndex !== -1) {
+    return sentimentIndex;
+  }
+
+  // unlikely, but if we've already sent every rec as a notif, just send the first one again
+  return 0;
 }

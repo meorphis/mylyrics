@@ -3,7 +3,7 @@
 import React, {memo} from 'react';
 import ThemeButton from '../common/ThemeButton';
 import {StyleSheet} from 'react-native';
-import {sentimentAdjectiveToNoun} from '../../utility/helpers/sentiments';
+import {bundleKeyDisplayName} from '../../utility/helpers/sentiments';
 import {useDispatch} from 'react-redux';
 import {requestBundleChange} from '../../utility/redux/requested_bundle_change/slice';
 import SentimentEnumType from '../../types/sentiments';
@@ -25,7 +25,7 @@ const GroupSelectorButton = (props: Props) => {
 
   return (
     <ThemeButton
-      text={sentimentAdjectiveToNoun(bundleKey as SentimentEnumType)!}
+      text={bundleKeyDisplayName(bundleKey as SentimentEnumType)!}
       textStyle={styles.buttonText}
       textContainerStyle={styles.buttonTextContainer}
       useSaturatedColor={isActiveBundle}

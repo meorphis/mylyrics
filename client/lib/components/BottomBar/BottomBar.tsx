@@ -5,11 +5,7 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import GroupSelectorBottomSheet from '../GroupSelectorBottomSheet/GroupSelectorBottomSheet';
 import ProphecyBottomSheet from '../ProphecyBottomSheet/ProphecyBottomSheet';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {
-  allSentiments,
-  sentimentToEmojiMap,
-} from '../../utility/helpers/sentiments';
-import SentimentEnumType from '../../types/sentiments';
+import {sentimentToEmojiMap} from '../../utility/helpers/sentiments';
 import {
   useActiveBundle,
   usePreviouslyActiveBundleKey,
@@ -37,7 +33,6 @@ const BottomBar = (props: Props) => {
       activeBundle.creator.type !== 'machine') &&
     previouslyActiveBundleKey != null;
   const shouldShowGroupSelectorButton = activeBundle.creator.type === 'machine';
-  const shouldShowLikesButton = activeBundle.creator.type === 'machine';
   const shouldShowProphecyButton = activeBundle.creator.type === 'machine';
 
   return (
@@ -57,26 +52,22 @@ const BottomBar = (props: Props) => {
         )}
         {shouldShowGroupSelectorButton && (
           <ThemeButton
-            text={
-              activeBundleKey &&
-              allSentiments.includes(activeBundleKey as SentimentEnumType)
-                ? sentimentToEmojiMap[activeBundleKey as SentimentEnumType] ??
-                  ''
-                : ''
-            }
-            useSaturatedColor={allSentiments.includes(
-              activeBundleKey as SentimentEnumType,
-            )}
+            text={sentimentToEmojiMap[activeBundleKey] ?? activeBundleKey}
+            useSaturatedColor
             onPress={() => {
               groupSelectorBottomSheetRef?.current?.expand();
             }}
             iconName="grid-outline"
             textStyle={styles.buttonText}
-            textContainerStyle={styles.groupSelectorButtonTextContainer}
+            textContainerStyle={
+              sentimentToEmojiMap[activeBundleKey]
+                ? styles.groupSelectorButtonTextContainer
+                : {}
+            }
             style={styles.button}
           />
         )}
-        {shouldShowLikesButton && (
+        {/* {shouldShowLikesButton && (
           <ThemeButton
             useSaturatedColor={activeBundleKey === 'likes'}
             onPress={() => {
@@ -86,7 +77,7 @@ const BottomBar = (props: Props) => {
             textStyle={styles.buttonText}
             style={styles.button}
           />
-        )}
+        )} */}
         {shouldShowProphecyButton && (
           <ThemeButton
             onPress={() => {

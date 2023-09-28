@@ -100,6 +100,9 @@ export type SongWithLyrics = Song & {
     lyrics: string,
 }
 
+export type RecommendationType = 
+    "featured_artist" | "top_passage" | "sentiment" | "lookup" | "semantic_search";
+
 export type Recommendation = {
     lyrics: string,
     song: {
@@ -123,4 +126,5 @@ export type Recommendation = {
         sentiment: string,
     }[],
     score: number,
+    type: RecommendationType,
 }

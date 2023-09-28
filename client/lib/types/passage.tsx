@@ -8,6 +8,7 @@ export type RawPassageType = {
   lyrics: string;
   song: RawSongType;
   bundleKeys: string[];
+  type: 'featured_artist' | 'top_passage' | 'sentiment';
 };
 
 // contains a single passage of lyrics with metadata, providing enough info to be
