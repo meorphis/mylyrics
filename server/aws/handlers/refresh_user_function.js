@@ -10,14 +10,15 @@ export async function handler(event) {
 
     var userId;
     var numRetries;
+    var alwaysFeatureVeryTopUser;
     try {
         const {body} = records[0];
         const json = JSON.parse(body);
         userId = json.userId;
-        numRetries = json.numRetries;
-        alwaysFeatureVeryTopUser = json.alwaysFeatureVeryTopUser;
+        numRetries = json.numRetries ?? 0;
+        alwaysFeatureVeryTopUser = json.alwaysFeatureVeryTopUser ?? false;
     } catch (e) {
-        return buildResponse(400, {error: `Invalid JSON: "${body}"`});
+        return buildResponse(400, {error: `Invalid JSON: "${records}"`});
     }
 
     try {
