@@ -187,6 +187,7 @@ export const processOneUser = async (
   ).data();
 
   const lastRefreshedAt = userRecommendations?.lastRefreshedAt;
+  // if this value hasn't been set yet, we'll create the task in initialize_user instead
   if (lastRefreshedAt != null) {
 
     // if we haven't refreshed recommendations in the last ~24 hours, do so
