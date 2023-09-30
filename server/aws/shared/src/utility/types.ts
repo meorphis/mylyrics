@@ -76,6 +76,7 @@ export type Song = {
         genres: string[],
         image: {
             url: string,
+            colors?: FinalColor[],
             height?: number,
             width?: number,
         },

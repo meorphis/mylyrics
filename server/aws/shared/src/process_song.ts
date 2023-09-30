@@ -5,6 +5,8 @@ import {uuidForPassage} from "./utility/uuid";
 import {LabeledPassage, Song, VectorizedAndLabeledPassage} from "./utility/types";
 import { getFirestoreDb } from "./integrations/firebase";
 import {FieldValue} from "firebase-admin/firestore";
+import { getImageColors } from "./utility/image";
+import { FinalColor } from "extract-colors/lib/types/Color";
 
 // *** PUBLIC INTERFACE ***
 // takes as input a song name and artist name and processes the song:
@@ -44,10 +46,13 @@ export const processSong = async (song: Song) => {
     }
   )}`);
 
-  // analysis from openai integration
-  const {
+  // get analysis from openai integration and image colors in parallel
+  const [{
     sentiments: songSentiments, passages, metadata: labelingMetadata
-  } = await labelPassages({lyrics});
+  }, colors] = await Promise.all([
+    labelPassages({lyrics}),
+    getImageColors({url: song.album.image.url})
+  ]);
 
   console.log(`got analysis for song: ${JSON.stringify(
     {
@@ -62,10 +67,19 @@ export const processSong = async (song: Song) => {
   console.log(`got vectorized passages for song ${song.name} by ${song.primaryArtist.name}`);
 
   await addSongToSearch(
-    song,
+    {
+      ...song,
+      album: {
+        ...song.album,
+        image: {
+          ...song.album.image,
+        }
+      },
+    },
     {
       songSentiments,
       songLyrics: lyrics,
+      albumColors: colors,
       unvectorizedPassages: passages,
       vectorizedPassages,
       labelingMetadata
@@ -158,6 +172,7 @@ const addSongToSearch = async (
   {
     songSentiments,
     songLyrics,
+    albumColors,
     unvectorizedPassages,
     vectorizedPassages,
     labelingMetadata,
@@ -165,6 +180,7 @@ const addSongToSearch = async (
   {
     songSentiments: string[],
     songLyrics: string,
+    albumColors: FinalColor[],
     unvectorizedPassages: LabeledPassage[],
     vectorizedPassages: VectorizedAndLabeledPassage[],
     labelingMetadata: {
@@ -192,6 +208,13 @@ const addSongToSearch = async (
       primarySentiment: passage.sentiments[0],
       song: {
         ...song,
+        album: {
+          ...song.album,
+          image: {
+            ...song.album.image,
+            colors: albumColors,
+          }
+        },
         lyrics: songLyrics,
         sentiments: songSentiments,
       },
