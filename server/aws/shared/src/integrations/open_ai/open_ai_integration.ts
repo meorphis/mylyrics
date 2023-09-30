@@ -1,4 +1,6 @@
 import {
+  GET_ARTIST_EMOJI_EXAMPLE_COMPLETIONS,
+  GET_ARTIST_EMOJI_SYSTEM_MESSAGE,
   GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE,
   GET_PROPHECY_SYSTEM_MESSAGE,
   GET_PROPHECY_USER_EXAMPLE_MESSAGE,
@@ -10,14 +12,14 @@ import {
   LabeledPassage, LabelingMetadata, Recommendation, VectorizedAndLabeledPassage
 } from "../../utility/types";
 import { getSecretString } from "../aws";
-import { Configuration, OpenAIApi } from "openai";
+import { ChatCompletionRequestMessageRoleEnum, Configuration, OpenAIApi } from "openai";
 import { cachedFunction } from "../../utility/cache";
 import { addMetadataToPassage } from "../../utility/recommendations";
 
 // *** CONSTANTS ***
 const MODEL = "gpt-3.5-turbo";
 
-const OPEN_AI_PARAMS = {
+const DEFAULT_OPEN_AI_PARAMS = {
   model: MODEL,
   temperature: 0,
   top_p: 1.0,
@@ -43,7 +45,7 @@ export const labelPassages = async (
       {role: "assistant", content: LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE},
       {role: "user", content: lyrics},
     ],
-    ...OPEN_AI_PARAMS,
+    ...DEFAULT_OPEN_AI_PARAMS,
   });
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -124,7 +126,33 @@ export const computeProphecy = async (
       {role: "assistant", content: GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE},
       {role: "user", content: passagesToText(passages)},
     ],
-    ...OPEN_AI_PARAMS,
+    ...DEFAULT_OPEN_AI_PARAMS,
+    temperature: 1.0,
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return completionObject.data.choices[0].message!.content!;  
+}
+
+export const getArtistEmoji = async (
+  {artistName}: {artistName: string}
+) => {
+  const openai = await getOpenAIClient();
+
+  const completionObject = await openai.createChatCompletion({
+    messages: [
+      {role: "system", content: GET_ARTIST_EMOJI_SYSTEM_MESSAGE},
+      ...GET_ARTIST_EMOJI_EXAMPLE_COMPLETIONS.map(entry => [
+        {
+          role: "user" as ChatCompletionRequestMessageRoleEnum, content: entry[0]
+        },
+        {
+          role: "assistant" as ChatCompletionRequestMessageRoleEnum, content: entry[1]
+        }
+      ]).flat(),
+      {role: "user", content: artistName},
+    ],
+    ...DEFAULT_OPEN_AI_PARAMS,
   });
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

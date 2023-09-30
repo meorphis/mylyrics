@@ -70,18 +70,7 @@ export type Song = {
     },
     artists: SimplifiedArtist[],
     primaryArtist: Artist,
-    album: {
-        name: string,
-        spotifyId: string,
-        genres: string[],
-        image: {
-            url: string,
-            colors?: FinalColor[],
-            height?: number,
-            width?: number,
-        },
-        releaseDate: string,
-    },
+    album: AlbumWithoutColors,
 }
 
 export type SimplifiedArtist = {
@@ -97,8 +86,31 @@ export type Artist = {
     popularity: number,
 }
 
-export type SongWithLyrics = Song & {
+type AlbumImageWithoutColors = {
+    url: string,
+    height?: number,
+    width?: number,
+}
+
+type AlbumImageWithColors = AlbumImageWithoutColors & {
+    colors: FinalColor[],
+}
+
+type AlbumWithoutColors = {
+    name: string,
+    spotifyId: string,
+    genres: string[],
+    image: AlbumImageWithoutColors,
+    releaseDate: string,
+};
+
+type AlbumWithColors = AlbumWithoutColors & {
+    image: AlbumImageWithColors,
+}
+
+export type IndexedSong = Song & {
     lyrics: string,
+    album: AlbumWithColors,
 }
 
 export type RecommendationType = 

@@ -1,15 +1,15 @@
 import { getImageColors } from "../utility/image";
 import { addMetadataToPassage } from "../utility/recommendations";
-import { VALID_SENTIMENTS } from "../utility/sentiments";
+import { VALID_SENTIMENTS, VALID_SENTIMENTS_SET } from "../utility/sentiments";
 import { 
-  Artist, LabeledPassage, Recommendation, RecommendationType, Song, SongWithLyrics
+  Artist, LabeledPassage, Recommendation, RecommendationType, Song, IndexedSong
 } from "../utility/types";
 import { getSearchClient } from "./aws";
 import { getFirestoreDb } from "./firebase";
 import { vectorizeSearchTerm } from "./open_ai/open_ai_integration";
 
 type SearchResult = {
-    song: SongWithLyrics,
+    song: IndexedSong,
     passage: LabeledPassage,
     score: number,
     type: RecommendationType,
@@ -18,7 +18,7 @@ type SearchResult = {
 type RawSongResult = {
   _id: string,
   _score: number,
-  _source: Omit<Song & {lyrics: string}, keyof {id: string}> & {passages: LabeledPassage[]}
+  _source: Omit<IndexedSong, keyof {id: string}> & {passages: LabeledPassage[]}
 }
 
 type RawPassageResult = {
@@ -29,6 +29,7 @@ type RawPassageResult = {
 
 const NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS = 5;
 const NUMBER_OF_RECOMMENDATIONS_FOR_TOP_SPINS = 10;
+const NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 10;
 
 // *** PUBLIC INTERFACE ***
 // function to get recommendations for a given user, across a few different categories:
@@ -37,26 +38,55 @@ const NUMBER_OF_RECOMMENDATIONS_FOR_TOP_SPINS = 10;
 // - sentiments: passages that match a given sentiment, generally that the user has
 //    not seen in their recommendations before
 export const getDailyRecommendations = async (
-  {userId, recentListens, topSpotifyArtists, featuredArtist, recommendedSentiments}:
+  {userId, recentListens, topSpotifyArtists, featuredArtistOptions, recommendedSentiments}:
   {
     userId: string,
     recentListens: Record<string, {songs: string[]; artists: string[];}>,
     topSpotifyArtists: Artist[],
-    featuredArtist: Artist,
+    featuredArtistOptions: Artist[],
     recommendedSentiments: string[],
   }
-) => {
-  const [artistSearchResults, topPassageSearchResults] = await Promise.all([
-    getSearchResultsForArtist({
-      artistName: featuredArtist.name,
-    }),
-    getSearchResultsForTopPassages({
-      userId,
-      recentListens,
-      topArtistNames: topSpotifyArtists.map((artist) => artist.name),
-      excludeArtistName: featuredArtist.name
-    })
-  ]);
+): Promise<{
+  recommendations: Recommendation[],
+  featuredArtist: Artist | null,
+  featuredArtistEmoji: string | null,
+}> => {
+  const db = await getFirestoreDb();
+
+  let featuredArtist: Artist | null = null;
+  let featuredArtistEmoji: string | null = null;
+  let artistSearchResults: SearchResult[] = [];
+
+  for (const potentialFeaturedArtist of featuredArtistOptions) {
+    const docSnap = await db.collection("artists").doc(potentialFeaturedArtist.id).get()
+    const data = docSnap.data();
+    const potentialFeaturedArtistEmoji = data && data.artistEmoji;
+
+    if (!potentialFeaturedArtistEmoji) {
+      console.log(`no emoji found for artist ${potentialFeaturedArtist.name}`)
+      continue;
+    }
+
+    const results = await getSearchResultsForArtist({
+      artistName: potentialFeaturedArtist.name,
+    });
+
+    if (results.length >= 3) {
+      featuredArtist = potentialFeaturedArtist;
+      featuredArtistEmoji = potentialFeaturedArtistEmoji;
+      artistSearchResults = results;
+      break;
+    } else {
+      console.log(`only found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
+    }
+  }
+
+  const topPassageSearchResults = await getSearchResultsForTopPassages({
+    userId,
+    recentListens,
+    topArtistNames: topSpotifyArtists.map((artist) => artist.name),
+    excludeArtistName: featuredArtist?.name ?? null
+  });
 
   const recommendations = await getSearchResultsForSentiments(
     {
@@ -70,11 +100,15 @@ export const getDailyRecommendations = async (
     }
   );
 
-  return await parseSearchResults({results: [
-    ...artistSearchResults,
-    ...topPassageSearchResults,
-    ...recommendations,
-  ]});
+  return {
+    recommendations: await parseSearchResults({results: [
+      ...artistSearchResults,
+      ...topPassageSearchResults,
+      ...recommendations,
+    ]}),
+    featuredArtist,
+    featuredArtistEmoji,
+  };
 }
 
 // looks up a particular passage by song name, artist name, and line numbers
@@ -185,14 +219,14 @@ export const getSemanticMatchesForTerm = async (
 
   // unpack search results
   const passages: {
-    song: SongWithLyrics, passage: LabeledPassage, score: number
+    song: IndexedSong, passage: LabeledPassage, score: number
   }[] = results.body.hits.hits.map((hit: RawPassageResult) => {
     const {_score: score, _source: {song, ...passage}} = hit;
     return {
       song,
       passage: {
         ...passage,
-        sentiments: passage.sentiments.filter((s) => VALID_SENTIMENTS.includes(s)),
+        sentiments: passage.sentiments.filter((s) => VALID_SENTIMENTS_SET.has(s)),
       },
       score,
     }
@@ -331,7 +365,7 @@ export const getScoredSentiments = async (
       count: doc_count,
       score: total_score.value,
     }
-  });
+  }).filter((result) => result.count > 0);
 };
 
 // *** PRIVATE HELPERS ***
@@ -441,7 +475,7 @@ const getSearchResultsForArtist = async (
           ],
         }
       },
-      "size": NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS,
+      "size": NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST,
     }
   }
   const results = await searchClient.search(query);
@@ -468,7 +502,7 @@ const getSearchResultsForTopPassages = async (
     userId: string,
     recentListens: Record<string, {songs: string[]; artists: string[];}>,
     topArtistNames: string[],
-    excludeArtistName: string
+    excludeArtistName: string | null
   }
 ) => {
   const db = await getFirestoreDb();
@@ -545,17 +579,20 @@ const getSearchResultsForTopPassages = async (
     body: {
       "query": {
         "function_score": {
-          "query": {
-            "bool": {
-              "must_not": [
-                {
-                  "match": {
-                    "primaryArtist.name": excludeArtistName
+          ...(
+            excludeArtistName ? {"query": {
+              "bool": {
+                "must_not": [
+                  {
+                    "match": {
+                      "primaryArtist.name": excludeArtistName
+                    }
                   }
-                }
-              ]
-            }
-          },
+                ]
+              }
+            }} : 
+              {}
+          ),
           "functions": [...songBoosts, ...artistBoosts],
           "score_mode": "sum",
           "boost_mode": "replace",
@@ -1061,7 +1098,7 @@ const parseRawSongResults = (
         },
         passage: {
           ...passage,
-          sentiments: passage.sentiments.filter((s) => VALID_SENTIMENTS.includes(s)),
+          sentiments: passage.sentiments.filter((s) => VALID_SENTIMENTS_SET.has(s)),
         },
         score,
         type,
