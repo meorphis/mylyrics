@@ -1,12 +1,14 @@
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getFirestoreDb } from "./integrations/firebase";
 import { getScoredSentiments, getDailyRecommendations } from "./integrations/open_search";
-import { SENTIMENT_GROUPS, SENTIMENT_TO_GROUP } from "./utility/sentiments";
+import { 
+  GROUP_TO_SENTIMENTS, NEGATIVE_SENTIMENTS_SET, SENTIMENT_TO_GROUP 
+} from "./utility/sentiments";
 import { sqs } from "./integrations/aws";
 import { sendRecommendationNotif } from "./integrations/notifications";
 import { getTopArtistsForUser } from "./integrations/spotify/spotify_data";
 import { getFreshSpotifyResponse } from "./integrations/spotify/spotify_auth";
-import { Recommendation } from "./utility/types";
+import { Artist, Recommendation } from "./utility/types";
 
 // *** CONSTANTS ***
 // recent listens: note that recent listen limits are not hard limits - we never delete records from
@@ -18,7 +20,8 @@ const MAX_NUM_ARTISTS_TO_REMEMBER = 250;
 // tracks; these are hard limits
 const MAX_IMPRESSIONS_TO_REMEMBER = 5000;
 const MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER = 250;
-// we only use the first 50 of these, but we keep more in case we want to change this logic later
+// we only actally use the first 50 of these, but we keep more in case we want to change this logic
+// later
 const MAX_TOP_TRACK_IMPRESSIONS_TO_REMEMBER = 250;
 
 const MAX_NOTIFICATIONS_TO_REMEMBER = 500;
@@ -124,27 +127,28 @@ export const refreshUser = async ({
   const recentlyFeaturedArtists = userRecommendations.featuredArtistHistory ?? [];
   const topSpotifyArtists = await getTopArtistsForUser({spotifyAccessToken, limit: 15});
 
-  let featuredArtist;
+  let featuredArtistOptions: Artist[];
 
   if (alwaysFeatureVeryTopArtist) {
-    featuredArtist = topSpotifyArtists[0];
+    featuredArtistOptions = topSpotifyArtists.slice(0, 3);
   } else {
     const artistsEligibleForFeature = topSpotifyArtists.filter((artist) => {
       return !recentlyFeaturedArtists.includes(artist.id);
     });
-    featuredArtist = artistsEligibleForFeature[
-      Math.floor(Math.random() * artistsEligibleForFeature.length)
-    ];
+    featuredArtistOptions = getRandomIndexes(
+      artistsEligibleForFeature.length,
+      Math.min(artistsEligibleForFeature.length, 3)
+    ).map(idx => artistsEligibleForFeature[idx])
   }
 
   const flatSentiments = recommendedSentiments.map((s) => s.sentiments).flat();
 
-  const recommendations = await getDailyRecommendations(
+  const {recommendations, featuredArtist, featuredArtistEmoji} = await getDailyRecommendations(
     {
       userId,
       recentListens,
       topSpotifyArtists,
-      featuredArtist,
+      featuredArtistOptions,
       recommendedSentiments: flatSentiments,
     }
   );
@@ -175,9 +179,10 @@ export const refreshUser = async ({
         ...userRecommendations.notificationHistory || [],
       ].slice(0, MAX_NOTIFICATIONS_TO_REMEMBER),
       featuredArtistHistory: [
-        featuredArtist.id,
+        ...(featuredArtist ? [featuredArtist.id] : []),
         ...userRecommendations.featuredArtistHistory || [],
       ].slice(0, MAX_FEATURED_ARTISTS_TO_REMEMBER),
+      featuredArtistEmoji,
     }, {merge: true}),
     sendRecommendationNotif({recommendation: reorderedRecommendations[0], userId}),
   ]);
@@ -349,6 +354,12 @@ const pushBackUserImpressions = async (
 
 // gets a map from group -> sentiment comprised of sentiments that are highly represented
 // in the user's recent listening activity
+// we generally enforce the following constraints (unless we don't have enough eligible recs):
+// - we will recommend three groups, with two or three sentiments each (three if possible)
+// - at least two of these groups will be "non-negative", meaning at least two of their sentiments
+//    are positive or mixed
+// - we weigh each group according to the sum of the squares of the scores of its eligible
+//    sentiments with a downrank factor for groups that have been recommended recently
 const getRecommendedSentiments = async (
   {userId, previouslyRecommendedSentiments, recentListens} : 
   {
@@ -364,53 +375,162 @@ const getRecommendedSentiments = async (
     return null;
   }
 
-  // if no sentiment has been expressed more than 5 times, don't recommend anything
-  const sortedByCount = scoredSentiments.sort((a, b) => b.count - a.count);
-  if (sortedByCount[0].count < 5) {
-    console.log(`no sentiment expressed more than 5 times for user ${userId}`);
-    return null;
+  // first, find the constraining minimum rec count per group to use such that we will
+  // definitely be able to find at least two non-negative groups and three groups in total to
+  // recommend (though if minCountToUse ends up at zero, it means that we won't be able to fulfill
+  // these constrains and we'll just recommend whatever we can)
+  let minCountToUse = 5;
+  let eligibleGroups = Object.keys(GROUP_TO_SENTIMENTS);
+  let eligibleNonNegativeGroups = eligibleGroups.filter((group) => {
+    return GROUP_TO_SENTIMENTS[group].filter((sentiment) => {
+      return !NEGATIVE_SENTIMENTS_SET.has(sentiment);
+    }).length >= 2;
+  });
+  while (minCountToUse > 0) {
+    const {nonNegativeOnly, all} = 
+      groupsWithAtLeastTwoEligibleSentiments({
+        scoredSentiments,
+        minCount: minCountToUse,
+      });
+    if (nonNegativeOnly.length >= 2 && all.length >= 3) {
+      eligibleNonNegativeGroups = nonNegativeOnly;
+      eligibleGroups = all;
+      break;
+    }
+    minCountToUse--;
   }
 
-  const groupScores = sortedByCount.reduce((acc, {sentiment, score}) => {
+  const eligibleGroupsSet = new Set(eligibleGroups);
+  const eligibleNonNegativeGroupsSet = new Set(eligibleNonNegativeGroups);
+
+  // get group scores for eligible groups
+  const groupScores = scoredSentiments.reduce((acc, {sentiment, score}) => {
+    if (!eligibleGroupsSet.has(SENTIMENT_TO_GROUP[sentiment])) {
+      return acc;
+    }
+
     const group = SENTIMENT_TO_GROUP[sentiment];
     acc[group] = (acc[group] || 0) + score * score;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>)
 
   // downrank groups that have been recommended recently
   if (previouslyRecommendedSentiments) {
     const previousGroups = Object.keys(previouslyRecommendedSentiments);
 
-    previousGroups.forEach((group, i) => {
-      groupScores[group] = (groupScores[group] || 0) / Math.pow(2, previousGroups.length - i);
-    })
+    previousGroups.forEach((group) => {
+      groupScores[group] = (groupScores[group] || 0) / 4;
+    });
   }
 
-  const groups = multiWeightedRandomChoice(groupScores, 3);
+  let groups = multiWeightedRandomChoice(groupScores, 3);
 
-  // if there are fewer than 3 groups, don't recommend anything
-  if (groups.length < 3) {
-    console.log(`not enough groups to make recommendation for ${userId}: ${groups}`);
-    return null;
+  console.log(JSON.stringify(scoredSentiments, null, 2), JSON.stringify(eligibleGroups, null, 2));
+  let negativeGroups = groups.filter(g => !eligibleNonNegativeGroupsSet.has(g));
+
+  // if we got too many negative groups, replace them
+  if (negativeGroups.length > 1) {
+    const remainingNonNegativeGroupScores = Object.fromEntries(Object.entries(groupScores).filter(
+      g => !eligibleNonNegativeGroupsSet.has(g[0]) && !groups.includes(g[0])
+    ))
+
+    groups = [
+      ...groups.filter(g => eligibleNonNegativeGroupsSet.has(g)),
+      ...multiWeightedRandomChoice(
+        remainingNonNegativeGroupScores,
+        Math.min(negativeGroups.length - 1, Object.keys(remainingNonNegativeGroupScores).length)
+      ),
+      negativeGroups[0],
+    ]
   }
 
+  // "allow" the most negative group to be negative, even if it could be a non-negative group, to
+  // avoid overdoing the positivity-washing
+  if (negativeGroups.length === 0) {
+    groups.sort((g) => GROUP_TO_SENTIMENTS[g].filter(
+      s => NEGATIVE_SENTIMENTS_SET.has(s)
+    ).length);
+    negativeGroups = [groups[-1]];
+  }
+
+  // now, for each group select the sentiments
   const sentiments = groups.map((group) => {
-    const groupSentiments = SENTIMENT_GROUPS[group as keyof typeof SENTIMENT_GROUPS];
+    const groupSentiments = GROUP_TO_SENTIMENTS[group as keyof typeof GROUP_TO_SENTIMENTS];
     const options = scoredSentiments.reduce((acc, {sentiment, score}) => {
       if (groupSentiments.includes(sentiment)) {
         acc[sentiment] = score;
       }
       return acc;
     }, {} as Record<string, number>);
-    const sentiments = multiWeightedRandomChoice(options, 3);
+    let sentiments = multiWeightedRandomChoice(options, 3);
+
+    // if we tried to put too many negative sentiments in a group that is not meant to be negative,
+    // replace them
+    if (
+      !negativeGroups.includes(group) &&
+      sentiments.filter(s => NEGATIVE_SENTIMENTS_SET.has(s)).length > 1
+    ) {
+      const remainingNonNegativeOptions = Object.fromEntries(Object.entries(options).filter(
+        ([sentiment]) => !NEGATIVE_SENTIMENTS_SET.has(sentiment) && !sentiments.includes(sentiment)
+      ));
+      const nonNegativeSentiments = sentiments.filter(s => !NEGATIVE_SENTIMENTS_SET.has(s));
+      const negativeSentiments = sentiments.filter(s => NEGATIVE_SENTIMENTS_SET.has(s));
+      sentiments = [
+        ...nonNegativeSentiments,
+        negativeSentiments[0],
+        ...multiWeightedRandomChoice(
+          remainingNonNegativeOptions,
+          Math.min(negativeSentiments.length - 1, Object.keys(remainingNonNegativeOptions).length)
+        )
+      ]
+    }
+
     return {
       group,
       sentiments,
+      isNegative: negativeGroups.includes(group),
     };
   });
 
   return sentiments;
 }
+
+// returns a list of groups that have at least two eligible sentiments with a result count greater
+// than minCount, as well as a list of groups with at least two non-negative eligible sentiments
+const groupsWithAtLeastTwoEligibleSentiments = (
+  {scoredSentiments, minCount} : {
+    scoredSentiments: {sentiment: string, score: number, count: number}[],
+    minCount: number,
+  }) => {
+  const groupToNumEligibleSentiments = scoredSentiments.reduce((acc, {sentiment, count}) => {
+    const group = SENTIMENT_TO_GROUP[sentiment];
+    if (count > minCount) {
+      if (!acc[group]) {
+        acc[group] = {
+          nonNegativeOnly: 0,
+          all: 0,
+        };
+      }
+      if (!NEGATIVE_SENTIMENTS_SET.has(sentiment)) {
+        acc[group].nonNegativeOnly = acc[group].nonNegativeOnly + 1;
+      }
+      acc[group].all = acc[group].all + 1;
+    }
+    return acc;
+  }, {} as Record<string, {
+    nonNegativeOnly: number,
+    all: number
+  }>);
+  return {
+    nonNegativeOnly: Object.entries(groupToNumEligibleSentiments).filter(
+      ([_, {nonNegativeOnly}]) => nonNegativeOnly >= 2
+    ).map(([group]) => group),
+    all: Object.entries(groupToNumEligibleSentiments).filter(
+      ([_, {all}]) => all >= 2
+    ).map(([group]) => group),
+  }
+}
+
 
 // returns an array of k distinct items from the given options, where the probability of
 // choosing each item is proportional to its weight
@@ -482,4 +602,21 @@ const findRecommendationsIndexForNotif = ({
 
   // unlikely, but if we've already sent every rec as a notif, just send the first one again
   return 0;
+}
+
+const getRandomIndexes = (n: number, k: number) => {
+  if (k > n) {
+    throw Error(`cannot get ${k} indexes less than ${n}`);
+  }
+
+  const indexes: number[] = [];
+
+  while (indexes.length < k) {
+    const newChoice = Math.floor(Math.random() * n);
+    if (indexes.includes(newChoice)) {
+      indexes.push(newChoice);
+    }
+  }
+
+  return indexes;
 }

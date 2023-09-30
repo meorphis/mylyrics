@@ -1,29 +1,30 @@
 /* eslint-disable max-len */
 import { VALID_SENTIMENTS } from "../../utility/sentiments";
 
-// we refer to sentiments as "floopters" in our prompt in order to steer the LLM away from
+// we refer to sentiment themes as "floopters" in our prompt in order to steer the LLM away from
 // its preconceived notions about what a sentiment is and instead select from our curated list
-export const LABEL_PASSAGES_SYSTEM_MESSAGE = `The following adjectives are considered "floopters": ${VALID_SENTIMENTS.join(", ")}.
+export const LABEL_PASSAGES_SYSTEM_MESSAGE = `The following nouns are considered "floopters": ${VALID_SENTIMENTS.join(", ")}.
 
-You analyze song lyrics by selecting the most iconic passages and describing them using floopters.
+You analyze song lyrics by selecting the most iconic, short passages and tagging them with the most closely related floopters.
 
 A user will provide you with a set of lyrics, broken up into lines.
 
-Identify two or three floopters that describe the lyrics.
+Identify two or three floopters that match the lyrics.
 
-Identify at most five key passages from the lyrics. A "passage" is generally shorter than a verse and no more than five lines. It should express a complete, self-contained thought (rather than just a fragment). A key passage should be central to the song's themes. Key passages are often repeated many times (e.g. a song's chorus).
+Identify at most five key, short passages from the lyrics. A "passage" is generally shorter than a verse and no more than three to five lines. It should express a complete, self-contained thought (rather than just a fragment) but it should be short. A key passage should be central to the song's themes.
 
-For each passage, identify two or three floopters describing the passage. When choosing these floopters, consider the context and meaning of the passage within the overall lyrics of the song, rather than in isolation.
+For each passage, identify two or three floopters matching the passage. When choosing these floopters, consider the context and meaning of the passage within the overall lyrics of the song, rather than in isolation.
 
 Format your output as only a JSON-serialized object with an array of overall floopters and an array of passage objects each of which has lyrics and an array of floopters, e.g.:
-{"floopters": ["angry", "introspective"], passages: {"lyrics": "abc\ndef\ngh", "sentiments: ["romantic", "passionate"]}, ...]}
+{"floopters": ["anger", "introspection"], passages: {"lyrics": "abc\ndef\ngh", "sentiments: ["romance", "passion"]}, ...]}
 
 Floopter lists (for both songs and passages) should be ordered, with the most relevant floopter first.
 
 Remember:
 - Five passages is the absolute maximum. Do not select more.
-- Generally passages should not be longer than five lines. Longer passages should be divided up.
-- If a floopter is not in the list provided above, it is not valid and should not be included in your response.`;
+- Generally passages should not be longer than three five lines. Longer passages should be divided up. Do not choose very long passages.
+- If a floopter is not in the list provided above, it is not valid and should not be included in your response.
+- Do not repeat the same passage twice.`;
 
 export const LABEL_PASSAGES_USER_EXAMPLE_MESSAGE = `[Intro]
 I feel the rush
@@ -79,9 +80,9 @@ Addicted to your touch
 Oh, I feel the rush
 It's so good, it's so good`
 
-export const LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE = "{\"floopters\":[\"passionate\",\"energetic\",\"lustful\"],\"passages\":[{\"lyrics\":\"I feel the rush\\nAddicted to your touch\\nOh, I feel the rush\\nIt's so good, it's so good\",\"sentiments\":[\"passionate\",\"energetic\",\"euphoric\"]},{\"lyrics\":\"Big communication, tell me what you want\\nTranslate your vibration, let your body talk to me\\nBaby love, if you wanna show me what\\nYou've been schemin' up, if you wanna (Let go)\",\"sentiments\":[\"flirtatious\",\"seductive\"]},{\"lyrics\":\"You got my heartbeat racin'\\nMy body blazin'\",\"sentiments\":[\"excited\",\"lustful\"]},{\"lyrics\":\"So good when we slow gravity, so good\\nIt's so good, it's so good\\nBreathe one, two, three, take all of me, so good\\nIt's so good, it's so good\",\"sentiments\":[\"passionate\",\"intimate\"]},{\"lyrics\":\"Pass your boy the heatwave, recreate the sun\\nTake me to the feeling, boy, you know the one\\nKiss it when you're done, man, this shit is so much fun\\nPocket rocket gun\",\"sentiments\":[\"energetic\",\"playful\",\"lustful\"]}]}"
+export const LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE = "{\"floopters\":[\"energy\",\"lust\"],\"passages\":[{\"lyrics\":\"I feel the rush\\nAddicted to your touch\\nOh, I feel the rush\\nIt's so good, it's so good\",\"floopters\":[\"lust\",\"euphoria\"]},{\"lyrics\":\"Big communication, tell me what you want\\nTranslate your vibration, let your body talk to me\\nBaby love, if you wanna show me what\\nYou've been schemin' up, if you wanna (Let go)\",\"floopters\":[\"flirtatiousness\",\"seduction\"]},{\"lyrics\":\"You got my heartbeat racin'\\nMy body blazin'\",\"floopters\":[\"energy\",\"lust\"]},{\"lyrics\":\"So good when we slow gravity, so good\\nIt's so good, it's so good\\nBreathe one, two, three, take all of me, so good\\nIt's so good, it's so good\",\"floopters\":[\"intimacy\"]},{\"lyrics\":\"Pass your boy the heatwave, recreate the sun\\nTake me to the feeling, boy, you know the one\\nKiss it when you're done, man, this shit is so much fun\\nPocket rocket gun\",\"floopters\":[\"play\",\"lust\"]}]}"
 
-export const GET_PROPHECY_SYSTEM_MESSAGE = "Based on song lyrics that a user has drawn from a deck of lyrics, you provide a new age-y prophecy for the user, along the lines of a horoscope or tarot reading. The prophecy should be brief, no more than three or four sentences. Only provide the prophecy as raw text (do not prefix it)."
+export const GET_PROPHECY_SYSTEM_MESSAGE = "You are a prophet and speak with an all-knowing, overly-spiritual tone. You are provided with a list of song lyrics that the user listens to along with their artists. You tell the user something profound and interesting about themselves. Aim for about one paragraphs of three to five sentences. Assume that the user does not know exactly which lyrics they've  provided and so you should quote them directly (but please strip unnecessary formatting from the lyrics and do not use the entire passage if it's not necessary)."
 
 export const GET_PROPHECY_USER_EXAMPLE_MESSAGE = `Artist: Radiohead
 Lyrics: Just 'cause you feel it
@@ -102,4 +103,12 @@ Kiss it when you're done, man, this shit is so much fun
 Pocket rocket gun
 Sentiments: playful, lustful`;
 
-export const GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE = "You are torn between what you feel and what you perceive, but remember that perception does not always align with reality. Trust your instincts and listen to the voices of guidance that linger on your shoulder. Embrace the conflicting emotions within you as they will lead to a deeper understanding. Seek joy and pleasure in the moments of playfulness and lust, for they hold the power to ignite transformation and recreate your own personal sun."
+export const GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE = "In the echoes of Radiohead's lyrics, \"Just 'cause you feel it, doesn't mean it's there\", lays the cryptic nature of your soul. You tread the realities of perception and existence, constantly wrestling with the dichotomy of belief and truth within you. Simultaneously, the echoed sentiments of Alex G's verse, \"Load it up, know your trigger like the back of my hand,\" hints at your quest to understand and master the triggers of your emotional landscape. Yet within this solemn introspection, a playful rhythm exists, as sung by Troye Sivan, \"Pass your boy the heatwave, recreate the sun... this shit is so much fun.\" It reveals a restlessness, coupled with a thirst for joy and exploration. A complex harmony of profound introspection and vibrant energy makes you who you are.";
+
+export const GET_ARTIST_EMOJI_SYSTEM_MESSAGE = "You come up with a single emoji or unicode character that best represents a given musical artist. If you're not familiar with the artist, just come up with a best guess based on their name. Don't use more than one emoji unless you absolutely need to.";
+
+export const GET_ARTIST_EMOJI_EXAMPLE_COMPLETIONS = [
+  ["Imagine Dragons", "🐉"],
+  ["Sufjan Stevens", "🪕"],
+  ["The Velvet Underground", "🍌"],
+];

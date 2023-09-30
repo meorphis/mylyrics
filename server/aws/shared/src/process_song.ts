@@ -1,5 +1,7 @@
 import {getLyrics} from "./integrations/genius";
-import {labelPassages, vectorizePassages} from "./integrations/open_ai/open_ai_integration";
+import {
+  getArtistEmoji, labelPassages, vectorizePassages
+} from "./integrations/open_ai/open_ai_integration";
 import {getSearchClient} from "./integrations/aws";
 import {uuidForPassage} from "./utility/uuid";
 import {LabeledPassage, Song, VectorizedAndLabeledPassage} from "./utility/types";
@@ -25,6 +27,14 @@ export const processSong = async (song: Song) => {
     return;
   }
 
+  if (song.album.image.url == null) {
+    console.log(
+      `no image found for song: ${song.primaryArtist.name}: ${song.name}`
+    )
+    await markSongAsNotIndexed({song, reason: "no_image"});
+    return;
+  }
+
   // lyrics from genius integration
   const getLyricsResponse = await getLyrics({song});
 
@@ -33,7 +43,7 @@ export const processSong = async (song: Song) => {
       // eslint-disable-next-line max-len
       `no lyrics found for song (${getLyricsResponse.reason}): ${song.primaryArtist.name}: ${song.name}`
     )
-    await markLyricsAsMissing({song, reason: getLyricsResponse.reason});
+    await markSongAsNotIndexed({song, reason: getLyricsResponse.reason});
     return;
   }
 
@@ -54,6 +64,22 @@ export const processSong = async (song: Song) => {
     getImageColors({url: song.album.image.url})
   ]);
 
+  if (passages.length === 0) {
+    console.log(
+      `no passages found for song: ${song.primaryArtist.name}: ${song.name}`
+    )
+    await markSongAsNotIndexed({song, reason: "no_passages"});
+    return;
+  }
+
+  if (colors == null) {
+    console.log(
+      `no colors found for song: ${song.primaryArtist.name}: ${song.name}`
+    )
+    await markSongAsNotIndexed({song, reason: "no_colors"});
+    return;
+  }
+
   console.log(`got analysis for song: ${JSON.stringify(
     {
       song,
@@ -67,15 +93,7 @@ export const processSong = async (song: Song) => {
   console.log(`got vectorized passages for song ${song.name} by ${song.primaryArtist.name}`);
 
   await addSongToSearch(
-    {
-      ...song,
-      album: {
-        ...song.album,
-        image: {
-          ...song.album.image,
-        }
-      },
-    },
+    song,
     {
       songSentiments,
       songLyrics: lyrics,
@@ -103,14 +121,18 @@ const addSongToDb = async (
   song: Song
 ): Promise<boolean>=> {
   const db = await getFirestoreDb();
-  const songDocRef = db.collection("songs").doc(song.id)
+  const songDocRef = db.collection("songs").doc(song.id);
+  const artistDocRef = db.collection("artists").doc(song.id);
 
-  return await db.runTransaction(async (transaction) => {
-    const songDoc = await transaction.get(songDocRef);
+  const result = await db.runTransaction(async (transaction) => {
+    const [songDoc, artistDoc] = await transaction.getAll(songDocRef, artistDocRef);
 
     if (songDoc.exists) {
       console.log(`song ${song.primaryArtist.name}: ${song.name} already exists in db`)
-      return false;
+      return {
+        songAdded: false,
+        artistAdded: false,
+      };
     }
 
     transaction.set(songDocRef, {
@@ -120,21 +142,33 @@ const addSongToDb = async (
       artistName: song.primaryArtist.name,
     });
 
-    transaction.set(db.collection("artists").doc(song.primaryArtist.id), {
-      artistId: song.primaryArtist.id,
-      artistName: song.primaryArtist.name,
-    }, {merge: true});
+    if (!artistDoc.exists) {
+      transaction.set(artistDocRef, {
+        artistId: song.primaryArtist.id,
+        artistName: song.primaryArtist.name,
+      });
+    }
 
     console.log(`added song ${song.primaryArtist.name}: ${song.name} to db`)
-    return true;
+    return {
+      songAdded: true,
+      artistAdded: !artistDoc.exists,
+    };
   });
+
+  if (result.artistAdded) {
+    const artistEmoji = getArtistEmoji({artistName: song.primaryArtist.name})
+    await artistDocRef.update({artistEmoji})
+  }
+
+  return result.songAdded;
 }
 
 
-// if we discover that a song's lyrics are missing from genius, we:
+// if we can't index a song for some reason, we need to:
 // - mark the song as missing lyrics
 // - delete any existing song listens, as these are no longer relevant for our purposes
-const markLyricsAsMissing = async (
+const markSongAsNotIndexed = async (
   {song, reason} : {song: Song, reason: string}
 ) => {
   const db = await getFirestoreDb();
@@ -146,9 +180,9 @@ const markLyricsAsMissing = async (
 
     const affectedUsers = songListenSnaps.docs.map((doc) => doc.data().userId);
 
-    // mark the lyrics as missing for the song
+    // mark the song as not indexed
     transaction.update(db.collection("songs").doc(song.id), {
-      lyricsMissingReason: reason,
+      songNotIndexedReason: reason,
     })
 
     // delete all the song listens
