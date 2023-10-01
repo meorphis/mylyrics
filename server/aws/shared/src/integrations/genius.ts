@@ -142,7 +142,6 @@ const getLyricsFromUrl = async (url: string): Promise<GetLyricsResponse> => {
     $(
       "a, b, i, em, strong, small, sub, sup, mark, ins, del, u",
       lyricsContainer
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     ).replaceWith((_i: unknown, el: unknown) => $(el).text());
 

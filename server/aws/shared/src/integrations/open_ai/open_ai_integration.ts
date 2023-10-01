@@ -175,7 +175,13 @@ const passagesToText = (passages: Recommendation[]): string => {
 }
 
 const passageToText = (passage: Recommendation): string => {
+  const sentiments = passage.bundleInfos
+    .filter(bi => bi.type === "sentiment")
+    // @ts-ignore
+    .map((bk) => bk.sentiment).join(", ")
+  const sentimentsText = sentiments.length > 0 ? `Sentiments: ${sentiments}` : "";
+
   return `Artist: ${passage.song.artists[0].name}
 Lyrics: ${passage.song.lyrics}
-Sentiments: ${passage.tags.map((tag) => tag.sentiment).join(", ")}`;
+${sentimentsText}`;
 }

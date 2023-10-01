@@ -1,177 +1,38 @@
-import SentimentEnumType from '../../types/sentiments';
+import {BundleInfo} from '../../types/bundle';
 
-export const allSentiments: SentimentEnumType[] = [
-  'affectionate',
-  'alienated',
-  'angry',
-  'appreciative',
-  'betrayed',
-  'bittersweet',
-  'carefree',
-  'celebratory',
-  'chaotic',
-  'conflicted',
-  'desperate',
-  'determined',
-  'disillusioned',
-  'dreamy',
-  'empowered',
-  'energetic',
-  'enigmatic',
-  'euphoric',
-  'excited',
-  'fearful',
-  'flirtatious',
-  'frustrated',
-  'haunting',
-  'heartbroken',
-  'hopeful',
-  'intimate',
-  'introspective',
-  'joyful',
-  'liberating',
-  'lonely',
-  'loyal',
-  'lustful',
-  'melancholic',
-  'nostalgic',
-  'obsessive',
-  'optimistic',
-  'passionate',
-  'peaceful',
-  'philosophical',
-  'playful',
-  'provocative',
-  'rebellious',
-  'reckless',
-  'regretful',
-  'resilient',
-  'romantic',
-  'seductive',
-  'sensual',
-  'spiritual',
-  'surreal',
-  'triumphant',
-  'violent',
-  'vulnerable',
-];
-
-export const bundleKeyDisplayName = (adjective: string | null) => {
-  switch (adjective) {
-    case 'affectionate':
-      return 'affection';
-    case 'alienated':
-      return 'alienation';
-    case 'angry':
-      return 'anger';
-    case 'appreciative':
-      return 'appreciation';
-    case 'betrayed':
-      return 'betrayal';
-    case 'bittersweet':
-      return 'bittersweetness';
-    case 'carefree':
-      return 'spontaneity';
-    case 'celebratory':
-      return 'celebration';
-    case 'chaotic':
-      return 'chaos';
-    case 'conflicted':
-      return 'turmoil';
-    case 'desperate':
-      return 'desperation';
-    case 'determined':
-      return 'determination';
-    case 'disillusioned':
-      return 'disillusion';
-    case 'dreamy':
-      return 'dreaminess';
-    case 'empowered':
-      return 'empowerment';
-    case 'energetic':
-      return 'energy';
-    case 'enigmatic':
-      return 'enigma';
-    case 'euphoric':
-      return 'euphoria';
-    case 'excited':
-      return 'excitement';
-    case 'fearful':
-      return 'fear';
-    case 'flirtatious':
-      return 'flirtatiousness';
-    case 'frustrated':
-      return 'frustration';
-    case 'haunting':
-      return 'haunting';
-    case 'heartbroken':
-      return 'heartbreak';
-    case 'hopeful':
-      return 'hope';
-    case 'intimate':
-      return 'intimacy';
-    case 'introspective':
-      return 'introspection';
-    case 'joyful':
-      return 'joy';
-    case 'liberating':
-      return 'liberation';
-    case 'likes':
-      return 'recent likes';
-    case 'lonely':
-      return 'loneliness';
-    case 'loyal':
-      return 'loyalty';
-    case 'lustful':
-      return 'lust';
-    case 'melancholic':
-      return 'melancholy';
-    case 'nostalgic':
-      return 'nostalgia';
-    case 'obsessive':
-      return 'obsession';
-    case 'optimistic':
-      return 'optimism';
-    case 'passionate':
-      return 'passion';
-    case 'peaceful':
-      return 'peace';
-    case 'philosophical':
-      return 'philosophy';
-    case 'playful':
-      return 'playfulness';
-    case 'provocative':
-      return 'provocation';
-    case 'rebellious':
-      return 'rebellion';
-    case 'reckless':
-      return 'recklessness';
-    case 'regretful':
-      return 'regret';
-    case 'resilient':
-      return 'resilience';
-    case 'romantic':
-      return 'romance';
-    case 'seductive':
-      return 'seduction';
-    case 'sensual':
-      return 'sensuality';
-    case 'spiritual':
-      return 'spirituality';
-    case 'surreal':
-      return 'surreality';
-    case 'triumphant':
-      return 'triumph';
-    case 'violent':
-      return 'violence';
-    case 'vulnerable':
-      return 'vulnerability';
-    default:
-      return adjective;
+export const getBundleDisplayName = (info: BundleInfo) => {
+  switch (info.type) {
+    case 'artist':
+      return `featured: ${info.artist.name}`;
+    case 'sentiment':
+      return info.sentiment;
+    case 'top':
+      return 'heavy rotation';
+    case 'user_made':
+      return info.title.length > 15
+        ? `${info.title.slice(0, 15)}...`
+        : info.title;
+    case 'singleton':
+      return null;
   }
 };
 
-export const sentimentToEmojiMap: Record<string, string> = {
+export const getBundleEmoji = (info: BundleInfo) => {
+  switch (info.type) {
+    case 'artist':
+      return info.artist.emoji;
+    case 'sentiment':
+      return sentimentToEmojiMap[info.sentiment];
+    case 'top':
+      return '🥇';
+    case 'user_made':
+      return null;
+    case 'singleton':
+      return null;
+  }
+};
+
+const sentimentToEmojiMap: Record<string, string> = {
   affectionate: '🥰',
   alienated: '👽',
   angry: '😡',
@@ -226,5 +87,4 @@ export const sentimentToEmojiMap: Record<string, string> = {
   triumphant: '🏆',
   violent: '🔫',
   vulnerable: '😳',
-  'top spins': '🥇',
 };

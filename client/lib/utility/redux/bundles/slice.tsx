@@ -16,11 +16,11 @@ export const bundlesSlice = createSlice({
   reducers: {
     addBundles: (state: BundlesState, action: PayloadAction<BundleType[]>) => {
       action.payload.forEach(bundle => {
-        if (bundle.bundleKey in state) {
-          throw Error(`${bundle.bundleKey} already exists in bundles state`);
+        if (bundle.info.key in state) {
+          throw Error(`${bundle.info.key} already exists in bundles state`);
         }
-        state.bundles[bundle.bundleKey] = bundle;
-        state.bundleKeyToPassageKey[bundle.bundleKey] =
+        state.bundles[bundle.info.key] = bundle;
+        state.bundleKeyToPassageKey[bundle.info.key] =
           bundle.passages[0]?.passageKey ?? null;
       });
     },
@@ -88,17 +88,23 @@ export const bundlesSlice = createSlice({
       const {bundleKey, passageKey} = action.payload;
 
       // TODO: clean this up
-      if (bundleKey === 'singleton_passage') {
-        state.bundles.singleton_passage = {
-          bundleKey: 'singleton_passage',
+      if (bundleKey === 'singleton') {
+        state.bundles.singleton = {
           passages: [action.payload],
-          creator: {type: 'machine'},
+          info: {
+            group: 'singleton',
+            key: 'singleton',
+            type: 'singleton',
+          },
         };
       } else {
-        state.bundles.singleton_passage = {
-          bundleKey: 'singleton_passage',
+        state.bundles.singleton = {
           passages: [],
-          creator: {type: 'machine'},
+          info: {
+            group: 'singleton',
+            key: 'singleton',
+            type: 'singleton',
+          },
         };
       }
 

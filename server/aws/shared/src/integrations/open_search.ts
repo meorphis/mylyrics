@@ -1,9 +1,13 @@
 import { getImageColors } from "../utility/image";
 import { addMetadataToPassage } from "../utility/recommendations";
-import { VALID_SENTIMENTS, VALID_SENTIMENTS_SET } from "../utility/sentiments";
 import { 
-  Artist, LabeledPassage, Recommendation, RecommendationType, Song, IndexedSong
+  SENTIMENT_TO_GROUP,
+  VALID_SENTIMENTS, VALID_SENTIMENTS_SET, getSentimentValue 
+} from "../utility/sentiments";
+import { 
+  Artist, LabeledPassage, Recommendation, RecommendationType, Song, IndexedSong, BundleInfo
 } from "../utility/types";
+import { uuidForPassage } from "../utility/uuid";
 import { getSearchClient } from "./aws";
 import { getFirestoreDb } from "./firebase";
 import { vectorizeSearchTerm } from "./open_ai/open_ai_integration";
@@ -28,7 +32,7 @@ type RawPassageResult = {
 }
 
 const NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS = 5;
-const NUMBER_OF_RECOMMENDATIONS_FOR_TOP_SPINS = 10;
+const NUMBER_OF_RECOMMENDATIONS_FOR_TOP_TRACKS = 10;
 const NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 10;
 
 // *** PUBLIC INTERFACE ***
@@ -49,7 +53,6 @@ export const getDailyRecommendations = async (
 ): Promise<{
   recommendations: Recommendation[],
   featuredArtist: Artist | null,
-  featuredArtistEmoji: string | null,
 }> => {
   const db = await getFirestoreDb();
 
@@ -88,7 +91,7 @@ export const getDailyRecommendations = async (
     excludeArtistName: featuredArtist?.name ?? null
   });
 
-  const recommendations = await getSearchResultsForSentiments(
+  const sentimentSearchResults = await getSearchResultsForSentiments(
     {
       userId,
       sentiments: recommendedSentiments,
@@ -100,14 +103,49 @@ export const getDailyRecommendations = async (
     }
   );
 
+  const getSentimentBundleInfos = (passage: LabeledPassage): BundleInfo[] => {
+    return passage.sentiments.map((sentiment) => {
+      return {
+        type: "sentiment",
+        key: sentiment,
+        sentiment,
+        group: SENTIMENT_TO_GROUP[sentiment],
+        value: getSentimentValue(sentiment),
+      } as BundleInfo
+    })
+  }
+
   return {
-    recommendations: await parseSearchResults({results: [
-      ...artistSearchResults,
-      ...topPassageSearchResults,
-      ...recommendations,
-    ]}),
+    recommendations: [
+      ...parseSearchResults({
+        results: topPassageSearchResults,
+        getBundleInfos: (passage: LabeledPassage) => [
+          {type: "top", group: "essentials", key: "top"},
+          ...getSentimentBundleInfos(passage)
+        ]
+      }),
+      ...(artistSearchResults ? parseSearchResults({
+        results: artistSearchResults,
+        getBundleInfos: (passage: LabeledPassage) => [{
+          type: "artist",
+          key: "artist",
+          group: "essentials",
+          artist: {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            name: featuredArtist!.name,
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            emoji: featuredArtistEmoji!,
+          }
+        },
+        ...getSentimentBundleInfos(passage)
+        ]
+      }) : []),
+      ...parseSearchResults({
+        results: sentimentSearchResults,
+        getBundleInfos: getSentimentBundleInfos,
+      }),
+    ],
     featuredArtist,
-    featuredArtistEmoji,
   };
 }
 
@@ -149,14 +187,15 @@ export const lookupPassage = async (
     sentiments: [],
   });
 
-  return (await parseSearchResults({results: [{
-    song,
-    passage,
-    score: 0,
-    type: "lookup"
-  }]
-  })
-  )[0];
+  return parseSearchResults({
+    results: [{
+      song,
+      passage,
+      score: 0,
+      type: "lookup"
+    }],
+    getBundleInfos: () => [],
+  })[0];
 }
 
 // does a semantic (vector) search across a user's recent listens to find passages that
@@ -259,10 +298,13 @@ export const getSemanticMatchesForTerm = async (
         name: song.name,
         lyrics: song.lyrics,
       },
-      tags: passage.sentiments.map((sentiment) => {
+      bundleInfos: passage.sentiments.map((sentiment) => {
         return {
           type: "sentiment",
+          key: sentiment,
           sentiment,
+          group: SENTIMENT_TO_GROUP[sentiment],
+          value: getSentimentValue(sentiment),
         }
       }),
       score,
@@ -450,7 +492,7 @@ const getSearchResultsForArtist = async (
   {
     artistName: string
   }
-) => {
+): Promise<SearchResult[]> => {
   const searchClient = getSearchClient();
   const query = {
     index: "song-lyric-songs",
@@ -484,8 +526,8 @@ const getSearchResultsForArtist = async (
 
   return parseRawSongResults({
     results: results.body.hits.hits,
-    choosePassageFn: (passages) => passages[Math.floor(Math.random() * passages.length)],
-    type: "featured_artist",
+    choosePassageFn: (_, passages) => passages[Math.floor(Math.random() * passages.length)],
+    type: "artist",
   }).map((r) => (
     // the score from the query is random, so we replace it with the popularity score
     {...r, score: r.song.popularity}
@@ -504,22 +546,26 @@ const getSearchResultsForTopPassages = async (
     topArtistNames: string[],
     excludeArtistName: string | null
   }
-) => {
+): Promise<SearchResult[]> => {
   const db = await getFirestoreDb();
   const searchClient = getSearchClient();
-  const impressionsSnap = await db.collection("user-impressions").doc(`${userId}-top`).get()
-  const impressionsSet = new Set((impressionsSnap.data()?.value || []).slice(0, 50));
+  const [songImpressionsSnap, passageImpressionsSnap] = await db.getAll(
+    db.collection("user-impressions").doc(`${userId}-top`),
+    db.collection("user-impressions").doc(`${userId}-top-passages`)
+  );
+  const impressionsSet = new Set((songImpressionsSnap.data()?.value || []).slice(0, 50));
+  const passageImpressionsSet = new Set(passageImpressionsSnap.data()?.value || []);
 
   const periodToPoints: {[key: string]: number} = {
-    yesterday: 64,
-    "daysago-2": 32,
-    "daysago-3": 24,
+    yesterday: 256,
+    "daysago-2": 64,
+    "daysago-3": 32,
     "daysago-4": 16,
-    "daysago-5": 12,
-    "daysago-6": 8,
-    "daysago-7": 4,
-    "daysago-8": 2,
-    "longerAgo": 1
+    "daysago-5": 8,
+    "daysago-6": 4,
+    "daysago-7": 2,
+    "daysago-8": 1,
+    "longerAgo": 0.25,
   }
 
   const songToPoints: {[key: string]: number} = {};
@@ -607,14 +653,26 @@ const getSearchResultsForTopPassages = async (
 
   const results = parseRawSongResults({
     results: queryOutput.body.hits.hits,
-    choosePassageFn: (passages) => passages[Math.floor(Math.random() * passages.length)],
-    type: "top_passage",
+    choosePassageFn: (song, passages) => {
+      const unseenPassages = passages.filter((p) => {
+        return !passageImpressionsSet.has(uuidForPassage({
+          lyrics: p.lyrics,
+          songName: song.name,
+          artistName: song.primaryArtist.name,
+        }));
+      })
+
+      const eligiblePassages = unseenPassages.length > 0 ? unseenPassages : passages;
+
+      return eligiblePassages[Math.floor(Math.random() * eligiblePassages.length)]
+    },
+    type: "top",
   });
 
   // of the 50 results, return 10 trying to capture a diversity of artists
   const numUniqueArtists = new Set(results.map((result) => result.song.primaryArtist.id)).size;
   const maxNumResultsPerArtist = Math.ceil(
-    NUMBER_OF_RECOMMENDATIONS_FOR_TOP_SPINS / numUniqueArtists
+    NUMBER_OF_RECOMMENDATIONS_FOR_TOP_TRACKS / numUniqueArtists
   );
   const artistToNumResults = new Map();
   return results.reduce((acc, result) => {
@@ -625,14 +683,7 @@ const getSearchResultsForTopPassages = async (
       acc.push(result);
     }
     return acc;
-  }, [] as SearchResult[]).slice(0, NUMBER_OF_RECOMMENDATIONS_FOR_TOP_SPINS).map((r) => {
-    // because we often show repeat content, we want to mix up the order to keep things
-    // interesting
-    return {
-      ...r,
-      score: Math.random(),
-    }
-  });
+  }, [] as SearchResult[]).slice(0, NUMBER_OF_RECOMMENDATIONS_FOR_TOP_TRACKS);
 }
 
 // term to insert into queries to make sure that songs and artists that have been listened to
@@ -815,10 +866,14 @@ const getBoostsTerm = (
   return ret;
 }
 
-const parseSearchResults = async (
-  {results}: {results: SearchResult[]}
-): Promise<Recommendation[]> => {
-  const typeOrder = ["top_passage", "sentiment", "featured_artist", "lookup", "semantic_search"];
+const parseSearchResults = (
+  {results, getBundleInfos}:
+  {results: SearchResult[], getBundleInfos: (p: LabeledPassage) => BundleInfo[]}
+): Recommendation[] => {
+  // this order only currently comes into play when we are generating notifications - in the UI
+  // these categories currently are not shown together in the same views
+  const typeOrder: RecommendationType[] = 
+    ["top", "artist", "sentiment", "lookup", "semantic_search"];
 
   const sortedFilteredResults = results.sort((a, b) => {
     const typeOrderDiff = typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
@@ -829,15 +884,7 @@ const parseSearchResults = async (
     return b.score - a.score
   });
 
-  const startImageDownload = Date.now();
-  const colors = await Promise.all(sortedFilteredResults.map(async (passage) => {
-    const {album} = passage.song;
-    const {image} = album;
-    return await getImageColors({url: image.url});
-  }));
-  console.log(`took ${Date.now() - startImageDownload}ms to download and parse images`);
-
-  return sortedFilteredResults.map(({song, passage, score, type}, idx) => {
+  return sortedFilteredResults.map(({song, passage, score, type}) => {
     return {
       lyrics: passage.lyrics,
       song: {
@@ -846,7 +893,7 @@ const parseSearchResults = async (
           name: song.album.name,
           image: {
             url: song.album.image.url,
-            colors: colors[idx],
+            colors: song.album.image.colors,
           }
         },
         artists: song.artists.map((artist) => {
@@ -858,12 +905,7 @@ const parseSearchResults = async (
         name: song.name,
         lyrics: song.lyrics,
       },
-      tags: passage.sentiments.map((sentiment) => {
-        return {
-          type: "sentiment",
-          sentiment,
-        }
-      }),
+      bundleInfos: getBundleInfos(passage),
       score,
       type,
     }
@@ -971,7 +1013,7 @@ const getRecommendationsForSentimentsInner = async (
 
   return parseRawSongResults({
     results: results.body.hits.hits,
-    choosePassageFn: (passages) => selectOptimalPassage({passages, sentiments}),
+    choosePassageFn: (_, passages) => selectOptimalPassage({passages, sentiments}),
     type: "sentiment",
   });
 }
@@ -1082,7 +1124,7 @@ const parseRawSongResults = (
   {results, choosePassageFn, type}:
   {
     results: RawSongResult[],
-    choosePassageFn: (passages: LabeledPassage[]) => LabeledPassage,
+    choosePassageFn: (song: Omit<Song, "id">, passages: LabeledPassage[]) => LabeledPassage,
     type: RecommendationType,
   }
 ): SearchResult[] => {
@@ -1090,7 +1132,7 @@ const parseRawSongResults = (
     (result) => {
       const {_id: songId, _score: score, _source: {passages, ...song}} = result;
       // we have no preference for which passage to show, so just pick one at random
-      const passage = choosePassageFn(passages);
+      const passage = choosePassageFn(song, passages);
       return {
         song: {
           id: songId,

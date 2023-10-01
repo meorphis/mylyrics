@@ -12,31 +12,11 @@ export const getUserRecentlyPlayedSongs = async (
   const sp = getSpotifyClient(spotifyAccessToken);
 
   const spotifyResponse = await sp.getMyRecentlyPlayedTracks(
-    {after: lastCheckedRecentPlaysAt, limit: 25}
+    {after: lastCheckedRecentPlaysAt, limit: 50}
   );
   return spotifyResponse.body.items.map((item) => {
-    const artists = item.track.artists.map((artist) => {
-      return {
-        id: uuidForArtist({artistName: artist.name}),
-        name: artist.name,
-        spotifyId: artist.id,
-      }
-    });
-
     return {
-      song: {
-        id: uuidForSong({songName: item.track.name, artistName: artists[0].name}),
-        name: item.track.name,
-        popularity: item.track.popularity,
-        isrc: item.track.external_ids.isrc,
-        spotifyId: item.track.id,
-        isExplicit: item.track.explicit,
-        artists,
-        primaryArtist: artists[0],
-        album: {
-          spotifyId: item.track.album.id,
-        }
-      },
+      song: getSimplifiedSongFromSpotifyTrack(item.track),
       metadata: {
         playedAt: new Date(item.played_at).getTime(),
         playedFrom: item.context?.type,
@@ -61,22 +41,18 @@ export const getEnrichedSongs = async (
   // eslint-disable-next-line max-len
   console.log(`querying the spotify api for ${artistsIds.length} artists, ${albumIds.length} albums, and ${trackIds.length} tracks`);
   
-  const [artists, albums, audioFeatures] = await Promise.all([
+  const [artists, albums] = await Promise.all([
     batchRequests<SpotifyApi.MultipleArtistsResponse, SpotifyApi.ArtistObjectFull>(
       artistsIds, sp.getArtists.bind(sp), 50, body => body.artists
     ),
     batchRequests<SpotifyApi.MultipleAlbumsResponse, SpotifyApi.AlbumObjectFull>(
       albumIds, sp.getAlbums.bind(sp), 20, body => body.albums
     ),
-    batchRequests<SpotifyApi.MultipleAudioFeaturesResponse, SpotifyApi.AudioFeaturesObject>(
-      trackIds, sp.getAudioFeaturesForTracks.bind(sp), 100, body => body.audio_features
-    ),
   ]);
 
-  return simplifiedSongs.map((song, i) => {
+  return simplifiedSongs.map((song) => {
     const album = albums.find((album) => album.id == song.album.spotifyId);
     const artist = artists.find((artist) => artist.id == song.primaryArtist.spotifyId);
-    const audioFeatureMap = audioFeatures[i];
 
     if (album == null) {
       throw new Error(
@@ -92,17 +68,6 @@ export const getEnrichedSongs = async (
     
     return {
       ...song,
-      features: {
-        acousticness: audioFeatureMap.acousticness,
-        danceability: audioFeatureMap.danceability,
-        energy: audioFeatureMap.energy,
-        instrumentalness: audioFeatureMap.instrumentalness,
-        liveness: audioFeatureMap.liveness,
-        loudness: audioFeatureMap.loudness,
-        speechiness: audioFeatureMap.speechiness,
-        tempo: audioFeatureMap.tempo,
-        valence: audioFeatureMap.valence,
-      },
       artists: song.artists,
       primaryArtist: {
         ...song.primaryArtist,
@@ -129,36 +94,22 @@ export const getTopSongsForArtist = async (
     artistSpotifyId, "US"
   );
 
-  return artistTopTracksResponse.body.tracks.map((track) => {
-    const artists = track.artists.map((artist) => {
-      return {
-        id: uuidForArtist({artistName: artist.name}),
-        name: artist.name,
-        spotifyId: artist.id,
-      }
-    });
-
-    return {
-      id: uuidForSong({songName: track.name, artistName: artists[0].name}),
-      name: track.name,
-      popularity: track.popularity,
-      spotifyId: track.id,
-      isExplicit: track.explicit,
-      isrc: track.external_ids.isrc,
-      artists,
-      primaryArtist: artists[0],
-      album: {
-        spotifyId: track.album.id,
-      }
-    }
-  })
+  return artistTopTracksResponse.body.tracks.map(getSimplifiedSongFromSpotifyTrack);
 }
 
+
+
 export const getTopArtistsForUser = async (
-  {spotifyAccessToken, limit = 20}: {spotifyAccessToken: string, limit?: number}
+  {
+    spotifyAccessToken, limit = 20, time_range = "short_term"
+  }: {
+    spotifyAccessToken: string,
+    limit?: number,
+    time_range?: "short_term" | "medium_term" | "long_term"
+  }
 ): Promise<Artist[]> => {
   const sp = getSpotifyClient(spotifyAccessToken);
-  const topArtistsResponse = await sp.getMyTopArtists({limit, time_range: "short_term"});
+  const topArtistsResponse = await sp.getMyTopArtists({limit, time_range});
 
   return topArtistsResponse.body.items.map((artist) => {
     return {
@@ -170,11 +121,48 @@ export const getTopArtistsForUser = async (
   });
 }
 
+export const getTopTracksForUser = async (
+  {
+    spotifyAccessToken, time_range = "short_term"
+  }: {
+    spotifyAccessToken: string,
+    time_range?: "short_term" | "medium_term" | "long_term"
+  }
+): Promise<SimplifiedSong[]> => {
+  const sp = getSpotifyClient(spotifyAccessToken);
+  const topTracksResponse = await sp.getMyTopTracks({limit: 50, time_range});
+  return topTracksResponse.body.items.map(getSimplifiedSongFromSpotifyTrack);
+}
+
 // client for Spotify
 const getSpotifyClient = (accessToken: string) => {
   const sp = new SpotifyWebApi();
   sp.setAccessToken(accessToken);
   return sp;
+}
+
+const getSimplifiedSongFromSpotifyTrack = (track: SpotifyApi.TrackObjectFull): SimplifiedSong => {
+  const artists = track.artists.map((artist) => {
+    return {
+      id: uuidForArtist({artistName: artist.name}),
+      name: artist.name,
+      spotifyId: artist.id,
+    }
+  });
+
+  return {
+    id: uuidForSong({songName: track.name, artistName: artists[0].name}),
+    name: track.name,
+    popularity: track.popularity,
+    isrc: track.external_ids.isrc,
+    spotifyId: track.id,
+    isExplicit: track.explicit,
+    artists,
+    primaryArtist: artists[0],
+    album: {
+      spotifyId: track.album.id,
+    }
+  }
 }
 
 interface SpotifyResponse<T> {

@@ -12,7 +12,7 @@ export const initializeUser = async (
   await processOneUser({
     userId,
     userData,
-    includeTopArtists: true
+    includeTopContent: true
   });
 
   const timestamp = new Date(Date.now());

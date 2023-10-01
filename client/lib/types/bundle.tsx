@@ -1,5 +1,47 @@
 import {PassageType} from './passage';
 
+// metadata attached to a bundle
+export type BundleInfo =
+  | {
+      type: 'sentiment';
+      key: string;
+      sentiment: string;
+      group: string;
+      value: 'positive' | 'negative' | 'mixed';
+    }
+  | {
+      type: 'top';
+      key: 'top';
+      group: 'essentials';
+    }
+  | {
+      type: 'artist';
+      key: string;
+      group: 'essentials';
+      artist: {
+        name: string;
+        emoji: string;
+      };
+    }
+  | {
+      type: 'user_made';
+      key: string;
+      group: 'user_made';
+      title: string;
+      creator: {
+        id: string;
+        nickname: string;
+      };
+      recipient?: {
+        nickname: string;
+      };
+    }
+  | {
+      type: 'singleton';
+      key: 'singleton';
+      group: 'singleton';
+    };
+
 // a passage that is part of a bundle
 export type BundlePassageType = PassageType & {
   bundleKey: string;
@@ -8,22 +50,8 @@ export type BundlePassageType = PassageType & {
 
 // a deck of lyric passages with metadata
 export type BundleType = {
-  bundleKey: string;
-  creator:
-    | {
-        type: 'user';
-        id: string;
-        nickname: string;
-      }
-    | {
-        type: 'machine';
-      };
   passages: BundlePassageType[];
-  groupName?: string;
-  title?: string;
-  recipient?: {
-    nickname: string;
-  };
+  info: BundleInfo;
   sortOrder?: 'asc' | 'desc';
 };
 

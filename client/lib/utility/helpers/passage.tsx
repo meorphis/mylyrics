@@ -1,13 +1,20 @@
-import {PassageType, RawPassageType} from '../../types/passage';
+import {
+  PassageType,
+  RawPassageType,
+  RawPassageTypeType,
+} from '../../types/passage';
 import {getThemeFromAlbumColors} from './theme';
 import {v5 as uuidv5} from 'uuid';
 import {CacheManager} from '@georstat/react-native-image-cache';
+import {BundleInfo} from '../../types/bundle';
 
 // takes a passages as stored in the DB and converts it to the format expected by
 // the UI by hydrating it with an image blob, a theme, and a key
 export const hydratePassage = async (
   rawPassage: RawPassageType,
-): Promise<PassageType & {bundleKeys: string[]}> => {
+): Promise<
+  PassageType & {bundleInfos: BundleInfo[]; type: RawPassageTypeType}
+> => {
   const blob = await fetchImageBlob(rawPassage.song.album.image.url);
   const theme = getThemeFromAlbumColors(rawPassage.song.album.image.colors);
 
@@ -29,6 +36,7 @@ export const hydratePassage = async (
 };
 
 // generates a unique id for a passage based on its song id and lyrics
+// needs to have the same output as the uuidForPassage function on the server side
 export const getPassageId = (passage: RawPassageType | PassageType): string => {
   return uuidv5(
     passage.song.id + passage.lyrics,

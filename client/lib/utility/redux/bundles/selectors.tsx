@@ -1,6 +1,7 @@
 import {useSelector} from 'react-redux';
 import {RootState} from '..';
 import _ from 'lodash';
+import {BundleInfo} from '../../../types/bundle';
 
 // gets all of the passages in a bundle
 export const useBundle = ({bundleKey}: {bundleKey: string}) => {
@@ -21,20 +22,17 @@ export const useAllBundleKeys = () => {
   }, _.isEqual);
 };
 
-// gets all bundle keys grouped by the group names of their bundles
-export const useGroupedBundleKeys = () => {
+// gets all bundle infos grouped by the group names of their bundles
+export const useGroupedBundleInfos = () => {
   return useSelector((state: RootState) => {
-    const groups: {[key: string]: string[]} = {};
+    const groups: {[key: string]: BundleInfo[]} = {};
 
-    Object.keys(state.bundles.bundles).forEach(bundleKey => {
-      const bundle = state.bundles.bundles[bundleKey];
-      const groupName = bundle.groupName;
-      if (groupName) {
-        if (!groups[groupName]) {
-          groups[groupName] = [];
-        }
-        groups[groupName].push(bundleKey);
+    Object.values(state.bundles.bundles).forEach(bundle => {
+      const group = bundle.info.group;
+      if (!groups[group]) {
+        groups[group] = [];
       }
+      groups[group].push(bundle.info);
     });
 
     return groups;

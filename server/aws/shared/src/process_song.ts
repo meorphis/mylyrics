@@ -142,12 +142,12 @@ const addSongToDb = async (
       artistName: song.primaryArtist.name,
     });
 
-    if (!artistDoc.exists) {
-      transaction.set(artistDocRef, {
-        artistId: song.primaryArtist.id,
-        artistName: song.primaryArtist.name,
-      });
-    }
+    const artistData = artistDoc.data();
+    transaction.set(artistDocRef, {
+      artistId: song.primaryArtist.id,
+      artistName: song.primaryArtist.name,
+      numIndexedSongs: artistData ? artistData.numIndexedSongs + 1 : 1,
+    });
 
     console.log(`added song ${song.primaryArtist.name}: ${song.name} to db`)
     return {

@@ -57,17 +57,6 @@ export type Song = {
     spotifyId: string,
     isExplicit: boolean,
     isrc: string | undefined,
-    features: {
-        acousticness: number,
-        danceability: number,
-        energy: number,
-        instrumentalness: number,
-        liveness: number,
-        loudness: number,
-        speechiness: number,
-        tempo: number,
-        valence: number,
-    },
     artists: SimplifiedArtist[],
     primaryArtist: Artist,
     album: AlbumWithoutColors,
@@ -114,7 +103,27 @@ export type IndexedSong = Song & {
 }
 
 export type RecommendationType = 
-    "featured_artist" | "top_passage" | "sentiment" | "lookup" | "semantic_search";
+    "artist" | "top" | "sentiment" | "lookup" | "semantic_search";
+
+export type BundleInfo = {
+    type: "sentiment",
+    key: string,
+    sentiment: string,
+    group: string;
+    value: "positive" | "mixed" | "negative",
+} | {
+    type: "top",
+    key: string,
+    group: "essentials"
+} | {
+    type: "artist",
+    key: string,
+    group: "essentials",
+    artist: {
+        name: string,
+        emoji: string,
+    }
+}
 
 export type Recommendation = {
     lyrics: string,
@@ -134,10 +143,7 @@ export type Recommendation = {
         name: string,
         lyrics: string,
     },
-    tags: {
-        type: "sentiment",
-        sentiment: string,
-    }[],
+    bundleInfos: BundleInfo[],
     score: number,
     type: RecommendationType,
 }

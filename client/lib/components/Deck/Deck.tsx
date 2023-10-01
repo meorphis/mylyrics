@@ -74,7 +74,7 @@ const Deck = (props: Props) => {
 
   return (
     <React.Fragment>
-      {isActiveBundle && bundle.creator.type === 'user' && (
+      {isActiveBundle && bundle.info.type === 'user_made' && (
         <AnimatedThemeText />
       )}
 

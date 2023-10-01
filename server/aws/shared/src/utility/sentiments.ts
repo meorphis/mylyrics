@@ -522,7 +522,7 @@ export const SENTIMENT_TO_GROUP = Object.values(SENTIMENT_VALUES).reduce(
 
 export const VALID_SENTIMENTS = Object.keys(SENTIMENT_VALUES);
 export const VALID_SENTIMENTS_SET = new Set(VALID_SENTIMENTS);
-export const NEGATIVE_SENTIMENTS = Object.values(SENTIMENT_VALUES).filter(
-  (sentiment) => sentiment.value === "negative"
-).map((sentiment) => sentiment.name);
-export const NEGATIVE_SENTIMENTS_SET = new Set(NEGATIVE_SENTIMENTS);
+
+export const getSentimentValue = (sentiment: string) => {
+  return SENTIMENT_VALUES[sentiment].value;
+}

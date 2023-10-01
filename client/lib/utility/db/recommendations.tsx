@@ -17,6 +17,7 @@ import {RawPassageType} from '../../types/passage';
 import {setProphecy} from '../redux/prophecy/slice';
 import {getBundlesFromFlatPassages} from '../helpers/recommendations';
 import {addBundles, setActiveBundlePassage} from '../redux/bundles/slice';
+import {CacheManager} from '@georstat/react-native-image-cache';
 
 // returns a function to get make a request along with the result of that request;
 // the request gets the user's recommendations from the database fetches image data
@@ -95,7 +96,18 @@ export const updateImpressions = async ({
     let itemsAdded = false;
     passages.forEach(rec => {
       const songId = rec.song.id;
-      rec.bundleKeys.forEach(bundleKey => {
+
+      let keys: string[] = [];
+      if (rec.type === 'top') {
+        keys = ['top'];
+      } else if (rec.type === 'sentiment') {
+        keys = rec.bundleInfos
+          .filter(bi => bi.type === 'sentiment')
+          //@ts-ignore
+          .map(bi => bi.sentiment);
+      }
+
+      keys.forEach(bundleKey => {
         if (impressions[bundleKey] == null) {
           impressions[bundleKey] = [];
         }
@@ -126,14 +138,16 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
 
     const data = docSnap.data();
 
-    const {flatRecommendations, bundleGroups} = transformData(data);
+    const recommendations = data.recommendations as RawPassageType[];
+    const sentiments = data.sentiments as string[];
     const prophecy = data.prophecy as string;
 
-    updateImpressions({deviceId, passages: flatRecommendations});
+    updateImpressions({deviceId, passages: recommendations});
 
+    await CacheManager.clearCache();
     const bundles = await getBundlesFromFlatPassages(
-      flatRecommendations,
-      bundleGroups,
+      recommendations,
+      sentiments,
     );
 
     dispatch(addBundles(bundles));
@@ -144,49 +158,4 @@ const useSetupRecommendations = ({deviceId}: {deviceId: string}) => {
   };
 
   return setupRecommendations;
-};
-
-// a temporary function to transform the format currently saved by the server into the format
-// that we will soon migrate to
-const transformData = (data: DocumentData) => {
-  let featuredArtist = null;
-
-  const flatRecommendations = data.recommendations.map((r: any) => {
-    const bundleKeys = r.tags.map(
-      ({sentiment}: {sentiment: string}) => sentiment,
-    );
-    if (r.type === 'top_passage') {
-      bundleKeys.push('top spins');
-    }
-    if (r.type === 'featured_artist') {
-      featuredArtist = r.song.artists[0].name.toLowerCase();
-      bundleKeys.push(featuredArtist);
-    }
-    return {
-      ...r,
-      bundleKeys,
-    } as RawPassageType;
-  }) as RawPassageType[];
-
-  const bundleGroups = (
-    data.sentiments as {
-      group: string;
-      sentiments: string[];
-    }[]
-  ).map(({group, sentiments}) => {
-    return {
-      groupName: group,
-      bundleKeys: sentiments,
-    };
-  });
-
-  bundleGroups.push({
-    groupName: 'essentials',
-    bundleKeys: ['top spins', ...(featuredArtist ? [featuredArtist] : [])],
-  });
-
-  return {
-    flatRecommendations,
-    bundleGroups,
-  };
 };

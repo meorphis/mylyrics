@@ -51,18 +51,19 @@ export const useBundleLink = () => {
       const {passages: rawPassages, creator, title} = data;
       const passages = await Promise.all(rawPassages.map(hydratePassage));
       const bundle: BundleType = {
-        bundleKey,
         passages: passages.map((p, idx) => ({
           ...p,
           bundleKey: bundleKey!,
           sortKey: idx,
         })),
-        creator: {
-          ...creator,
-          type: 'user',
+        info: {
+          key: bundleKey!,
+          type: 'user_made',
+          group: 'user_made',
+          creator,
+          recipient: data.recipient,
+          title,
         },
-        recipient: data.recipient,
-        title,
       };
 
       dispatch(addBundles([bundle]));

@@ -97,7 +97,7 @@ const DecksCarousel = () => {
           if (bundleKey === null) {
             return <React.Fragment />;
           }
-          if (bundleKey === 'singleton_passage') {
+          if (bundleKey === 'singleton') {
             return <SingletonLyricCard key={bundleKey as string} />;
           }
           return (

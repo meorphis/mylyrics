@@ -12,8 +12,7 @@ const LyricCardComponent = WithSharedTransitionKey(LyricCard);
 export const SingletonLyricCard = () => {
   console.log('rendering SingletonPassageItem');
 
-  const singletonPassage = useBundle({bundleKey: 'singleton_passage'})
-    .passages[0];
+  const singletonPassage = useBundle({bundleKey: 'singleton'}).passages[0];
   const {deckHeight, marginHorizontal, deckMarginTop, itemMarginTop} =
     useLyricCardSize();
 

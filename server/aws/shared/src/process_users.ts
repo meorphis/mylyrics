@@ -1,9 +1,10 @@
 import {getFreshSpotifyResponse} from "./integrations/spotify/spotify_auth";
 import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 import { sqs } from "./integrations/aws";
-import { Song, SimplifiedSong, SongListen } from "./utility/types";
+import { Song, SimplifiedSong, SongListen, Artist } from "./utility/types";
 import { 
-  getEnrichedSongs, getTopArtistsForUser, getTopSongsForArtist, getUserRecentlyPlayedSongs,
+  getEnrichedSongs, getTopArtistsForUser, getTopSongsForArtist,
+  getTopTracksForUser, getUserRecentlyPlayedSongs,
 } from "./integrations/spotify/spotify_data";
 import { getFirestoreDb } from "./integrations/firebase";
 import { DocumentData } from "firebase-admin/firestore";
@@ -14,6 +15,11 @@ import stringSimilarity from "string-similarity-js";
 // when we've never indexed any data for an artist, we add several top tracks (in addition to the
 // currently playing song) to seed
 const MAX_SONGS_PER_ARTIST = 5;
+
+// it's unclear exactly what Spotify's rate limit is, but we'll be conservative here - we can't
+// batch requests to the getArtistTopTracks endpoint, so these calls end up counting a lot against
+// our rate limit
+const MAX_ARTISTS_PER_RUN = 25;
 
 // *** PUBLIC INTERFACE ***
 // for each user in the database that matches our "minute" seed, we run processOneUser
@@ -61,9 +67,11 @@ export const processUsers = async ({minute}: {minute: number}) => {
 //     queue 
 // - we also add the each song's artist's top tracks to the processing queue if we haven't seen the 
 //    artist before
+// - if includeTopContent is true, we also add the user's top tracks and tracks from their top
+//    artists to the processing queue
 export const processOneUser = async (
-  {userId, userData, includeTopArtists = false}:
-  {userId: string, userData: DocumentData, includeTopArtists?: boolean}
+  {userId, userData, includeTopContent = false}:
+  {userId: string, userData: DocumentData, includeTopContent?: boolean}
 ) => {  
   console.log(`processing user ${userId}`);
 
@@ -110,7 +118,41 @@ export const processOneUser = async (
     return;
   }
 
-  const topArtists = includeTopArtists ? await getTopArtistsForUser({spotifyAccessToken}) : [];
+  let topArtists: Artist[] = [];
+  let topTracks: SimplifiedSong[] = [];
+  if (includeTopContent) {
+    const [ta, ...tt] = await Promise.all([
+      getTopArtistsForUser({spotifyAccessToken}),
+      getTopTracksForUser({spotifyAccessToken, time_range: "short_term"}),
+      getTopTracksForUser({spotifyAccessToken, time_range: "medium_term"}),
+      getTopTracksForUser({spotifyAccessToken, time_range: "long_term"}),
+    ]);
+
+    topArtists = ta;
+
+    const seenTracks = new Set();
+    topTracks = tt.flat().filter((t) => {
+      if (seenTracks.has(t.id)) {
+        return false;
+      }
+      seenTracks.add(t.id);
+      return true;
+    });
+  }
+
+  // can treat the top tracks as recent listens, since we know the user listened to them
+  // at some point
+  recentListens.push(
+    ...topTracks.map((t) => {
+      return {
+        song: t,
+        metadata: {
+          playedAt: 0,
+          playedFrom: "unknown",
+        }
+      }
+    }
+    ));
 
   const allArtistIds = Array.from(new Set([
     ...recentListens.map((l) => l.song.primaryArtist.id),
@@ -162,7 +204,7 @@ export const processOneUser = async (
   console.log(`getting top songs for ${artistsWithoutIndexedSongs.length} artists`);
 
   const topSongsForArtists = (await Promise.all(
-    artistsWithoutIndexedSongs.map((artist) => getTopSongsForArtist({
+    artistsWithoutIndexedSongs.slice(0, MAX_ARTISTS_PER_RUN).map((artist) => getTopSongsForArtist({
       artistSpotifyId: artist.spotifyId,
       spotifyAccessToken,
     }))
@@ -227,7 +269,10 @@ const getIndexedArtistIds = async (artistIds: string[]) => {
     "artistId", "in", artistIds
   ).get();
 
-  return artistsIndexed.docs.map((d) => d.data().artistId);
+  // consider an artist indexed if they have at least 3 songs indexed
+  return artistsIndexed.docs.filter(
+    d => (d.data().numIndexedSongs ?? 0) > 3).map((d) => d.data().artistId
+  );
 }
 
 const getIndexedSongInfo = async (songIds: string[]) => {

@@ -2,7 +2,7 @@ import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getFirestoreDb } from "./integrations/firebase";
 import { getScoredSentiments, getDailyRecommendations } from "./integrations/open_search";
 import { 
-  GROUP_TO_SENTIMENTS, NEGATIVE_SENTIMENTS_SET, SENTIMENT_TO_GROUP 
+  GROUP_TO_SENTIMENTS, SENTIMENT_TO_GROUP, getSentimentValue 
 } from "./utility/sentiments";
 import { sqs } from "./integrations/aws";
 import { sendRecommendationNotif } from "./integrations/notifications";
@@ -18,14 +18,19 @@ const MAX_NUM_ARTISTS_TO_REMEMBER = 250;
 
 // impressions: we keep track of impressions for each sentiment, for all sentiments, and for top
 // tracks; these are hard limits
-const MAX_IMPRESSIONS_TO_REMEMBER = 5000;
+const MAX_IMPRESSIONS_TO_REMEMBER = 2500;
 const MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER = 250;
 // we only actally use the first 50 of these, but we keep more in case we want to change this logic
 // later
 const MAX_TOP_TRACK_IMPRESSIONS_TO_REMEMBER = 250;
+const MAX_TOP_PASSAGE_IMPRESSIONS_TO_REMEMBER = 250;
 
 const MAX_NOTIFICATIONS_TO_REMEMBER = 500;
 const MAX_FEATURED_ARTISTS_TO_REMEMBER = 10;
+
+// we aggregate song impressions from across sentiments into the "all" category; top-passage is
+// excluded because it consists of passage IDs, not song IDs
+const IMPRESSION_KEYS_TO_EXCLUDE_FROM_AGGREGATE = new Set(["top-passages"]);
 
 // *** PUBLIC INTERFACE ***
 // run daily (or as part of NUX) to give the user new content for the day
@@ -141,20 +146,18 @@ export const refreshUser = async ({
     ).map(idx => artistsEligibleForFeature[idx])
   }
 
-  const flatSentiments = recommendedSentiments.map((s) => s.sentiments).flat();
-
-  const {recommendations, featuredArtist, featuredArtistEmoji} = await getDailyRecommendations(
+  const {recommendations, featuredArtist} = await getDailyRecommendations(
     {
       userId,
       recentListens,
       topSpotifyArtists,
       featuredArtistOptions,
-      recommendedSentiments: flatSentiments,
+      recommendedSentiments,
     }
   );
 
   if (recommendations.length === 0) {
-    console.log(`no recommendations for sentiments ${flatSentiments} for user ${userId}`);
+    console.log(`no recommendations for sentiments ${recommendedSentiments} for user ${userId}`);
     return;
   }
 
@@ -182,7 +185,6 @@ export const refreshUser = async ({
         ...(featuredArtist ? [featuredArtist.id] : []),
         ...userRecommendations.featuredArtistHistory || [],
       ].slice(0, MAX_FEATURED_ARTISTS_TO_REMEMBER),
-      featuredArtistEmoji,
     }, {merge: true}),
     sendRecommendationNotif({recommendation: reorderedRecommendations[0], userId}),
   ]);
@@ -315,7 +317,7 @@ const pushBackUserImpressions = async (
 ) => {
   const db = await getFirestoreDb();
   const impressionTodayDoc = await db.doc(`user-impressions-today/${userId}`).get();
-  const impressionsToday = impressionTodayDoc.data()?.value || {};
+  const impressionsToday = (impressionTodayDoc.data()?.value || {}) as Record<string, string[]>;
 
   const keys = Object.keys(impressionsToday);
   const existingData = (await Promise.all(([...keys, "all"]).map((key) => db.doc(
@@ -327,13 +329,14 @@ const pushBackUserImpressions = async (
     const existingValue = existingData[i] || [];
     const newData = impressionsToday[key];
     if (newData.length > 0) {
+      const existingValueSet = new Set(existingValue);
+      const newDataToAdd = newData.filter((d) => !existingValueSet.has(d));
+
       batch.set(db.doc(`user-impressions/${userId}-${key}`), {
-        value: Array.from(
-          new Set([...existingValue, ...newData])
-        ).slice(
-          0, key === "top" ? MAX_TOP_TRACK_IMPRESSIONS_TO_REMEMBER :
-            MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER
-        ),
+        value: [
+          ...newDataToAdd,
+          ...existingValue
+        ].slice(0, maxNumImpressionsToRememberForKey(key)),
       });
     }
   });
@@ -342,7 +345,10 @@ const pushBackUserImpressions = async (
     value: Array.from(
       new Set([
         ...(existingData[existingData.length - 1] || []),
-        ...Object.values(impressionsToday).flat()
+        ...Object.keys(impressionsToday)
+          .filter(k => !IMPRESSION_KEYS_TO_EXCLUDE_FROM_AGGREGATE.has(k))
+          .map(k => impressionsToday[k])
+          .flat()
       ])
     ).slice(0, MAX_IMPRESSIONS_TO_REMEMBER),
   });
@@ -352,10 +358,20 @@ const pushBackUserImpressions = async (
   await batch.commit();
 }
 
-// gets a map from group -> sentiment comprised of sentiments that are highly represented
-// in the user's recent listening activity
+const maxNumImpressionsToRememberForKey = (key: string) => {
+  if (key === "top") {
+    return MAX_TOP_TRACK_IMPRESSIONS_TO_REMEMBER;
+  } else if (key === "top-passages") {
+    return MAX_TOP_PASSAGE_IMPRESSIONS_TO_REMEMBER;
+  } else {
+    return MAX_SENTIMENT_IMPRESSIONS_TO_REMEMBER;
+  }
+}
+
+// gets a list of sentiments that are highly represented in the user's recent listening activity
 // we generally enforce the following constraints (unless we don't have enough eligible recs):
-// - we will recommend three groups, with two or three sentiments each (three if possible)
+// - we will recommend sentiments from three groups, with two or three sentiments each (three if
+//    possible)
 // - at least two of these groups will be "non-negative", meaning at least two of their sentiments
 //    are positive or mixed
 // - we weigh each group according to the sum of the squares of the scores of its eligible
@@ -367,7 +383,7 @@ const getRecommendedSentiments = async (
     previouslyRecommendedSentiments?: Record<string, string[]>
     recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
   },
-): Promise<{group: string, sentiments: string[]}[] | null> => {
+): Promise<string[] | null> => {
   const scoredSentiments = await getScoredSentiments({userId, recentListens});
 
   if (scoredSentiments.length === 0) {
@@ -383,7 +399,7 @@ const getRecommendedSentiments = async (
   let eligibleGroups = Object.keys(GROUP_TO_SENTIMENTS);
   let eligibleNonNegativeGroups = eligibleGroups.filter((group) => {
     return GROUP_TO_SENTIMENTS[group].filter((sentiment) => {
-      return !NEGATIVE_SENTIMENTS_SET.has(sentiment);
+      return getSentimentValue(sentiment) !== "negative";
     }).length >= 2;
   });
   while (minCountToUse > 0) {
@@ -448,13 +464,13 @@ const getRecommendedSentiments = async (
   // avoid overdoing the positivity-washing
   if (negativeGroups.length === 0) {
     groups.sort((g) => GROUP_TO_SENTIMENTS[g].filter(
-      s => NEGATIVE_SENTIMENTS_SET.has(s)
+      s => getSentimentValue(s) === "negative"
     ).length);
     negativeGroups = [groups[-1]];
   }
 
   // now, for each group select the sentiments
-  const sentiments = groups.map((group) => {
+  return groups.map((group) => {
     const groupSentiments = GROUP_TO_SENTIMENTS[group as keyof typeof GROUP_TO_SENTIMENTS];
     const options = scoredSentiments.reduce((acc, {sentiment, score}) => {
       if (groupSentiments.includes(sentiment)) {
@@ -468,13 +484,14 @@ const getRecommendedSentiments = async (
     // replace them
     if (
       !negativeGroups.includes(group) &&
-      sentiments.filter(s => NEGATIVE_SENTIMENTS_SET.has(s)).length > 1
+      sentiments.filter(s => getSentimentValue(s) === "negative").length > 1
     ) {
       const remainingNonNegativeOptions = Object.fromEntries(Object.entries(options).filter(
-        ([sentiment]) => !NEGATIVE_SENTIMENTS_SET.has(sentiment) && !sentiments.includes(sentiment)
+        ([sentiment]) => getSentimentValue(sentiment) !== 
+          "negative" && !sentiments.includes(sentiment)
       ));
-      const nonNegativeSentiments = sentiments.filter(s => !NEGATIVE_SENTIMENTS_SET.has(s));
-      const negativeSentiments = sentiments.filter(s => NEGATIVE_SENTIMENTS_SET.has(s));
+      const nonNegativeSentiments = sentiments.filter(s => getSentimentValue(s) !== "negative");
+      const negativeSentiments = sentiments.filter(s => getSentimentValue(s) === "negative");
       sentiments = [
         ...nonNegativeSentiments,
         negativeSentiments[0],
@@ -485,14 +502,8 @@ const getRecommendedSentiments = async (
       ]
     }
 
-    return {
-      group,
-      sentiments,
-      isNegative: negativeGroups.includes(group),
-    };
-  });
-
-  return sentiments;
+    return sentiments;
+  }).flat();
 }
 
 // returns a list of groups that have at least two eligible sentiments with a result count greater
@@ -511,7 +522,7 @@ const groupsWithAtLeastTwoEligibleSentiments = (
           all: 0,
         };
       }
-      if (!NEGATIVE_SENTIMENTS_SET.has(sentiment)) {
+      if (getSentimentValue(sentiment) !== "negative") {
         acc[group].nonNegativeOnly = acc[group].nonNegativeOnly + 1;
       }
       acc[group].all = acc[group].all + 1;
@@ -577,7 +588,7 @@ const findRecommendationsIndexForNotif = ({
 
 
   const topPassageIndex = recommendations.findIndex(
-    (r) => !notificationHistory.has(r.song.id) && r.type === "top_passage"
+    (r) => !notificationHistory.has(r.song.id) && r.type === "top"
   );
 
   if (topPassageIndex !== -1) {
@@ -585,7 +596,7 @@ const findRecommendationsIndexForNotif = ({
   }
 
   const featuredArtistIndex = recommendations.findIndex(
-    (r) => !notificationHistory.has(r.song.id) && r.type === "featured_artist"
+    (r) => !notificationHistory.has(r.song.id) && r.type === "artist"
   );
 
   if (featuredArtistIndex !== -1) {
