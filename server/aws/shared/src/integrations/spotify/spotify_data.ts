@@ -101,7 +101,7 @@ export const getTopSongsForArtist = async (
 
 export const getTopArtistsForUser = async (
   {
-    spotifyAccessToken, limit = 20, time_range = "short_term"
+    spotifyAccessToken, limit = 25, time_range = "short_term"
   }: {
     spotifyAccessToken: string,
     limit?: number,

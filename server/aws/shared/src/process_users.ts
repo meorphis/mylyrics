@@ -10,6 +10,7 @@ import { getFirestoreDb } from "./integrations/firebase";
 import { DocumentData } from "firebase-admin/firestore";
 import { createRefreshUserTask } from "./refresh_user";
 import stringSimilarity from "string-similarity-js";
+import _ from "lodash";
 
 // *** CONSTANTS ***
 // when we've never indexed any data for an artist, we add several top tracks (in addition to the
@@ -127,11 +128,8 @@ const processOneUser = async (
     userId, lastCheckedRecentPlaysAt: newLastCheckedRecentPlaysAt
   });
 
-  if (recentListens.length === 0) {
-    console.log(`user ${userId} has not listening to anything since we last checked`);
-    return;
-  }
-
+  // if the user is new, we will process their top tracks and tracks by their top artists, to
+  // make sure we have enough data to make good recs
   let additionalArtists: Artist[] = [];
   let additionalListens: SongListen[] = [];
   if (isNew) {
@@ -144,18 +142,19 @@ const processOneUser = async (
 
     additionalArtists = ta;
 
-    // act as if the user has listened to each short term top track once, each medium term top
-    // track twice, and each long term top track three times
+    // act as if the user has listened to each top track more than once, since presumably the
+    // user actually did - the effect will be to give the user's favorite tracks bigger frequency
+    // boosts and make stats a bit more accurate
     additionalListens = [
-      ...tt[0].map((t) => ({
+      ...stretchTopSongsArray({songs: tt[0]}).map((t) => ({
         song: t,
         metadata: {
           // two weeks ago
-          playedAt: Date.now() - 1000 * 60 * 60 * 24 * 2 * 7,
+          playedAt: Date.now() - 1000 * 60 * 60 * 24 * 14,
           playedFrom: "unknown",
         }
       })),
-      ...[...tt[1], ...tt[1]].map((t) => ({
+      ...stretchTopSongsArray({songs: tt[1]}).map((t) => ({
         song: t,
         metadata: {
           // three months ago
@@ -163,7 +162,7 @@ const processOneUser = async (
           playedFrom: "unknown",
         }
       })),
-      ...[...tt[2], ...tt[2], ...tt[2]].map((t) => ({
+      ...stretchTopSongsArray({songs: tt[2]}).map((t) => ({
         song: t,
         metadata: {
           // one year ago
@@ -174,68 +173,47 @@ const processOneUser = async (
     ]
   }
 
+
+  if (recentListens.length === 0 
+    && additionalListens.length === 0
+    && additionalArtists.length === 0
+  ) {
+    console.log(`user ${userId} has not listened to anything since we last checked`);
+    return;
+  }
+
   // do not include artists from additionalListens, since we already have plenty of artists to
   // include for new users between recent listens artists and top artists
-  const allArtistIds = Array.from(new Set([
-    ...recentListens.map((l) => l.song.primaryArtist.id),
-    ...additionalArtists.map((a) => a.id),
-  ]));
-  const allArtists = [];
-  for (const artistId of allArtistIds) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const recentListen = recentListens.find((l) => l.song.primaryArtist.id === artistId)!;
-    allArtists.push(recentListen.song.primaryArtist);
+  const candidateArtistIds = new Set<string>();
+  const candidateArtists = [];
+  for (const artist of [
+    // prioritize "additional" (top) artists, since we can produce recommendations more relevant to
+    // the user with these (we are going to slice off the end of this array below, so the order
+    // matters)
+    ...additionalArtists,
+    ...recentListens.map((rl) => rl.song.primaryArtist)
+  ]) {
+    if (!candidateArtistIds.has(artist.id)) {
+      candidateArtists.push(artist);
+      candidateArtistIds.add(artist.id);
+    }
   }
-  const allSongIds = Array.from(
-    new Set([...recentListens.map((l) => l.song.id), ...additionalListens.map((l) => l.song.id)])
-  );
 
   console.log(
-    // eslint-disable-next-line max-len
-    `user ${userId} has ${recentListens.length} recent listens - ${allSongIds.length} songs by ${allArtistIds.length} artists`
+    `user ${userId} has ${candidateArtists.length} candidate artists`
   );
 
-  // note that the db that these values are read from is updated by processSong - we don't
-  // care about making it transactional because the worst case is that we run processSong on
-  // a song that's already been processed, in which case it will just return early
-  const [indexedArtistIds, indexedSongInfos] = await Promise.all([
-    getIndexedArtistIds(allArtistIds),
-    getIndexedSongInfo(allSongIds)
-  ]);
-  const indexedSongIds = indexedSongInfos.map((s) => s.songId);
+  // figure out which artists have already been fully indexed
+  const indexedArtistIds = await getIndexedArtistIds(new Array(...candidateArtistIds));
 
-  console.log(
-    `${indexedArtistIds.length} artists and ${indexedSongIds.length} songs are already indexed`
-  );
-
-  // filter out listens for songs without lyrics
-  const [
-    recentListensToRecord, additionalListensToRecord
-  ] = [
-    recentListens, additionalListens
-  ].map(array => array.filter((l) => {
-    const songInfo = indexedSongInfos.find((s) => s.songId === l.song.id);
-    return songInfo == null || !songInfo.isMissingLyrics;
-  }));
-
-  if (recentListensToRecord.length !== 0 || additionalListensToRecord.length !== 0) {
-    console.log(
-      // eslint-disable-next-line max-len
-      `recording ${recentListensToRecord.length} recent listens` + additionalListensToRecord.length && ` and ${additionalListensToRecord.length} additional listens`
-    );
-    await recordListens(
-      {userId, recentListens: recentListensToRecord, additionalListens: additionalListensToRecord}
-    );
-  } else {
-    console.log("no listens to record");
-  }
+  console.log(`${indexedArtistIds.length} artists are already indexed`);
 
   // get top songs for artists that we haven't indexed any songs for, in order to seed data
-  const artistsWithoutEnoughIndexedSongs = allArtists.filter(
+  const artistsWithoutEnoughIndexedSongs = candidateArtists.filter(
     (a) => !indexedArtistIds.includes(a.id)
   );
   console.log(`getting top songs for ${artistsWithoutEnoughIndexedSongs.length} artists`);
-
+  
   const topSongsForArtists = (await Promise.all(
     artistsWithoutEnoughIndexedSongs
       .slice(0, MAX_ARTISTS_PER_RUN)
@@ -244,11 +222,65 @@ const processOneUser = async (
         spotifyAccessToken,
       }))
   ));
+  
+  // if an artist does not have enough songs to ever be considered fully indexed, mark them as
+  // such in the db
+  topSongsForArtists.forEach((topSongs, index) => {
+    const artist = artistsWithoutEnoughIndexedSongs[index];
+    if (topSongs.length < MAX_SONGS_PER_ARTIST) {
+      db.collection("artists").doc(artist.id).set({
+        artistId: artist.id,
+        artistName: artist.name,
+        hasInsufficientTopSongs: true,
+      }, {merge: true})   
+    }
+  });
+
+  const topSongsForArtistsFlat = topSongsForArtists.flat();
+
+  // now we have all the songs that we might process: recent listens, top songs, and songs from top
+  // artists
+  const allSongIds = Array.from(
+    new Set([
+      ...recentListens.map((l) => l.song.id),
+      ...additionalListens.map((l) => l.song.id),
+      ...topSongsForArtistsFlat.map((s) => s.id),
+    ])
+  );
+
+  console.log(
+    // eslint-disable-next-line max-len
+    `user ${userId} has ${recentListens.length} recent listens, ${additionalListens.length} additional listens, and ${topSongsForArtistsFlat.length} top artist tracks - ${allSongIds.length} unique songs`
+  );
+
+  // note that the collection that these values are read from is updated later by processSong - we
+  // don't care about making it transactional because the worst case is that we run processSong on
+  // a song that's already been processed, in which case it will just return early
+  const indexedSongInfos = await getIndexedSongInfo(allSongIds)
+  const indexedSongIds = indexedSongInfos.map((s) => s.songId);
+
+  console.log(
+    `${indexedSongIds.length} songs are already indexed`
+  );
+
+  // filter out listens for songs without lyrics - we don't even want to log these since they add
+  // noise to the user's data
+  const listensToRecord = [...recentListens, ...additionalListens].filter((l) => {
+    const songInfo = indexedSongInfos.find((s) => s.songId === l.song.id);
+    return songInfo == null || !songInfo.isMissingLyrics;
+  })
+
+  if (listensToRecord.length === 0) {
+    console.log("no listens to record");
+  } else {
+    console.log(`recording ${listensToRecord.length} listens`);
+    await recordListens({userId, listens: listensToRecord});
+  }
 
   const songsToProcess = await getSongsToProcess({
     indexedSongIds,
-    listens: [...recentListensToRecord, ...additionalListensToRecord],
-    topSongsForArtists: topSongsForArtists.flat()
+    listens: listensToRecord,
+    topSongsForArtists: topSongsForArtistsFlat,
   });
 
   const enrichedSongsToProcess = await getEnrichedSongs({
@@ -320,10 +352,11 @@ const getIndexedArtistIds = async (artistIds: string[]): Promise<string[]> => {
     ids: artistIds, collection: "artists", fieldName: "artistId",
   })
 
-  // consider an artist indexed if they have at least 3 songs indexed
-  return artistsIndexed.filter(
-    d => (d.numIndexedSongs ?? 0) > 3).map((d) => d.artistId
-  );
+  // consider an artist indexed if they have at least N songs indexed or if we've already
+  // marked them as having insufficient top songs
+  return artistsIndexed
+    .filter(d => (d.numIndexedSongs ?? 0) > MAX_SONGS_PER_ARTIST || d.hasInsufficientTopSongs)
+    .map((d) => d.artistId);
 }
 
 const getIndexedSongInfo = async (songIds: string[]) => {
@@ -341,14 +374,12 @@ const getIndexedSongInfo = async (songIds: string[]) => {
 
 const recordListens = async ({
   userId,
-  recentListens,
-  additionalListens,
+  listens,
 } : {
   userId: string,
-  recentListens: SongListen[],
-  additionalListens: SongListen[],
+  listens: SongListen[],
 }) => {
-  if (recentListens.length === 0 && additionalListens.length === 0) {
+  if (listens.length === 0) {
     return;
   }
 
@@ -356,31 +387,25 @@ const recordListens = async ({
 
   await db.runTransaction(async (transaction) => {
     const user = await transaction.get(db.collection("user-recent-listens").doc(userId));
-    const today = user.data()?.today || {};
-    const longerAgo = user.data()?.longerAgo || {};
-    const newToday = {
-      songs: [...recentListens.map((l) => l.song.id), ...(today.songs || [])],
-      artists: [...recentListens.map((l) => l.song.primaryArtist.id), ...(today.artists || [])]
-    }
-    const newLongerAgo = {
-      songs: [...additionalListens.map((l) => l.song.id), ...(longerAgo.songs || [])],
-      artists: [
-        ...additionalListens.map((l) => l.song.primaryArtist.id),
-        ...(longerAgo.artists || [])
-      ]
-    }
+    
+    const newData = _.cloneDeep(user.data() || {});
+
+    listens.forEach(l => {
+      const period = getListenPeriod(l);
+      if (!(period in newData)) {
+        newData[period] = {
+          songs: [],
+          artists: [],
+        }
+      }
+      newData[period].songs.push(l.song.id);
+      newData[period].artists.push(l.song.primaryArtist.id);
+    })
 
     // we're not using ArrayUnion because it doesn't allow duplicates
-    transaction.set(db.collection("user-recent-listens").doc(userId), {
-      today: newToday,
-      longerAgo: newLongerAgo,
-    },
-    {
-      merge: true,
-    }
-    );
+    transaction.set(db.collection("user-recent-listens").doc(userId), newData)
 
-    const listenObjs = [...recentListens, ...additionalListens].map((l) => {
+    const listenObjs = listens.map((l) => {
       return {
         userId,
         songId: l.song.id,
@@ -395,6 +420,41 @@ const recordListens = async ({
     });
   });
 }
+
+const getListenPeriod = (listen: SongListen) => {
+  const daysAgo = (Date.now() - listen.metadata.playedAt) / (1000 * 60 * 60 * 24);
+  if (daysAgo < 1) {
+    return "today";
+  } else if (daysAgo < 2) {
+    return "yesterday";
+  } else if (daysAgo < 9) {
+    return `daysAgo-${Math.floor(daysAgo)}`;
+  } else {
+    return "longerAgo";
+  }
+}
+
+// add repeats since presumably the user listened to these songs more than once
+// if the array is the maximum size (50) it will be stretched out to a length of 120
+const stretchTopSongsArray = ({songs}: {songs: SimplifiedSong[]}) => {
+  return [
+    ...stretchTopSongsSubArray({songs: songs.slice(0, 5), factor: 5}),
+    ...stretchTopSongsSubArray({songs: songs.slice(5, 10), factor: 4}),
+    ...stretchTopSongsSubArray({songs: songs.slice(10, 20), factor: 3}),
+    ...stretchTopSongsSubArray({songs: songs.slice(20, 35), factor: 2}),
+    ...stretchTopSongsSubArray({songs: songs.slice(35), factor: 1}),
+  ]
+}
+
+const stretchTopSongsSubArray = ({songs, factor}: {songs: SimplifiedSong[], factor: number}) => {
+  let result: SimplifiedSong[] = [];
+  for (let i = 0; i < factor; i++) {
+    result = result.concat(songs);
+  }
+  return result;
+}
+
+
 
 const getSongsToProcess = async (
   {indexedSongIds, listens, topSongsForArtists}:
