@@ -1,14 +1,14 @@
 import React, {memo, useMemo} from 'react';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 import {StyleSheet, Text, View} from 'react-native';
-import SentimentEnumType from '../../types/sentiments';
 import {textStyleCommon} from '../../utility/helpers/text';
 import {useBottomSheetBackdrop} from '../../utility/helpers/bottom_sheet';
 import {
   useActiveBundleKey,
-  useGroupedBundleKeys,
+  useGroupedBundleInfos,
 } from '../../utility/redux/bundles/selectors';
 import GroupSelectorButton from './GroupSelectorButton';
+import {BundleInfo} from '../../types/bundle';
 
 type Props = {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -18,16 +18,13 @@ type Props = {
 const GroupSelectorBottomSheet = (props: Props) => {
   const {bottomSheetRef} = props;
   const activeBundleKey = useActiveBundleKey();
-  const groupedBundleKeys = useGroupedBundleKeys();
-
-  console.log(`grouped bundle keys: ${JSON.stringify(groupedBundleKeys)}`);
-
-  const groupsToShow = Object.keys(groupedBundleKeys);
+  const groupedBundleInfos = useGroupedBundleInfos();
+  const groupsToShow = Object.keys(groupedBundleInfos);
   const selectedGroup = activeBundleKey
     ? groupsToShow.find(group =>
-        (groupedBundleKeys[group] as string[]).includes(
-          activeBundleKey as string,
-        ),
+        groupedBundleInfos[group]
+          .map(i => i.key)
+          .includes(activeBundleKey as string),
       )
     : null;
 
@@ -46,45 +43,47 @@ const GroupSelectorBottomSheet = (props: Props) => {
           🎶 your daily lines 🎶
         </Text>
 
-        {putAtFrontOfArray(groupsToShow, selectedGroup).map(group => (
-          <View
-            style={{
-              ...styles.group,
-            }}
-            key={group}>
-            <View style={styles.groupLabel}>
-              <Text
-                style={{
-                  ...textStyleCommon,
-                  ...styles.groupLabelText,
-                }}>
-                {group}
-              </Text>
-              <View style={styles.groupLabelEmoji}>
-                <Text style={styles.groupLabelEmojiText}>
-                  {groupEmojis[group]}
+        {putAtFrontOfArray(groupsToShow, i => i === selectedGroup).map(
+          group => (
+            <View
+              style={{
+                ...styles.group,
+              }}
+              key={group}>
+              <View style={styles.groupLabel}>
+                <Text
+                  style={{
+                    ...textStyleCommon,
+                    ...styles.groupLabelText,
+                  }}>
+                  {group}
                 </Text>
+                <View style={styles.groupLabelEmoji}>
+                  <Text style={styles.groupLabelEmojiText}>
+                    {groupEmojis[group]}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.tagsContainer}>
+                {(
+                  putAtFrontOfArray(
+                    groupedBundleInfos[group],
+                    i => i.key === activeBundleKey,
+                  ) as BundleInfo[]
+                ).map(info => (
+                  <View style={styles.tagContainer} key={info.key}>
+                    <GroupSelectorButton
+                      bundleInfo={info}
+                      onPress={() => {
+                        bottomSheetRef.current?.close();
+                      }}
+                    />
+                  </View>
+                ))}
               </View>
             </View>
-            <View style={styles.tagsContainer}>
-              {(
-                putAtFrontOfArray(
-                  groupedBundleKeys[group],
-                  activeBundleKey,
-                ) as SentimentEnumType[]
-              ).map(sentiment => (
-                <View style={styles.tagContainer} key={sentiment}>
-                  <GroupSelectorButton
-                    bundleKey={sentiment}
-                    onPress={() => {
-                      bottomSheetRef.current?.close();
-                    }}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        ))}
+          ),
+        )}
       </BottomSheetScrollView>
     </BottomSheet>
   );
@@ -92,8 +91,8 @@ const GroupSelectorBottomSheet = (props: Props) => {
 
 // re-arranges the list, putting the item at the front of the array but retaining
 // the same sorting order when considering the items as a loop
-const putAtFrontOfArray = (array: any[], item: any) => {
-  const index = array.indexOf(item);
+const putAtFrontOfArray = (array: any[], isItem: (i: any) => boolean) => {
+  const index = array.findIndex(isItem);
 
   if (index === -1) {
     return array;

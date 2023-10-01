@@ -1,5 +1,8 @@
+import {BundleInfo} from './bundle';
 import {RawSongType, SongType} from './song';
 import ThemeType, {ThemeSelection} from './theme';
+
+export type RawPassageTypeType = 'top' | 'artist' | 'sentiment';
 
 // the format that we use to load and save passages to/from the DB; we load the image
 // blob, compute the theme, and assign a key on the client side to convert this into a
@@ -7,8 +10,8 @@ import ThemeType, {ThemeSelection} from './theme';
 export type RawPassageType = {
   lyrics: string;
   song: RawSongType;
-  bundleKeys: string[];
-  type: 'featured_artist' | 'top_passage' | 'sentiment';
+  bundleInfos: BundleInfo[];
+  type: RawPassageTypeType;
 };
 
 // contains a single passage of lyrics with metadata, providing enough info to be

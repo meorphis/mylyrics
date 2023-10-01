@@ -331,7 +331,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                       const newPassage = {
                         ...passage,
                         lyrics: selectedLyrics,
-                        bundleKey: 'singleton_passage',
+                        bundleKey: 'singleton',
                         sortKey: 0,
                       };
 

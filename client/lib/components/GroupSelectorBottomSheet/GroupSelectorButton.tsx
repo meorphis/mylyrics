@@ -3,36 +3,48 @@
 import React, {memo} from 'react';
 import ThemeButton from '../common/ThemeButton';
 import {StyleSheet} from 'react-native';
-import {bundleKeyDisplayName} from '../../utility/helpers/sentiments';
+import {
+  getBundleDisplayName,
+  getBundleEmoji,
+} from '../../utility/helpers/sentiments';
 import {useDispatch} from 'react-redux';
 import {requestBundleChange} from '../../utility/redux/requested_bundle_change/slice';
-import SentimentEnumType from '../../types/sentiments';
 import {useIsActiveBundle} from '../../utility/redux/bundles/selectors';
+import {BundleInfo} from '../../types/bundle';
 
 type Props = {
-  bundleKey: string;
+  bundleInfo: BundleInfo;
   onPress: () => void;
 };
 
 // a button to change the active bundle to the one specified
 const GroupSelectorButton = (props: Props) => {
-  console.log(`rendering GroupSelectorButton ${props.bundleKey}`);
+  console.log(`rendering GroupSelectorButton ${props.bundleInfo.key}`);
 
-  const {bundleKey, onPress} = props;
+  const {bundleInfo, onPress} = props;
 
   const dispatch = useDispatch();
-  const isActiveBundle = useIsActiveBundle(bundleKey);
+  const isActiveBundle = useIsActiveBundle(bundleInfo.key);
+
+  const displayName = getBundleDisplayName(bundleInfo);
+  const fullDisplayName =
+    displayName && isActiveBundle
+      ? `${displayName} ${getBundleEmoji(bundleInfo)}`
+      : displayName;
 
   return (
     <ThemeButton
-      text={bundleKeyDisplayName(bundleKey as SentimentEnumType)!}
+      text={fullDisplayName ?? undefined}
       textStyle={styles.buttonText}
       textContainerStyle={styles.buttonTextContainer}
       useSaturatedColor={isActiveBundle}
       onPress={() => {
         // allow some time for the animation to close the bundle sheet since it
         // runs on JS and changing the bundle is expensive
-        setTimeout(() => dispatch(requestBundleChange({bundleKey})), 50);
+        setTimeout(
+          () => dispatch(requestBundleChange({bundleKey: bundleInfo.key})),
+          50,
+        );
 
         if (onPress) {
           onPress();

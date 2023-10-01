@@ -5,13 +5,13 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import GroupSelectorBottomSheet from '../GroupSelectorBottomSheet/GroupSelectorBottomSheet';
 import ProphecyBottomSheet from '../ProphecyBottomSheet/ProphecyBottomSheet';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {sentimentToEmojiMap} from '../../utility/helpers/sentiments';
 import {
   useActiveBundle,
   usePreviouslyActiveBundleKey,
 } from '../../utility/redux/bundles/selectors';
 import {useDispatch} from 'react-redux';
 import {requestBundleChange} from '../../utility/redux/requested_bundle_change/slice';
+import {getBundleEmoji} from '../../utility/helpers/sentiments';
 
 type Props = {
   style?: ViewStyle;
@@ -24,16 +24,15 @@ const BottomBar = (props: Props) => {
   const groupSelectorBottomSheetRef = React.useRef<BottomSheet>(null);
   const prophecyBottomSheetRef = React.useRef<BottomSheet>(null);
   const activeBundle = useActiveBundle();
-  const {bundleKey: activeBundleKey} = activeBundle ?? {bundleKey: null};
   const previouslyActiveBundleKey = usePreviouslyActiveBundleKey();
   const dispatch = useDispatch();
 
   const shouldShowBackButton =
-    (activeBundleKey === 'singleton_passage' ||
-      activeBundle.creator.type !== 'machine') &&
+    (activeBundle.info.type === 'singleton' ||
+      activeBundle.info.type === 'user_made') &&
     previouslyActiveBundleKey != null;
-  const shouldShowGroupSelectorButton = activeBundle.creator.type === 'machine';
-  const shouldShowProphecyButton = activeBundle.creator.type === 'machine';
+  const shouldShowGroupSelectorButton = activeBundle.info.type !== 'user_made';
+  const shouldShowProphecyButton = activeBundle.info.type !== 'user_made';
 
   return (
     <React.Fragment>
@@ -52,18 +51,14 @@ const BottomBar = (props: Props) => {
         )}
         {shouldShowGroupSelectorButton && (
           <ThemeButton
-            text={sentimentToEmojiMap[activeBundleKey] ?? activeBundleKey}
+            text={getBundleEmoji(activeBundle.info) ?? undefined}
             useSaturatedColor
             onPress={() => {
               groupSelectorBottomSheetRef?.current?.expand();
             }}
             iconName="grid-outline"
             textStyle={styles.buttonText}
-            textContainerStyle={
-              sentimentToEmojiMap[activeBundleKey]
-                ? styles.groupSelectorButtonTextContainer
-                : {}
-            }
+            textContainerStyle={styles.groupSelectorButtonTextContainer}
             style={styles.button}
           />
         )}

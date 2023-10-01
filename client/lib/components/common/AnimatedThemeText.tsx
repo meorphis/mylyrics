@@ -25,14 +25,15 @@ const AnimatedThemeText = () => {
 const GradientText = (props: Omit<TextProps, 'children'>) => {
   const {topCustomTextYOffset, bottomCustomTextYOffset} = useLyricCardSize();
   const bundle = useActiveBundle();
-  const {creator, recipient, title} = bundle;
+  if (bundle.info.type !== 'user_made') {
+    return null;
+  }
+
+  const {title, creator, recipient} = bundle.info;
 
   const topText = title;
   const recipientText = recipient ? ` for ${recipient?.nickname}` : '';
-  const bottomText =
-    creator.type === 'user'
-      ? `made by ${creator.nickname}` + recipientText
-      : null;
+  const bottomText = `made by ${creator.nickname}` + recipientText;
 
   const topTextStyle = {
     ...textStyleCommon,
