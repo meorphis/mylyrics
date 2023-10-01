@@ -1,10 +1,10 @@
-import { SendMessageCommand } from "@aws-sdk/client-sqs";
+// import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getFirestoreDb } from "./integrations/firebase";
 import { getScoredSentiments, getDailyRecommendations } from "./integrations/open_search";
 import { 
   GROUP_TO_SENTIMENTS, SENTIMENT_TO_GROUP, getSentimentValue 
 } from "./utility/sentiments";
-import { sqs } from "./integrations/aws";
+// import { sqs } from "./integrations/aws";
 import { sendRecommendationNotif } from "./integrations/notifications";
 import { getTopArtistsForUser } from "./integrations/spotify/spotify_data";
 import { getFreshSpotifyResponse } from "./integrations/spotify/spotify_auth";
@@ -195,23 +195,25 @@ export const createRefreshUserTask = async (
   {userId, numRetries = 0, alwaysFeatureVeryTopArtist = false, delaySeconds}:
   {userId: string, numRetries?: number, alwaysFeatureVeryTopArtist?: boolean, delaySeconds?: number}
 ) => {
+  // eslint-disable-next-line max-len
+  console.log(`adding task to queue for user ${userId} ${numRetries} ${alwaysFeatureVeryTopArtist} ${delaySeconds}`);
 
-  try {
-    await sqs.send(new SendMessageCommand({
-      QueueUrl: process.env.REFRESHUSERQUEUE_QUEUE_URL as string,
-      MessageBody: JSON.stringify({
-        userId,
-        numRetries,
-        alwaysFeatureVeryTopArtist,
-      }),
-      DelaySeconds: delaySeconds,
-    }));
-    console.log("successfully added task to queue");
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      console.error(`failed to add message to queue: ${err.message}`, err.stack);
-    }
-  }
+  // try {
+  //   await sqs.send(new SendMessageCommand({
+  //     QueueUrl: process.env.REFRESHUSERQUEUE_QUEUE_URL as string,
+  //     MessageBody: JSON.stringify({
+  //       userId,
+  //       numRetries,
+  //       alwaysFeatureVeryTopArtist,
+  //     }),
+  //     DelaySeconds: delaySeconds,
+  //   }));
+  //   console.log("successfully added task to queue");
+  // } catch (err: unknown) {
+  //   if (err instanceof Error) {
+  //     console.error(`failed to add message to queue: ${err.message}`, err.stack);
+  //   }
+  // }
 
 }
 
@@ -220,7 +222,6 @@ const assertEnvironmentVariables = () => {
   if (process.env.OPENSEARCH_URL == null) {
     throw new Error("OPENSEARCH_URL is not defined in the environment");
   }
-
   if (process.env.REFRESHUSERQUEUE_QUEUE_URL == null) {
     throw new Error("REFRESHUSERQUEUE_QUEUE_URL is not defined in the environment");
   }
