@@ -44,7 +44,9 @@ const BottomBar = (props: Props) => {
                 requestBundleChange({bundleKey: previouslyActiveBundleKey}),
               );
             }}
-            iconName="arrow-back"
+            iconName={
+              activeBundle.info.type === 'user_made' ? 'close' : 'arrow-back'
+            }
             textStyle={styles.buttonText}
             style={styles.button}
           />

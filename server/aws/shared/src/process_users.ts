@@ -32,14 +32,28 @@ export const processUsers = async ({minute}: {minute: number}) => {
   assertEnvironmentVariables();
 
   const db = await getFirestoreDb();
-  const users = await db.collection("users").where("seed", "==", minute).get();
+
+  const newUsers = await db.collection("users")
+    .where("seed", "==", null)
+    .where("spotifyAccessToken", "!=", null).get();
+
+  await Promise.all(newUsers.docs.map((d) => {
+    db.collection("users").doc(d.ref.id).set({
+      seed: minute,
+    }, {merge: true})
+  }));
+
+  const existingUsers = await db.collection("users").where("seed", "==", minute).get();
 
   const errors: unknown[] = [];
 
   // avoid parallelizing for now, to avoid hitting spotify rate limits
-  for (const d of users.docs) {
+  for (const {d, isNew} of [
+    ...existingUsers.docs.map((d) => ({d, isNew: false})),
+    ...newUsers.docs.map((d) => ({d, isNew: true}))
+  ]) {
     try {
-      await processOneUser({userId: d.ref.id, userData: d.data()})
+      await processOneUser({userId: d.ref.id, userData: d.data(), isNew})
     } catch (err) {
       if (err instanceof Error) {
         errors.push({
@@ -69,9 +83,9 @@ export const processUsers = async ({minute}: {minute: number}) => {
 //    artist before
 // - if includeTopContent is true, we also add the user's top tracks and tracks from their top
 //    artists to the processing queue
-export const processOneUser = async (
-  {userId, userData, includeTopContent = false}:
-  {userId: string, userData: DocumentData, includeTopContent?: boolean}
+const processOneUser = async (
+  {userId, userData, isNew}:
+  {userId: string, userData: DocumentData, isNew: boolean}
 ) => {  
   console.log(`processing user ${userId}`);
 
@@ -118,9 +132,9 @@ export const processOneUser = async (
     return;
   }
 
-  let topArtists: Artist[] = [];
-  let topTracks: SimplifiedSong[] = [];
-  if (includeTopContent) {
+  let additionalArtists: Artist[] = [];
+  let additionalListens: SongListen[] = [];
+  if (isNew) {
     const [ta, ...tt] = await Promise.all([
       getTopArtistsForUser({spotifyAccessToken}),
       getTopTracksForUser({spotifyAccessToken, time_range: "short_term"}),
@@ -128,35 +142,43 @@ export const processOneUser = async (
       getTopTracksForUser({spotifyAccessToken, time_range: "long_term"}),
     ]);
 
-    topArtists = ta;
+    additionalArtists = ta;
 
-    const seenTracks = new Set();
-    topTracks = tt.flat().filter((t) => {
-      if (seenTracks.has(t.id)) {
-        return false;
-      }
-      seenTracks.add(t.id);
-      return true;
-    });
-  }
-
-  // can treat the top tracks as recent listens, since we know the user listened to them
-  // at some point
-  recentListens.push(
-    ...topTracks.map((t) => {
-      return {
+    // act as if the user has listened to each short term top track once, each medium term top
+    // track twice, and each long term top track three times
+    additionalListens = [
+      ...tt[0].map((t) => ({
         song: t,
         metadata: {
-          playedAt: 0,
+          // two weeks ago
+          playedAt: Date.now() - 1000 * 60 * 60 * 24 * 2 * 7,
           playedFrom: "unknown",
         }
-      }
-    }
-    ));
+      })),
+      ...[...tt[1], ...tt[1]].map((t) => ({
+        song: t,
+        metadata: {
+          // three months ago
+          playedAt: Date.now() - 1000 * 60 * 60 * 24 * 90,
+          playedFrom: "unknown",
+        }
+      })),
+      ...[...tt[2], ...tt[2], ...tt[2]].map((t) => ({
+        song: t,
+        metadata: {
+          // one year ago
+          playedAt: Date.now() - 1000 * 60 * 60 * 24 * 365,
+          playedFrom: "unknown",
+        }
+      })),
+    ]
+  }
 
+  // do not include artists from additionalListens, since we already have plenty of artists to
+  // include for new users between recent listens artists and top artists
   const allArtistIds = Array.from(new Set([
     ...recentListens.map((l) => l.song.primaryArtist.id),
-    ...topArtists.map((a) => a.id),
+    ...additionalArtists.map((a) => a.id),
   ]));
   const allArtists = [];
   for (const artistId of allArtistIds) {
@@ -164,7 +186,9 @@ export const processOneUser = async (
     const recentListen = recentListens.find((l) => l.song.primaryArtist.id === artistId)!;
     allArtists.push(recentListen.song.primaryArtist);
   }
-  const allSongIds = Array.from(new Set(recentListens.map((l) => l.song.id)));
+  const allSongIds = Array.from(
+    new Set(...recentListens.map((l) => l.song.id), ...additionalListens.map((l) => l.song.id))
+  );
 
   console.log(
     // eslint-disable-next-line max-len
@@ -174,7 +198,7 @@ export const processOneUser = async (
   // note that the db that these values are read from is updated by processSong - we don't
   // care about making it transactional because the worst case is that we run processSong on
   // a song that's already been processed, in which case it will just return early
-  const [indexedArtistIds, indexedSongInfos]  = await Promise.all([
+  const [indexedArtistIds, indexedSongInfos] = await Promise.all([
     getIndexedArtistIds(allArtistIds),
     getIndexedSongInfo(allSongIds)
   ]);
@@ -184,35 +208,46 @@ export const processOneUser = async (
     `${indexedArtistIds.length} artists and ${indexedSongIds.length} songs are already indexed`
   );
 
-  // filter out recent listens for songs without lyrics
-  const recentListensToRecord = recentListens.filter((l) => {
+  // filter out listens for songs without lyrics
+  const [
+    recentListensToRecord, additionalListensToRecord
+  ] = [
+    recentListens, additionalListens
+  ].map(array => array.filter((l) => {
     const songInfo = indexedSongInfos.find((s) => s.songId === l.song.id);
     return songInfo == null || !songInfo.isMissingLyrics;
-  });
+  }));
 
-  if (recentListensToRecord.length !== 0) {
-    console.log(`recording ${recentListensToRecord.length} recent listens`);
-    await recordListens({userId, listens: recentListensToRecord});
+  if (recentListensToRecord.length !== 0 || additionalListensToRecord.length !== 0) {
+    console.log(
+      // eslint-disable-next-line max-len
+      `recording ${recentListensToRecord.length} recent listens` + additionalListensToRecord.length && ` and ${additionalListensToRecord.length} additional listens`
+    );
+    await recordListens(
+      {userId, recentListens: recentListensToRecord, additionalListens: additionalListensToRecord}
+    );
   } else {
-    console.log("no recent listens to record");
+    console.log("no listens to record");
   }
 
   // get top songs for artists that we haven't indexed any songs for, in order to seed data
-  const artistsWithoutIndexedSongs = allArtists.filter(
+  const artistsWithoutEnoughIndexedSongs = allArtists.filter(
     (a) => !indexedArtistIds.includes(a.id)
   );
-  console.log(`getting top songs for ${artistsWithoutIndexedSongs.length} artists`);
+  console.log(`getting top songs for ${artistsWithoutEnoughIndexedSongs.length} artists`);
 
   const topSongsForArtists = (await Promise.all(
-    artistsWithoutIndexedSongs.slice(0, MAX_ARTISTS_PER_RUN).map((artist) => getTopSongsForArtist({
-      artistSpotifyId: artist.spotifyId,
-      spotifyAccessToken,
-    }))
+    artistsWithoutEnoughIndexedSongs
+      .slice(0, MAX_ARTISTS_PER_RUN)
+      .map((artist) => getTopSongsForArtist({
+        artistSpotifyId: artist.spotifyId,
+        spotifyAccessToken,
+      }))
   ));
 
   const songsToProcess = await getSongsToProcess({
     indexedSongIds,
-    recentListens: recentListensToRecord,
+    listens: [...recentListensToRecord, ...additionalListensToRecord],
     topSongsForArtists: topSongsForArtists.flat()
   });
 
@@ -229,19 +264,17 @@ export const processOneUser = async (
   ).data();
 
   const lastRefreshedAt = userRecommendations?.lastRefreshedAt;
-  // if this value hasn't been set yet, we'll create the task in initialize_user instead
-  if (lastRefreshedAt != null) {
+  // if we haven't refreshed recommendations in the last ~24 hours, do so
+  if (lastRefreshedAt == null || Date.now() - lastRefreshedAt > 1000 * 60 * 60 * 23.5) {
+    await createRefreshUserTask({
+      userId,
+      numRetries: isNew ? 5 : 0,
+      alwaysFeatureVeryTopArtist: isNew,
 
-    // if we haven't refreshed recommendations in the last ~24 hours, do so
-    if (Date.now() - lastRefreshedAt > 1000 * 60 * 60 * 23.5) {
-      await createRefreshUserTask({
-        userId,
-
-        // add a delay so that ideally some of the songs we just added to the queue will be
-        // processed before we refresh recommendations
-        delaySeconds: 5 * 60,
-      })
-    }
+      // add a delay so that ideally some of the songs we just added to the queue will be
+      // processed before we refresh recommendations
+      delaySeconds: 5 * 60,
+    })
   }
 }
 
@@ -292,42 +325,52 @@ const getIndexedSongInfo = async (songIds: string[]) => {
 
 const recordListens = async ({
   userId,
-  listens,
+  recentListens,
+  additionalListens,
 } : {
   userId: string,
-  listens: SongListen[],
+  recentListens: SongListen[],
+  additionalListens: SongListen[],
 }) => {
-  if (listens.length === 0) {
+  if (recentListens.length === 0 && additionalListens.length === 0) {
     return;
   }
 
   const db = await getFirestoreDb();
 
-  const listenObjs = listens.map((l) => {
-    return {
-      userId,
-      songId: l.song.id,
-      artistId: l.song.primaryArtist.id,
-      time: l.metadata.playedAt,
-      context: l.metadata.playedFrom || "unknown",
-    }
-  })
-
   await db.runTransaction(async (transaction) => {
     const user = await transaction.get(db.collection("user-recent-listens").doc(userId));
     const today = user.data()?.today || {};
+    const longerAgo = user.data()?.longerAgo || {};
     const newToday = {
-      songs: [...listenObjs.map((l) => l.songId), ...(today.songs || [])],
-      artists: [...listenObjs.map((l) => l.artistId), ...(today.artists || [])]
+      songs: [recentListens.map((l) => l.song.id), ...(today.songs || [])],
+      artists: [recentListens.map((l) => l.song.primaryArtist.id), ...(today.artists || [])]
     }
+    const newLongerAgo = {
+      songs: [additionalListens.map((l) => l.song.id), ...(longerAgo.songs || [])],
+      artists: [additionalListens.map((l) => l.song.primaryArtist.id), ...(longerAgo.artists || [])]
+    }
+
     // we're not using ArrayUnion because it doesn't allow duplicates
     transaction.set(db.collection("user-recent-listens").doc(userId), {
       today: newToday,
+      longerAgo: newLongerAgo,
     },
     {
       merge: true,
     }
     );
+
+    const listenObjs = [...recentListens, ...additionalListens].map((l) => {
+      return {
+        userId,
+        songId: l.song.id,
+        artistId: l.song.primaryArtist.id,
+        time: l.metadata.playedAt,
+        context: l.metadata.playedFrom || "unknown",
+      }
+    })
+
     listenObjs.forEach((listen) => {
       transaction.create(db.collection("recent-listens").doc(), listen);
     });
@@ -335,8 +378,8 @@ const recordListens = async ({
 }
 
 const getSongsToProcess = async (
-  {indexedSongIds, recentListens, topSongsForArtists}:
-    {indexedSongIds: string[], recentListens: SongListen[], topSongsForArtists: SimplifiedSong[]}
+  {indexedSongIds, listens, topSongsForArtists}:
+    {indexedSongIds: string[], listens: SongListen[], topSongsForArtists: SimplifiedSong[]}
 ) => {
   // helper variables to prevent duplicates and respect limits
   const songIdsInList: Set<string> = new Set([]);
@@ -384,7 +427,7 @@ const getSongsToProcess = async (
     songsToProcess.push(song);
   }
   
-  recentListens.map((l) => maybeAddSong({song: l.song, isFromTopSongsForArtists: false}));
+  listens.map((l) => maybeAddSong({song: l.song, isFromTopSongsForArtists: false}));
   topSongsForArtists.map(
     (s) => maybeAddSong({song: s, isFromTopSongsForArtists: true})
   );

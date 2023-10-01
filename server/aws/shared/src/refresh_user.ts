@@ -192,8 +192,8 @@ export const refreshUser = async ({
 
 // creates a task to run refreshUser
 export const createRefreshUserTask = async (
-  {userId, numRetries = 0, alwaysFeatureVeryTopUser = false, delaySeconds}:
-  {userId: string, numRetries?: number, alwaysFeatureVeryTopUser?: boolean, delaySeconds?: number}
+  {userId, numRetries = 0, alwaysFeatureVeryTopArtist = false, delaySeconds}:
+  {userId: string, numRetries?: number, alwaysFeatureVeryTopArtist?: boolean, delaySeconds?: number}
 ) => {
 
   try {
@@ -202,7 +202,7 @@ export const createRefreshUserTask = async (
       MessageBody: JSON.stringify({
         userId,
         numRetries,
-        alwaysFeatureVeryTopUser,
+        alwaysFeatureVeryTopArtist,
       }),
       DelaySeconds: delaySeconds,
     }));

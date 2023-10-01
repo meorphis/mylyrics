@@ -8,3 +8,13 @@ export const useAllRequestedBundleKeys = () => {
     _.isEqual,
   );
 };
+
+export const useAllRequestedBundles = () => {
+  return useSelector(
+    (state: RootState) =>
+      state.requestedBundleChange.allRequestedBundleKeys.map(
+        bundleKey => state.bundles.bundles[bundleKey],
+      ),
+    _.isEqual,
+  );
+};
