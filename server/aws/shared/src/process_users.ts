@@ -1,6 +1,6 @@
 import {getFreshSpotifyResponse} from "./integrations/spotify/spotify_auth";
-import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
-import { sqs } from "./integrations/aws";
+// import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
+// import { sqs } from "./integrations/aws";
 import { Song, SimplifiedSong, SongListen, Artist } from "./utility/types";
 import { 
   getEnrichedSongs, getTopArtistsForUser, getTopSongsForArtist,
@@ -312,9 +312,12 @@ const processOneUser = async (
 
 // *** PRIVATE HELPERS ***
 const assertEnvironmentVariables = () => {
-  if (process.env.PROCESSSONGQUEUE_QUEUE_URL == null) {
-    throw new Error("PROCESSSONGQUEUE_QUEUE_URL is not defined in the environment");
-  }  
+  // if (process.env.PROCESSSONGQUEUE_QUEUE_URL == null) {
+  //   throw new Error("PROCESSSONGQUEUE_QUEUE_URL is not defined in the environment");
+  // }  
+  // if (process.env.REFRESHUSERQUEUE_QUEUE_URL == null) {
+  //   throw new Error("REFRESHUSERQUEUE_QUEUE_URL is not defined in the environment");
+  // }
 };
 
 const updateLastCheckedRecentPlaysAt = async (
@@ -517,34 +520,37 @@ const getSongsToProcess = async (
 const createProcessSongTasks = async (
   {songs}: {songs: Song[]}
 ) => {
-  // Split tracks array into chunks of 10 (SQS's SendMessageBatch limit)
-  const trackChunks = Array(Math.ceil(songs.length / 10)).fill(0).map(
-    (_, i) => songs.slice(i * 10, i * 10 + 10)
-  );
+  console.log(`adding ${songs.length} songs to queue`);
+  console.log(JSON.stringify(songs, null, 2));
 
-  for (const trackChunk of trackChunks) {
-    const entries = trackChunk.map((s, index) => ({
-      Id: index.toString(), // must be a unique identifier within the batch
-      MessageBody: JSON.stringify(s),
-    }));
+  // // Split tracks array into chunks of 10 (SQS's SendMessageBatch limit)
+  // const trackChunks = Array(Math.ceil(songs.length / 10)).fill(0).map(
+  //   (_, i) => songs.slice(i * 10, i * 10 + 10)
+  // );
 
-    const params = {
-      QueueUrl: process.env.PROCESSSONGQUEUE_QUEUE_URL,
-      Entries: entries,
-    };
+  // for (const trackChunk of trackChunks) {
+  //   const entries = trackChunk.map((s, index) => ({
+  //     Id: index.toString(), // must be a unique identifier within the batch
+  //     MessageBody: JSON.stringify(s),
+  //   }));
 
-    try {
-      const data = await sqs.send(new SendMessageBatchCommand(params));
-      data.Failed?.forEach(failure => {
-        console.error("failed to add task to queue", failure);
-      });
-      data.Successful?.forEach(success => {
-        console.log("successfully added task to queue", success);
-      });
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error(err, err.stack);
-      }
-    }
-  }
+  //   const params = {
+  //     QueueUrl: process.env.PROCESSSONGQUEUE_QUEUE_URL,
+  //     Entries: entries,
+  //   };
+
+  //   try {
+  //     const data = await sqs.send(new SendMessageBatchCommand(params));
+  //     data.Failed?.forEach(failure => {
+  //       console.error("failed to add task to queue", failure);
+  //     });
+  //     data.Successful?.forEach(success => {
+  //       console.log("successfully added task to queue", success);
+  //     });
+  //   } catch (err: unknown) {
+  //     if (err instanceof Error) {
+  //       console.error(err, err.stack);
+  //     }
+  //   }
+  // }
 }
