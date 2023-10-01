@@ -31,7 +31,7 @@ export const hydratePassage = async (
 
 // inverts hydratePassage so that we can save a passage to the DB
 export const dehydratePassage = (passage: PassageType): RawPassageType => {
-  const rawPassage = _.clone(passage) as RawPassageType & {
+  const rawPassage = _.cloneDeep(passage) as RawPassageType & {
     theme?: any;
     passageKey?: any;
     song: any & {
