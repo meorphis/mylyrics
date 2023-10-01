@@ -21,6 +21,8 @@ export type PassageType = {
   song: SongType;
   theme: ThemeType;
   passageKey: string;
+  bundleInfos: BundleInfo[];
+  type: RawPassageTypeType;
 };
 
 // a passage with some optional customization metadata to alter its rendering

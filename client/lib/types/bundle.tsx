@@ -24,6 +24,11 @@ export type BundleInfo =
       };
     }
   | {
+      type: 'likes';
+      key: 'likes';
+      group: 'essentials';
+    }
+  | {
       type: 'user_made';
       key: string;
       group: 'user_made';

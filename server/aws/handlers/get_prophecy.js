@@ -1,5 +1,4 @@
 import { getProphecy } from '/opt/nodejs/get_prophecy.js';
-import { URLSearchParams } from 'url';
 
 export async function handler(event) {
     try {
@@ -19,7 +18,7 @@ export async function handler(event) {
         const prophecy = await getProphecy({userId, passages});
         return buildResponse(200, JSON.stringify({prophecy}));
     } catch (e) {
-        return buildResponse(500, {message: "Unexpected error get prophecy", error: getErrorAsObject(e)});
+        return buildResponse(500, {message: "Unexpected error getting prophecy", error: getErrorAsObject(e)});
     }
 }
 

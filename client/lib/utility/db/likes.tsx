@@ -9,7 +9,7 @@ import {
   runTransaction,
   where,
 } from '@firebase/firestore';
-import {PassageType} from '../../types/passage';
+import {PassageType, RawPassageType} from '../../types/passage';
 import db from './firestore';
 import {v5 as uuidv5} from 'uuid';
 import {useDeviceId} from '../contexts/device_id';
@@ -22,7 +22,7 @@ import {
   addToBundle,
   removeFromBundle,
 } from '../redux/bundles/slice';
-import {getPassageId} from '../helpers/passage';
+import {dehydratePassage, hydratePassage} from '../helpers/passage';
 
 const getLikeId = (deviceId: string, passage: PassageType): string => {
   return uuidv5(
@@ -121,7 +121,7 @@ export const useLikeRequest = (passage: PassageType) => {
         transaction.set(doc(db, 'user-likes', getLikeId(deviceId, passage)), {
           deviceId,
           passageId: passage.passageKey,
-          passage: passage,
+          passage: dehydratePassage(passage),
           timestamp: now,
         });
       }
@@ -151,26 +151,32 @@ export const useRecentLikesRequest = () => {
 
       const snapshot = await getDocs(d);
 
+      const rawPassages: (RawPassageType & {
+        sortKey: number;
+        bundleKey: string;
+      })[] = snapshot.docs.map(entry => ({
+        ...entry.data().passage,
+        sortKey: entry.data().timestamp,
+        bundleKey: 'likes',
+      }));
+
+      const passages = (await Promise.all(
+        rawPassages.map(hydratePassage),
+      )) as (PassageType & {
+        sortKey: number;
+        bundleKey: string;
+      })[];
+
       dispatch(
         addBundles([
           {
-            bundleKey: 'likes',
-            passages: snapshot.docs.map(entry => {
-              const passage = {
-                ...entry.data().passage,
-                bundleKey: 'likes',
-                sortKey: entry.data().timestamp,
-              };
-              return {
-                ...passage,
-                passageKey: getPassageId(entry.data().passage),
-              };
-            }),
-            creator: {
-              type: 'machine',
+            info: {
+              type: 'likes',
+              key: 'likes',
+              group: 'essentials',
             },
+            passages,
             sortOrder: 'desc',
-            groupName: 'essentials',
           },
         ]),
       );

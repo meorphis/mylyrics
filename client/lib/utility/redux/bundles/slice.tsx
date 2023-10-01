@@ -131,6 +131,14 @@ export const bundlesSlice = createSlice({
     ) => {
       state.scrollToBundleIndex = action.payload;
     },
+    resetRecommendations: (state: BundlesState) => {
+      Object.entries(state.bundles).forEach(([bundleKey, bundle]) => {
+        if (['top', 'artist', 'sentiment'].includes(bundle.info.type)) {
+          delete state.bundles[bundleKey];
+          delete state.bundleKeyToPassageKey[bundleKey];
+        }
+      });
+    },
   },
 });
 

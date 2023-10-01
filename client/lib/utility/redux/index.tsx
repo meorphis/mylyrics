@@ -1,4 +1,4 @@
-import {configureStore} from '@reduxjs/toolkit';
+import {AnyAction, configureStore} from '@reduxjs/toolkit';
 import bundlesReducer from './bundles/slice';
 import prophecyReducer from './prophecy/slice';
 import lyricCardMeasurementReducer from './measurement/slice';
@@ -10,14 +10,52 @@ import {logTimingMiddleware} from './timing/middleware';
 
 enableMapSet();
 
+const rootReducer = (
+  state: RootState | undefined,
+  action: AnyAction,
+): RootState => {
+  const originalState = state;
+
+  // essentially wipe everything except for some bundles (see below) when resetting recommendations
+  if (action.type === 'RESET_RECOMMENDATIONS' && state) {
+    state = undefined;
+  }
+
+  const newState = {
+    bundles: bundlesReducer(state?.bundles, action),
+    lyricCardMeasurement: lyricCardMeasurementReducer(
+      state?.lyricCardMeasurement,
+      action,
+    ),
+    prophecy: prophecyReducer(state?.prophecy, action),
+    requestedBundleChange: requestedBundleChangeReducer(
+      state?.requestedBundleChange,
+      action,
+    ),
+    shareablePassage: shareablePassagetReducer(state?.shareablePassage, action),
+  };
+
+  // keep the bundles that are not from recommendations when resetting recommendations
+  if (action.type === 'RESET_RECOMMENDATIONS' && originalState) {
+    Object.entries(originalState.bundles.bundles).forEach(
+      ([bundleKey, bundle]) => {
+        if (['top', 'artist', 'sentiment'].includes(bundle.info.type)) {
+          delete originalState.bundles.bundles[bundleKey];
+          delete originalState.bundles.bundleKeyToPassageKey[bundleKey];
+        }
+      },
+    );
+
+    newState.bundles.bundles = originalState.bundles.bundles;
+    newState.bundles.bundleKeyToPassageKey =
+      originalState.bundles.bundleKeyToPassageKey;
+  }
+
+  return newState;
+};
+
 export const store = configureStore({
-  reducer: {
-    bundles: bundlesReducer,
-    lyricCardMeasurement: lyricCardMeasurementReducer,
-    prophecy: prophecyReducer,
-    requestedBundleChange: requestedBundleChangeReducer,
-    shareablePassage: shareablePassagetReducer,
-  },
+  reducer: rootReducer,
   middleware: [logTimingMiddleware, requestedBundleChangeMiddleware],
 });
 

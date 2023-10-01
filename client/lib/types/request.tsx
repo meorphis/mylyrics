@@ -16,6 +16,14 @@ export type RequestType<T> =
       error: string;
     };
 
+export type RequestTypeWithPendingReload<T, U> =
+  | RequestType<T>
+  | {
+      status: 'pending_reload';
+      data: T;
+      reloadData: U;
+    };
+
 export type RequestTypeWithPartial<T> =
   | {
       status: 'init';

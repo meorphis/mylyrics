@@ -1,5 +1,5 @@
 import {useGetUserRequest, useSetUserRequest} from '../../utility/db/user';
-import React, {memo, useEffect, useRef, useState} from 'react';
+import React, {memo, useEffect, useState} from 'react';
 import Recommendations from './Recommendations';
 import SpotifyLogin from './SpotifyLogin';
 import ErrorComponent from '../common/ErrorComponent';
@@ -9,7 +9,7 @@ import PendingRecommendations from './PendingRecommendations';
 import {useNotifications} from '../../utility/helpers/notifications';
 import {useSpotifyAuthentication} from '../../utility/helpers/spotify_auth';
 import AppearingView from '../common/AppearingView';
-import {AppState, StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native';
 import {useRecentLikesRequest} from '../../utility/db/likes';
 import Animated, {
   useAnimatedStyle,
@@ -32,9 +32,8 @@ const MainScreen = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    makeRecommendationsRequest().then(() => {
-      makeRecentLikesRequest();
-    });
+    makeRecommendationsRequest();
+    makeRecentLikesRequest();
     makeGetUserRequest();
   }, []);
 
@@ -47,27 +46,6 @@ const MainScreen = () => {
       setUserRequest({expoPushToken});
     }
   }, [getUserRequest.status, expoPushToken]);
-
-  const appState = useRef(AppState.currentState);
-  const [_, setAppStateVisible] = useState(appState.current);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        console.log('App has come to the foreground!');
-      }
-
-      appState.current = nextAppState;
-      setAppStateVisible(appState.current);
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
 
   if (recommendationsRequest.status === 'error') {
     console.log(recommendationsRequest.error);
