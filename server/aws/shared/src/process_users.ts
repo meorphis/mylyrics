@@ -187,7 +187,7 @@ const processOneUser = async (
     allArtists.push(recentListen.song.primaryArtist);
   }
   const allSongIds = Array.from(
-    new Set(...recentListens.map((l) => l.song.id), ...additionalListens.map((l) => l.song.id))
+    new Set([...recentListens.map((l) => l.song.id), ...additionalListens.map((l) => l.song.id)])
   );
 
   console.log(
@@ -295,30 +295,46 @@ const updateLastCheckedRecentPlaysAt = async (
   });
 }
 
-const getIndexedArtistIds = async (artistIds: string[]) => {
+const getInChunks = async (
+  {ids, collection, fieldName}: {ids: string[], collection: string, fieldName: string}
+) => {
   const db = await getFirestoreDb();
 
-  const artistsIndexed = await db.collection("artists").where(
-    "artistId", "in", artistIds
-  ).get();
+  const chunkSize = 30;
+  const docs: DocumentData[] = [];
+  
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const querySnapshot = await db.collection(collection).where(fieldName, "in", chunk).get();
+
+    querySnapshot.forEach((doc) => {
+      docs.push(doc.data());
+    });
+  }
+
+  return docs;
+}
+
+const getIndexedArtistIds = async (artistIds: string[]): Promise<string[]> => {
+  const artistsIndexed = await getInChunks({
+    ids: artistIds, collection: "artists", fieldName: "artistId",
+  })
 
   // consider an artist indexed if they have at least 3 songs indexed
-  return artistsIndexed.docs.filter(
-    d => (d.data().numIndexedSongs ?? 0) > 3).map((d) => d.data().artistId
+  return artistsIndexed.filter(
+    d => (d.numIndexedSongs ?? 0) > 3).map((d) => d.artistId
   );
 }
 
 const getIndexedSongInfo = async (songIds: string[]) => {
-  const db = await getFirestoreDb();
+  const songsIndexed = await getInChunks({
+    ids: songIds, collection: "songs", fieldName: "songId",
+  })
 
-  const songsIndexed = await db.collection("songs").where(
-    "songId", "in", songIds
-  ).get();
-
-  return songsIndexed.docs.map((d) =>  {
+  return songsIndexed.map((d) =>  {
     return {
-      songId: d.data().songId,
-      isMissingLyrics: d.data().isMissingLyrics
+      songId: d.songId,
+      isMissingLyrics: d.isMissingLyrics
     }
   });
 }
@@ -343,12 +359,15 @@ const recordListens = async ({
     const today = user.data()?.today || {};
     const longerAgo = user.data()?.longerAgo || {};
     const newToday = {
-      songs: [recentListens.map((l) => l.song.id), ...(today.songs || [])],
-      artists: [recentListens.map((l) => l.song.primaryArtist.id), ...(today.artists || [])]
+      songs: [...recentListens.map((l) => l.song.id), ...(today.songs || [])],
+      artists: [...recentListens.map((l) => l.song.primaryArtist.id), ...(today.artists || [])]
     }
     const newLongerAgo = {
-      songs: [additionalListens.map((l) => l.song.id), ...(longerAgo.songs || [])],
-      artists: [additionalListens.map((l) => l.song.primaryArtist.id), ...(longerAgo.artists || [])]
+      songs: [...additionalListens.map((l) => l.song.id), ...(longerAgo.songs || [])],
+      artists: [
+        ...additionalListens.map((l) => l.song.primaryArtist.id),
+        ...(longerAgo.artists || [])
+      ]
     }
 
     // we're not using ArrayUnion because it doesn't allow duplicates
