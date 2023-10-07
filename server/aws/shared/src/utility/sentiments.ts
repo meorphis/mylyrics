@@ -22,6 +22,11 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
     group: "spine",
     value: "negative",
   },
+  "anxiety": {
+    name: "anxiety",
+    group: "mind",
+    value: "negative",
+  },
   "appreciation": {
     name: "appreciation",
     group: "heart",
@@ -40,6 +45,26 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
   "chaos": {
     name: "chaos",
     group: "mind",
+    value: "negative",
+  },
+  "confusion": {
+    name: "confusion",
+    group: "mind",
+    value: "negative",
+  },
+  "curiosity": {
+    name: "curiosity",
+    group: "eyes",
+    value: "positive",
+  },
+  "defiance": {
+    name: "defiance",
+    group: "spine",
+    value: "positive",
+  },
+  "despair": {
+    name: "despair",
+    group: "eyes",
     value: "negative",
   },
   "desperation": {
@@ -97,9 +122,14 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
     group: "spine",
     value: "negative",
   },
-  "flirtatiousness": {
-    name: "flirtatiousness",
+  "flirting": {
+    name: "flirting",
     group: "skin",
+    value: "positive",
+  },
+  "friendship": {
+    name: "friendship",
+    group: "heart",
     value: "positive",
   },
   "frustration": {
@@ -115,6 +145,11 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
   "hope": {
     name: "hope",
     group: "eyes",
+    value: "positive",
+  },
+  "humor": {
+    name: "humor",
+    group: "gut",
     value: "positive",
   },
   "intimacy": {
@@ -142,6 +177,16 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
     group: "eyes",
     value: "negative",
   },
+  "longing": {
+    name: "longing",
+    group: "eyes",
+    value: "negative",
+  },
+  "love": {
+    name: "love",
+    group: "heart",
+    value: "positive",
+  },
   "loyalty": {
     name: "loyalty",
     group: "heart",
@@ -157,10 +202,15 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
     group: "gut",
     value: "negative",
   },
-  "nostalgia": {
-    name: "nostalgia",
-    group: "eyes",
+  "memories": {
+    name: "memories",
+    group: "mind",
     value: "mixed",
+  },
+  "mystery": {
+    name: "mystery",
+    group: "eyes",
+    value: "positive",
   },
   "obsession": {
     name: "obsession",
@@ -269,7 +319,7 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
   },
   "vulnerability": {
     name: "vulnerability",
-    group: "gut",
+    group: "eyes",
     value: "negative",
   },
 };

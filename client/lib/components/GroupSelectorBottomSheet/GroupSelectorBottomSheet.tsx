@@ -3,12 +3,8 @@ import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 import {StyleSheet, Text, View} from 'react-native';
 import {textStyleCommon} from '../../utility/helpers/text';
 import {useBottomSheetBackdrop} from '../../utility/helpers/bottom_sheet';
-import {
-  useActiveBundleKey,
-  useGroupedBundleInfos,
-} from '../../utility/redux/bundles/selectors';
+import {useGroupedBundleInfos} from '../../utility/redux/bundles/selectors';
 import GroupSelectorButton from './GroupSelectorButton';
-import {BundleInfo} from '../../types/bundle';
 
 type Props = {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -17,16 +13,8 @@ type Props = {
 // bottom sheet to allow the user to change the active bundle
 const GroupSelectorBottomSheet = (props: Props) => {
   const {bottomSheetRef} = props;
-  const activeBundleKey = useActiveBundleKey();
   const groupedBundleInfos = useGroupedBundleInfos();
   const groupsToShow = Object.keys(groupedBundleInfos);
-  const selectedGroup = activeBundleKey
-    ? groupsToShow.find(group =>
-        groupedBundleInfos[group]
-          .map(i => i.key)
-          .includes(activeBundleKey as string),
-      )
-    : null;
 
   const snapPoints = useMemo(() => ['85%'], []);
 
@@ -43,47 +31,40 @@ const GroupSelectorBottomSheet = (props: Props) => {
           🎶 your daily lines 🎶
         </Text>
 
-        {putAtFrontOfArray(groupsToShow, i => i === selectedGroup).map(
-          group => (
-            <View
-              style={{
-                ...styles.group,
-              }}
-              key={group}>
-              <View style={styles.groupLabel}>
-                <Text
-                  style={{
-                    ...textStyleCommon,
-                    ...styles.groupLabelText,
-                  }}>
-                  {group}
+        {putAtFrontOfArray(groupsToShow, i => i === 'essentials').map(group => (
+          <View
+            style={{
+              ...styles.group,
+            }}
+            key={group}>
+            <View style={styles.groupLabel}>
+              <Text
+                style={{
+                  ...textStyleCommon,
+                  ...styles.groupLabelText,
+                }}>
+                {group}
+              </Text>
+              <View style={styles.groupLabelEmoji}>
+                <Text style={styles.groupLabelEmojiText}>
+                  {groupEmojis[group]}
                 </Text>
-                <View style={styles.groupLabelEmoji}>
-                  <Text style={styles.groupLabelEmojiText}>
-                    {groupEmojis[group]}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.tagsContainer}>
-                {(
-                  putAtFrontOfArray(
-                    groupedBundleInfos[group],
-                    i => i.key === activeBundleKey,
-                  ) as BundleInfo[]
-                ).map(info => (
-                  <View style={styles.tagContainer} key={info.key}>
-                    <GroupSelectorButton
-                      bundleInfo={info}
-                      onPress={() => {
-                        bottomSheetRef.current?.close();
-                      }}
-                    />
-                  </View>
-                ))}
               </View>
             </View>
-          ),
-        )}
+            <View style={styles.tagsContainer}>
+              {groupedBundleInfos[group].map(info => (
+                <View style={styles.tagContainer} key={info.key}>
+                  <GroupSelectorButton
+                    bundleInfo={info}
+                    onPress={() => {
+                      bottomSheetRef.current?.close();
+                    }}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
       </BottomSheetScrollView>
     </BottomSheet>
   );

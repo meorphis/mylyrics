@@ -11,18 +11,20 @@ export async function handler(event) {
     var userId;
     var numRetries;
     var alwaysFeatureVeryTopArtist;
+    var useSpotifyTopTracks;
     try {
         const {body} = records[0];
         const json = JSON.parse(body);
         userId = json.userId;
         numRetries = json.numRetries ?? 0;
         alwaysFeatureVeryTopArtist = json.alwaysFeatureVeryTopArtist ?? false;
+        useSpotifyTopTracks = json.useSpotifyTopTracks ?? false;
     } catch (e) {
         return buildResponse(400, {error: `Invalid JSON: "${records}"`});
     }
 
     try {
-        await refreshUser({userId, numRetries, alwaysFeatureVeryTopArtist});
+        await refreshUser({userId, numRetries, alwaysFeatureVeryTopArtist, useSpotifyTopTracks});
         return buildResponse(200, {});
     } catch (e) {
         return buildResponse(500, {message: "Unexpected error refreshing user", error: getErrorAsObject(e)});

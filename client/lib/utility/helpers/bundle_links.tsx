@@ -59,7 +59,7 @@ export const useBundleLink = () => {
         info: {
           key: bundleKey!,
           type: 'user_made',
-          group: 'user_made',
+          group: undefined,
           creator,
           recipient: data.recipient,
           title,

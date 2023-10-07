@@ -1,12 +1,12 @@
-// import { SendMessageCommand } from "@aws-sdk/client-sqs";
+import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getFirestoreDb } from "./integrations/firebase";
 import { getScoredSentiments, getDailyRecommendations } from "./integrations/open_search";
 import { 
   GROUP_TO_SENTIMENTS, SENTIMENT_TO_GROUP, getSentimentValue 
 } from "./utility/sentiments";
-// import { sqs } from "./integrations/aws";
+import { sqs } from "./integrations/aws";
 import { sendRecommendationNotif } from "./integrations/notifications";
-import { getTopArtistsForUser } from "./integrations/spotify/spotify_data";
+import { getTopArtistsForUser, getTopTracksForUser } from "./integrations/spotify/spotify_data";
 import { getFreshSpotifyResponse } from "./integrations/spotify/spotify_auth";
 import { Artist, Recommendation } from "./utility/types";
 
@@ -36,11 +36,20 @@ const IMPRESSION_KEYS_TO_EXCLUDE_FROM_AGGREGATE = new Set(["top-passages"]);
 // run daily (or as part of NUX) to give the user new content for the day
 // - updates the user's recent listens data to mark the passage of a new day
 // - finds the user's recommended sentiments
-// - puts the most relevant passages for the top sentiment in the user's recommendations
+// - finds relevant passages for the user's daily recommendations
 // - sends a notification to the user with the top recommendation
 export const refreshUser = async ({
-  userId, numRetries, alwaysFeatureVeryTopArtist = false
-} : {userId: string, numRetries: number, alwaysFeatureVeryTopArtist?: boolean}) => {
+  userId, numRetries, alwaysFeatureVeryTopArtist = false, useSpotifyTopTracks = false
+} : {
+  userId: string,
+  numRetries: number,
+  // if true, we'll always feature one of the user's top three artists instead
+  // of sampling randomly
+  alwaysFeatureVeryTopArtist?: boolean,
+  // if true, we'll use the user's top tracks from spotify instead of their recent listens
+  // to figure out the user's top passages
+  useSpotifyTopTracks?: boolean
+}) => {
   // make sure we have all the environment variables we need
   assertEnvironmentVariables();
 
@@ -108,7 +117,13 @@ export const refreshUser = async ({
     console.log(`no recommended sentiments for user ${userId}`);
     if (numRetries > 0) {
       console.log(`retrying in 60 seconds for user ${userId}`);
-      await createRefreshUserTask({userId, numRetries: numRetries - 1, delaySeconds: 60});
+      await createRefreshUserTask({
+        userId,
+        numRetries: numRetries - 1,
+        delaySeconds: 60,
+        alwaysFeatureVeryTopArtist,
+        useSpotifyTopTracks,
+      });
     }
     return;
   }
@@ -126,11 +141,16 @@ export const refreshUser = async ({
       `error getting spotify access token for user ${userId}: ${JSON.stringify(spotifyResponse)}`
     );
   }
+
+  console.log(`got spotify access token for user ${userId}`);
   
   const {access_token: spotifyAccessToken} = spotifyResponse.data;
   
   const recentlyFeaturedArtists = userRecommendations.featuredArtistHistory ?? [];
   const topSpotifyArtists = await getTopArtistsForUser({spotifyAccessToken, limit: 15});
+  const topSpotifySongs = useSpotifyTopTracks ? await getTopTracksForUser({
+    spotifyAccessToken, limit: 20, time_range: "short_term"
+  }) : [];
 
   let featuredArtistOptions: Artist[];
 
@@ -146,11 +166,17 @@ export const refreshUser = async ({
     ).map(idx => artistsEligibleForFeature[idx])
   }
 
+  console.log(
+    // eslint-disable-next-line max-len
+    `featured artist options for user ${userId}: ${JSON.stringify(featuredArtistOptions.map(a => a.name))}`
+  );
+
   const {recommendations, featuredArtist} = await getDailyRecommendations(
     {
       userId,
       recentListens,
       topSpotifyArtists,
+      topSpotifySongs,
       featuredArtistOptions,
       recommendedSentiments,
     }
@@ -192,28 +218,40 @@ export const refreshUser = async ({
 
 // creates a task to run refreshUser
 export const createRefreshUserTask = async (
-  {userId, numRetries = 0, alwaysFeatureVeryTopArtist = false, delaySeconds}:
-  {userId: string, numRetries?: number, alwaysFeatureVeryTopArtist?: boolean, delaySeconds?: number}
+  {
+    userId,
+    numRetries = 0,
+    alwaysFeatureVeryTopArtist = false,
+    useSpotifyTopTracks = false,
+    delaySeconds
+  }: {
+    userId: string,
+    numRetries?: number,
+    alwaysFeatureVeryTopArtist?: boolean,
+    useSpotifyTopTracks?: boolean,
+    delaySeconds?: number
+  }
 ) => {
   // eslint-disable-next-line max-len
-  console.log(`adding task to queue for user ${userId} ${numRetries} ${alwaysFeatureVeryTopArtist} ${delaySeconds}`);
+  console.log(`adding task to queue for user ${userId} ${numRetries} ${alwaysFeatureVeryTopArtist} ${useSpotifyTopTracks} ${delaySeconds}`);
 
-  // try {
-  //   await sqs.send(new SendMessageCommand({
-  //     QueueUrl: process.env.REFRESHUSERQUEUE_QUEUE_URL as string,
-  //     MessageBody: JSON.stringify({
-  //       userId,
-  //       numRetries,
-  //       alwaysFeatureVeryTopArtist,
-  //     }),
-  //     DelaySeconds: delaySeconds,
-  //   }));
-  //   console.log("successfully added task to queue");
-  // } catch (err: unknown) {
-  //   if (err instanceof Error) {
-  //     console.error(`failed to add message to queue: ${err.message}`, err.stack);
-  //   }
-  // }
+  try {
+    await sqs.send(new SendMessageCommand({
+      QueueUrl: process.env.REFRESHUSERQUEUE_QUEUE_URL as string,
+      MessageBody: JSON.stringify({
+        userId,
+        numRetries,
+        alwaysFeatureVeryTopArtist,
+        useSpotifyTopTracks,
+      }),
+      DelaySeconds: delaySeconds,
+    }));
+    console.log("successfully added task to queue");
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.error(`failed to add message to queue: ${err.message}`, err.stack);
+    }
+  }
 
 }
 
@@ -287,7 +325,7 @@ const pushBackUserRecentListens = async (
         0, newLongerAgoArtists.length - numArtistsToRemove
       ),
     };
-    const update: Record<string, {songs: Array<string>, artists: Array<string>}> = {
+    const update: Record<string, {songs?: Array<string>, artists?: Array<string>}> = {
       today: {
         songs: [],
         artists: [],
@@ -321,11 +359,17 @@ const pushBackUserImpressions = async (
   const impressionsToday = (impressionTodayDoc.data()?.value || {}) as Record<string, string[]>;
 
   const keys = Object.keys(impressionsToday);
+
+  if (keys.length === 0) {
+    return;
+  }
+
   const existingData = (await Promise.all(([...keys, "all"]).map((key) => db.doc(
     `user-impressions/${userId}-${key}`).get()
   ))).map((doc) => doc.data()?.value);
 
   const batch = db.batch();
+
   keys.forEach((key, i) => {
     const existingValue = existingData[i] || [];
     const newData = impressionsToday[key];
@@ -382,7 +426,7 @@ const getRecommendedSentiments = async (
   {
     userId: string,
     previouslyRecommendedSentiments?: Record<string, string[]>
-    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+    recentListens: Record<string, {songs?: Array<string>, artists?: Array<string>} | undefined>,
   },
 ): Promise<string[] | null> => {
   const scoredSentiments = await getScoredSentiments({userId, recentListens});
@@ -473,8 +517,8 @@ const getRecommendedSentiments = async (
   // now, for each group select the sentiments
   return groups.map((group) => {
     const groupSentiments = GROUP_TO_SENTIMENTS[group as keyof typeof GROUP_TO_SENTIMENTS];
-    const options = scoredSentiments.reduce((acc, {sentiment, score}) => {
-      if (groupSentiments.includes(sentiment)) {
+    const options = scoredSentiments.reduce((acc, {sentiment, score, count}) => {
+      if (groupSentiments.includes(sentiment) && count >= minCountToUse) {
         acc[sentiment] = score;
       }
       return acc;
@@ -625,7 +669,7 @@ const getRandomIndexes = (n: number, k: number) => {
 
   while (indexes.length < k) {
     const newChoice = Math.floor(Math.random() * n);
-    if (indexes.includes(newChoice)) {
+    if (!indexes.includes(newChoice)) {
       indexes.push(newChoice);
     }
   }

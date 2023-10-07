@@ -63,18 +63,27 @@ export const useRecommendationsRequest = () => {
   // check for updates by subscribing to the user-recommendations document in firestore
   // called when the app first starts up and when the app comes into the foreground
   const unsubscribe = useRef<Unsubscribe | null>(null);
-  const maybeUpdateThenContinuouslyCheckForUpdates = async () => {
+  const maybeUpdateThenContinuouslyCheckForUpdates = async ({
+    ignoreError,
+  }: {
+    ignoreError: boolean;
+  }) => {
     try {
       const docSnap = await getRecommendationsFromFirestore();
       await maybeSetRecommendations(docSnap);
     } catch (e) {
       console.error(e);
-      setRecommendationsRequest({
-        status: 'error',
-        error: errorToString(e),
-      });
+      if (!ignoreError) {
+        setRecommendationsRequest({
+          status: 'error',
+          error: errorToString(e),
+        });
+      }
     }
+    await continuouslyCheckForUpdates();
+  };
 
+  const continuouslyCheckForUpdates = async () => {
     // we should have already unsubscribed when the app went into the background,
     // but just in case, unsubscribe again
     if (unsubscribe.current) {
@@ -112,10 +121,11 @@ export const useRecommendationsRequest = () => {
           nextAppState === 'active'
         ) {
           if (recommendationsRequest.status === 'loaded') {
-            maybeUpdateThenContinuouslyCheckForUpdates();
+            // we should not override our successfully loaded data with an error
+            maybeUpdateThenContinuouslyCheckForUpdates({ignoreError: true});
           } else if (recommendationsRequest.status === 'pending_reload') {
             await applyPendingReload();
-            maybeUpdateThenContinuouslyCheckForUpdates();
+            continuouslyCheckForUpdates();
           }
         }
 
@@ -141,7 +151,7 @@ export const useRecommendationsRequest = () => {
 
   const makeRecommendationsRequest = async () => {
     setRecommendationsRequest({status: 'loading'});
-    maybeUpdateThenContinuouslyCheckForUpdates();
+    maybeUpdateThenContinuouslyCheckForUpdates({ignoreError: false});
   };
 
   const applyPendingReload = async () => {

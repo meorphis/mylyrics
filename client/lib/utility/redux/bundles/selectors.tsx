@@ -28,6 +28,10 @@ export const useGroupedBundleInfos = () => {
     const groups: {[key: string]: BundleInfo[]} = {};
 
     Object.values(state.bundles.bundles).forEach(bundle => {
+      if (!bundle.info.group) {
+        return;
+      }
+
       const group = bundle.info.group;
       if (!groups[group]) {
         groups[group] = [];
@@ -119,9 +123,8 @@ export const useBundleIncludesPassage = ({
   passageKey: string;
 }) => {
   return useSelector((state: RootState) => {
-    return state.bundles.bundles[bundleKey].passages.some(
-      p => p.passageKey === passageKey,
-    );
+    const bundle = state.bundles.bundles[bundleKey];
+    return bundle && bundle.passages.some(p => p.passageKey === passageKey);
   });
 };
 

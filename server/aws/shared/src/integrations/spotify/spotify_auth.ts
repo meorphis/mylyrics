@@ -35,7 +35,9 @@ export const swapCodeForSpotifyResponse = async (
   return makeSpotifyAuthRequest(
     {
       userId,
-      paramString: `grant_type=authorization_code&code=${code}&redirect_uri=${SPOTIFY_REDIRECT_URL}`
+      // eslint-disable-next-line max-len
+      paramString: `grant_type=authorization_code&code=${code}&redirect_uri=${SPOTIFY_REDIRECT_URL}`,
+      setNullSeed: true
     }
   )
 }
@@ -92,8 +94,13 @@ export const getFreshSpotifyResponse = async (
 // makes a request to the spotify api, saves the response to dynamo, and returns
 // the response (with the refresh_token redacted)
 const makeSpotifyAuthRequest = async (
-  {userId, paramString, existingEncrypedRefreshToken}: 
-  {userId: string, paramString: string, existingEncrypedRefreshToken?: string}
+  {userId, paramString, existingEncrypedRefreshToken, setNullSeed}: 
+  {
+    userId: string,
+    paramString: string,
+    existingEncrypedRefreshToken?: string,
+    setNullSeed?: boolean
+  }
 ): Promise<SpotifyAPIResponse> => {
 
   const spotifyClientSecret = await getSecretString("spotifyClientSecret");
@@ -152,15 +159,34 @@ const makeSpotifyAuthRequest = async (
     await encrypt(spotifyResponseData.refresh_token) : existingEncrypedRefreshToken
 
   const db = await getFirestoreDb();
-  await db.collection("users").doc(userId).set({
+
+  const updateData: {
+    userId: string,
+    spotifyAuth: {
+      accessToken: string,
+      expirationTime: number,
+      encryptedRefreshToken?: string,
+      scope: string,
+    } | null,
+    seed?: null
+  } = {
     userId,
     spotifyAuth: invalidGrant ? null : {
       accessToken: spotifyResponseData.access_token,
       expirationTime: new Date().getTime() + spotifyResponseData.expires_in * 1000,
-      encryptedRefreshToken,
       scope: spotifyResponseData.scope
     },
-  }, {
+  }
+
+  if (encryptedRefreshToken && updateData.spotifyAuth) {
+    updateData.spotifyAuth.encryptedRefreshToken = encryptedRefreshToken;
+  }
+
+  if (setNullSeed) {
+    updateData.seed = null;
+  }
+
+  await db.collection("users").doc(userId).set(updateData, {
     merge: true,
   });
 

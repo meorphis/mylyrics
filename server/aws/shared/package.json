@@ -12,6 +12,7 @@
     "eslint-plugin-import": "^2.27.5"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.422.1",
     "@aws-sdk/client-dynamodb": "^3.363.0",
     "@aws-sdk/client-secrets-manager": "^3.363.0",
     "@aws-sdk/client-sqs": "^3.363.0",

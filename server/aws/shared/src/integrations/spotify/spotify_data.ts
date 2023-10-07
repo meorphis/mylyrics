@@ -123,14 +123,15 @@ export const getTopArtistsForUser = async (
 
 export const getTopTracksForUser = async (
   {
-    spotifyAccessToken, time_range = "short_term"
+    spotifyAccessToken, limit = 50, time_range = "short_term"
   }: {
     spotifyAccessToken: string,
+    limit?: number,
     time_range?: "short_term" | "medium_term" | "long_term"
   }
 ): Promise<SimplifiedSong[]> => {
   const sp = getSpotifyClient(spotifyAccessToken);
-  const topTracksResponse = await sp.getMyTopTracks({limit: 50, time_range});
+  const topTracksResponse = await sp.getMyTopTracks({limit, time_range});
   return topTracksResponse.body.items.map(getSimplifiedSongFromSpotifyTrack);
 }
 

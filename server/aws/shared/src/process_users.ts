@@ -1,6 +1,6 @@
 import {getFreshSpotifyResponse} from "./integrations/spotify/spotify_auth";
-// import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
-// import { sqs } from "./integrations/aws";
+import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
+import { sqs } from "./integrations/aws";
 import { Song, SimplifiedSong, SongListen, Artist } from "./utility/types";
 import { 
   getEnrichedSongs, getTopArtistsForUser, getTopSongsForArtist,
@@ -36,7 +36,7 @@ export const processUsers = async ({minute}: {minute: number}) => {
 
   const newUsers = await db.collection("users")
     .where("seed", "==", null)
-    .where("spotifyAccessToken", "!=", null).get();
+    .where("spotifyAuth", "!=", null).get();
 
   await Promise.all(newUsers.docs.map((d) => {
     db.collection("users").doc(d.ref.id).set({
@@ -44,7 +44,11 @@ export const processUsers = async ({minute}: {minute: number}) => {
     }, {merge: true})
   }));
 
+  console.log(`found ${newUsers.docs.length} new users`);
+
   const existingUsers = await db.collection("users").where("seed", "==", minute).get();
+
+  console.log(`found ${existingUsers.docs.length} existing users`);
 
   const errors: unknown[] = [];
 
@@ -288,7 +292,7 @@ const processOneUser = async (
     simplifiedSongs: songsToProcess,
   });
 
-  await createProcessSongTasks({songs: enrichedSongsToProcess});
+  await createProcessSongTasks({songs: enrichedSongsToProcess, userId});
 
   const db = await getFirestoreDb();
   const userRecommendations = (
@@ -302,22 +306,23 @@ const processOneUser = async (
       userId,
       numRetries: isNew ? 5 : 0,
       alwaysFeatureVeryTopArtist: isNew,
+      useSpotifyTopTracks: isNew,
 
       // add a delay so that ideally some of the songs we just added to the queue will be
       // processed before we refresh recommendations
-      delaySeconds: 5 * 60,
+      delaySeconds: 2 * 60,
     })
   }
 }
 
 // *** PRIVATE HELPERS ***
 const assertEnvironmentVariables = () => {
-  // if (process.env.PROCESSSONGQUEUE_QUEUE_URL == null) {
-  //   throw new Error("PROCESSSONGQUEUE_QUEUE_URL is not defined in the environment");
-  // }  
-  // if (process.env.REFRESHUSERQUEUE_QUEUE_URL == null) {
-  //   throw new Error("REFRESHUSERQUEUE_QUEUE_URL is not defined in the environment");
-  // }
+  if (process.env.PROCESSSONGQUEUE_QUEUE_URL == null) {
+    throw new Error("PROCESSSONGQUEUE_QUEUE_URL is not defined in the environment");
+  }  
+  if (process.env.REFRESHUSERQUEUE_QUEUE_URL == null) {
+    throw new Error("REFRESHUSERQUEUE_QUEUE_URL is not defined in the environment");
+  }
 };
 
 const updateLastCheckedRecentPlaysAt = async (
@@ -407,20 +412,6 @@ const recordListens = async ({
 
     // we're not using ArrayUnion because it doesn't allow duplicates
     transaction.set(db.collection("user-recent-listens").doc(userId), newData)
-
-    const listenObjs = listens.map((l) => {
-      return {
-        userId,
-        songId: l.song.id,
-        artistId: l.song.primaryArtist.id,
-        time: l.metadata.playedAt,
-        context: l.metadata.playedFrom || "unknown",
-      }
-    })
-
-    listenObjs.forEach((listen) => {
-      transaction.create(db.collection("recent-listens").doc(), listen);
-    });
   });
 }
 
@@ -456,8 +447,6 @@ const stretchTopSongsSubArray = ({songs, factor}: {songs: SimplifiedSong[], fact
   }
   return result;
 }
-
-
 
 const getSongsToProcess = async (
   {indexedSongIds, listens, topSongsForArtists}:
@@ -518,39 +507,52 @@ const getSongsToProcess = async (
 }
 
 const createProcessSongTasks = async (
-  {songs}: {songs: Song[]}
+  {songs, userId}: {songs: Song[], userId: string}
 ) => {
   console.log(`adding ${songs.length} songs to queue`);
   console.log(JSON.stringify(songs, null, 2));
 
-  // // Split tracks array into chunks of 10 (SQS's SendMessageBatch limit)
-  // const trackChunks = Array(Math.ceil(songs.length / 10)).fill(0).map(
-  //   (_, i) => songs.slice(i * 10, i * 10 + 10)
-  // );
+  // Split tracks array into chunks of 10 (SQS's SendMessageBatch limit)
+  const trackChunks = Array(Math.ceil(songs.length / 10)).fill(0).map(
+    (_, i) => songs.slice(i * 10, i * 10 + 10)
+  );
 
-  // for (const trackChunk of trackChunks) {
-  //   const entries = trackChunk.map((s, index) => ({
-  //     Id: index.toString(), // must be a unique identifier within the batch
-  //     MessageBody: JSON.stringify(s),
-  //   }));
+  trackChunks.forEach(async (trackChunk) => {
+    const entries = trackChunk.map((s, index) => ({
+      Id: index.toString(), // must be a unique identifier within the batch
+      MessageBody: JSON.stringify({
+        song: s,
+        triggeredBy: userId,
+      }),
 
-  //   const params = {
-  //     QueueUrl: process.env.PROCESSSONGQUEUE_QUEUE_URL,
-  //     Entries: entries,
-  //   };
+      // this logic no longer seems to apply, given that Anthropic apparently has a more generous
+      // rate limit
+      // // limit to 20 songs per minute to attempt to stay within OpenAI's rate limit
+      // // (90k tokens/minute)
+      // // note that DelaySeconds maxes out at 900, so we also have to make sure we
+      // // don't exceed that value - though we probably won't given that the current logic above
+      // // is very, very unlikely to yield more than 300 songs (125 top artist songs + 50 recent
+      // // listens + 3 * 50 top tracks -> 325 at the very extreme)
+      // DelaySeconds: Math.floor(60 * (chunkIndex / 2) * Math.min(1, 30 / trackChunks.length)),
+    }));
 
-  //   try {
-  //     const data = await sqs.send(new SendMessageBatchCommand(params));
-  //     data.Failed?.forEach(failure => {
-  //       console.error("failed to add task to queue", failure);
-  //     });
-  //     data.Successful?.forEach(success => {
-  //       console.log("successfully added task to queue", success);
-  //     });
-  //   } catch (err: unknown) {
-  //     if (err instanceof Error) {
-  //       console.error(err, err.stack);
-  //     }
-  //   }
-  // }
+    const params = {
+      QueueUrl: process.env.PROCESSSONGQUEUE_QUEUE_URL,
+      Entries: entries,
+    };
+
+    try {
+      const data = await sqs.send(new SendMessageBatchCommand(params));
+      data.Failed?.forEach(failure => {
+        console.error("failed to add task to queue", failure);
+      });
+      data.Successful?.forEach(success => {
+        console.log("successfully added task to queue", success);
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error(err, err.stack);
+      }
+    }
+  });
 }
