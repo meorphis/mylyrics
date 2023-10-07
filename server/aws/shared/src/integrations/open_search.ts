@@ -5,12 +5,13 @@ import {
   VALID_SENTIMENTS, VALID_SENTIMENTS_SET, getSentimentValue 
 } from "../utility/sentiments";
 import { 
-  Artist, LabeledPassage, Recommendation, RecommendationType, Song, IndexedSong, BundleInfo
+  Artist, LabeledPassage, Recommendation, RecommendationType,
+  Song, IndexedSong, BundleInfo, SimplifiedSong
 } from "../utility/types";
 import { uuidForPassage } from "../utility/uuid";
 import { getSearchClient } from "./aws";
 import { getFirestoreDb } from "./firebase";
-import { vectorizeSearchTerm } from "./open_ai/open_ai_integration";
+import { vectorizeSearchTerm } from "./llm/open_ai_integration";
 
 type SearchResult = {
     song: IndexedSong,
@@ -42,11 +43,19 @@ const NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 10;
 // - sentiments: passages that match a given sentiment, generally that the user has
 //    not seen in their recommendations before
 export const getDailyRecommendations = async (
-  {userId, recentListens, topSpotifyArtists, featuredArtistOptions, recommendedSentiments}:
+  {
+    userId,
+    recentListens,
+    topSpotifyArtists,
+    topSpotifySongs,
+    featuredArtistOptions,
+    recommendedSentiments,
+  }:
   {
     userId: string,
-    recentListens: Record<string, {songs: string[]; artists: string[];}>,
+    recentListens: Record<string, {songs?: string[]; artists?: string[];}>,
     topSpotifyArtists: Artist[],
+    topSpotifySongs: SimplifiedSong[],
     featuredArtistOptions: Artist[],
     recommendedSentiments: string[],
   }
@@ -69,6 +78,8 @@ export const getDailyRecommendations = async (
       console.log(`no emoji found for artist ${potentialFeaturedArtist.name}`)
       continue;
     }
+    
+    console.log(`looking for passages for artist ${potentialFeaturedArtist.name}`)
 
     const results = await getSearchResultsForArtist({
       artistName: potentialFeaturedArtist.name,
@@ -78,6 +89,7 @@ export const getDailyRecommendations = async (
       featuredArtist = potentialFeaturedArtist;
       featuredArtistEmoji = potentialFeaturedArtistEmoji;
       artistSearchResults = results;
+      console.log(`found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
       break;
     } else {
       console.log(`only found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
@@ -88,8 +100,10 @@ export const getDailyRecommendations = async (
     userId,
     recentListens,
     topArtistNames: topSpotifyArtists.map((artist) => artist.name),
+    topSpotifySongIds: topSpotifySongs.map((t) => t.id),
     excludeArtistName: featuredArtist?.name ?? null
   });
+  console.log(`found ${topPassageSearchResults.length} top passages for user ${userId}`);
 
   const sentimentSearchResults = await getSearchResultsForSentiments(
     {
@@ -102,18 +116,7 @@ export const getDailyRecommendations = async (
       ]
     }
   );
-
-  const getSentimentBundleInfos = (passage: LabeledPassage): BundleInfo[] => {
-    return passage.sentiments.map((sentiment) => {
-      return {
-        type: "sentiment",
-        key: sentiment,
-        sentiment,
-        group: SENTIMENT_TO_GROUP[sentiment],
-        value: getSentimentValue(sentiment),
-      } as BundleInfo
-    })
-  }
+  console.log(`found ${sentimentSearchResults.length} sentiment passages for user ${userId}`);
 
   return {
     recommendations: [
@@ -321,7 +324,7 @@ export const getScoredSentiments = async (
   {userId, recentListens}:
   {
     userId: string
-    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+    recentListens: Record<string, {songs?: Array<string>, artists?: Array<string>} | undefined>,
   }
 ): Promise<{
   sentiment: string,
@@ -419,7 +422,7 @@ const getSearchResultsForSentiments = async (
   { 
     userId: string,
     sentiments: string[],
-    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+    recentListens: Record<string, {songs?: Array<string>, artists?: Array<string>} | undefined>,
     excludeSongIds?: string[],
   }
 ): Promise<SearchResult[]> => {
@@ -540,10 +543,11 @@ const getSearchResultsForArtist = async (
 // - we apply a penalty if the song was very recently shown to the user, but we
 //    are much more tolerant of repeats here than we are in getRecommendationsForSentiments
 const getSearchResultsForTopPassages = async (
-  {userId, recentListens, topArtistNames, excludeArtistName}: {
+  {userId, recentListens, topArtistNames, topSpotifySongIds, excludeArtistName}: {
     userId: string,
-    recentListens: Record<string, {songs: string[]; artists: string[];}>,
+    recentListens: Record<string, {songs?: string[]; artists?: string[];}>,
     topArtistNames: string[],
+    topSpotifySongIds: string[],
     excludeArtistName: string | null
   }
 ): Promise<SearchResult[]> => {
@@ -554,23 +558,37 @@ const getSearchResultsForTopPassages = async (
     db.collection("user-impressions").doc(`${userId}-top-passages`)
   );
   const impressionsSet = new Set((songImpressionsSnap.data()?.value || []).slice(0, 50));
-  const passageImpressionsSet = new Set(passageImpressionsSnap.data()?.value || []);
+  const passageImpressionsByLowestIndex = (
+    (passageImpressionsSnap.data()?.value || []) as string[]).reduce(
+    (acc: {[key: string]: number}, passageId, index) => {
+      if (!(passageId in acc)) {
+        acc[passageId] = index;
+      }
+      return acc;
+    }, {}
+  );
 
   const periodToPoints: {[key: string]: number} = {
-    yesterday: 256,
-    "daysago-2": 64,
-    "daysago-3": 32,
-    "daysago-4": 16,
-    "daysago-5": 8,
-    "daysago-6": 4,
-    "daysago-7": 2,
-    "daysago-8": 1,
-    "longerAgo": 0.25,
+    yesterday: 1024,
+    "daysago-2": 256,
+    "daysago-3": 128,
+    "daysago-4": 64,
+    "daysago-5": 32,
+    "daysago-6": 16,
+    "daysago-7": 8,
+    "daysago-8": 4,
+    "longerAgo": 1,
   }
 
-  const songToPoints: {[key: string]: number} = {};
+  // large boost for top spotify songs if they are provided
+  const songToPoints: {[key: string]: number} = Object.fromEntries(
+    topSpotifySongIds.map((songId, index) => {
+      return [songId, index < 10 ? 8192 : 2048];
+    })
+  );
+
   Object.entries(recentListens).forEach(([period, {songs}]) => {
-    songs.forEach((song) => {
+    (songs ?? []).forEach((song) => {
       let reward = periodToPoints[period];
 
       if (reward === undefined) {
@@ -584,7 +602,7 @@ const getSearchResultsForTopPassages = async (
     });
   })
   const normalizedSongsToPoints = Object.entries(songToPoints).map(([song, points]) => {
-    const floorLogRoot2Points = Math.floor(2 * Math.log2(points));
+    const floorLogRoot2Points = Math.max(Math.floor(2 * Math.log2(points)), 0);
     const normalizedPoints = Math.pow(2, floorLogRoot2Points);
     return {song, points: normalizedPoints};
   })
@@ -609,7 +627,8 @@ const getSearchResultsForTopPassages = async (
     (artistName) => artistName !== excludeArtistName
   );
 
-  // functions as a tie breaker
+  // small artist boost - if the user has recent listens, this is essentially
+  // just a tie breaker since the song boosts get much larger
   const artistBoosts = boostArtistNames.map((artistName, idx) => {
     return {
       "filter": {
@@ -654,17 +673,29 @@ const getSearchResultsForTopPassages = async (
   const results = parseRawSongResults({
     results: queryOutput.body.hits.hits,
     choosePassageFn: (song, passages) => {
-      const unseenPassages = passages.filter((p) => {
-        return !passageImpressionsSet.has(uuidForPassage({
-          lyrics: p.lyrics,
-          songName: song.name,
-          artistName: song.primaryArtist.name,
-        }));
+      const passageImpressionIndexes = passages.map((p) => {
+        return {
+          passage: p,
+          index: passageImpressionsByLowestIndex[uuidForPassage({
+            lyrics: p.lyrics,
+            songName: song.name,
+            artistName: song.primaryArtist.name,
+          })]
+        }
       })
 
-      const eligiblePassages = unseenPassages.length > 0 ? unseenPassages : passages;
+      const unseenPassages = passageImpressionIndexes.filter((p) => p.index === undefined);
 
-      return eligiblePassages[Math.floor(Math.random() * eligiblePassages.length)]
+      if (unseenPassages.length > 0) {
+        // return a random unseen passage
+        return unseenPassages[Math.floor(Math.random() * unseenPassages.length)].passage;
+      } else {
+        // find the two least-recently seen passsages (highest indexes) and return a random one
+        const sortedPassages = passageImpressionIndexes.sort((a, b) => {
+          return (b.index || 0) - (a.index || 0);
+        });
+        return sortedPassages[Math.floor(Math.random() * 2)].passage;
+      }
     },
     type: "top",
   });
@@ -691,7 +722,7 @@ const getSearchResultsForTopPassages = async (
 const getBoostsTerm = (
   {recentListens} : 
   {
-    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+    recentListens: Record<string, {songs?: Array<string>, artists?: Array<string>} | undefined>,
   }
 ): {
   boosts: unknown[],
@@ -915,7 +946,7 @@ const parseSearchResults = (
 const getRecentSongs = async (
   {recentListens} : 
   {
-    recentListens: Record<string, {songs: Array<string>, artists: Array<string>} | undefined>,
+    recentListens: Record<string, {songs?: Array<string>, artists?: Array<string>} | undefined>,
   }
 ) => {
   const songsYesterday = recentListens.yesterday?.songs || [];
@@ -1146,4 +1177,16 @@ const parseRawSongResults = (
         type,
       }
     });
+}
+
+const getSentimentBundleInfos = (passage: LabeledPassage): BundleInfo[] => {
+  return passage.sentiments.map((sentiment) => {
+    return {
+      type: "sentiment",
+      key: sentiment,
+      sentiment,
+      group: SENTIMENT_TO_GROUP[sentiment],
+      value: getSentimentValue(sentiment),
+    } as BundleInfo
+  })
 }

@@ -8,14 +8,15 @@ type LabeledPassageMetadata = {
 }
 
 export type LabelingMetadata = {
-    labeledBy: "gpt-3.5-turbo" | null,
+    labeledBy: "gpt-3.5-turbo" | "anthropic.claude-instant-v1",
 }
 
 // a passage of lyrics that has been labeled with sentiments
 export type LabeledPassage = {
     lyrics: string;
     sentiments: string[];
-    metadata: LabeledPassageMetadata
+    metadata: LabeledPassageMetadata;
+    isFullSong?: boolean;
 }
 
 // a passage of lyrics that has been labeled with sentiments and vectorized
@@ -24,6 +25,7 @@ export type VectorizedAndLabeledPassage = {
     lyricsVector: number[];
     sentiments: string[];
     metadata: LabeledPassageMetadata
+    isFullSong?: boolean;
 }
 
 // a song that has not yet been fully enriched with metadata from spotify

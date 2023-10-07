@@ -28,8 +28,11 @@ const MIN_SONG_SIMILARITY = 0.1;
 // same as above but for artist names
 const MIN_ARTIST_SIMILARITY = 0.1;
 
-// the cutoff for the number of words in a song's lyrics before we truncate it
-const MAX_LYRICS_WORDS = 1000;
+// maximum number of words to retain from a song's lyrics
+// we have a shorter limit when labeling lyrics with LLMs (see label_passages.ts), but we use a more
+// liberal limit here, since we're ok with storing longer lyrics and showing them in their entirety
+// in the UI (within reason)
+const MAX_LYRICS_WORDS = 5000;
 
 // *** PUBLIC INTERFACE ***
 // takes as input an artist name and a song name and returns the lyrics
@@ -161,7 +164,7 @@ const getLyricsFromUrl = async (url: string): Promise<GetLyricsResponse> => {
     // limit the number of words in the lyrics to avoid unbounded openai costs
     return {
       outcome: "success",
-      lyrics: lyrics.split(" ").slice(0, MAX_LYRICS_WORDS).join(" ")
+      lyrics: lyrics.split(" ").slice(0, MAX_LYRICS_WORDS).join(" "),
     };
 
   } catch (e) {
@@ -169,8 +172,8 @@ const getLyricsFromUrl = async (url: string): Promise<GetLyricsResponse> => {
   }
 }
 
-// devised by looking at some song names on spotify; if there are multiple
-// potential names, we may return more than one, in the order of likelihood
+// devised by looking at some song names on spotify; if there are multiple potential names, we may
+// return more than one, in the order that we should check them
 const sanitizeSongName = ({songName}: {songName: string}): string[] => {
   // remove (feat *)
   songName = songName.replace(/\(feat.*\)/, "");
@@ -190,9 +193,24 @@ const sanitizeSongName = ({songName}: {songName: string}): string[] => {
   if (dashIndex != -1) {
     songNames.push(songName.substring(0, dashIndex));
   }
+
+  // we might also have a case where there's extraneous text in parentheses at the end of the song,
+  // e.g. Mystery of Love (From the Original Motion Picture “Call Me by Your Name”)
+  const withStrippedParentheses = stripTrailingParentheses(songName);
+  if (withStrippedParentheses) {
+    songNames.push(withStrippedParentheses);
+  }
   
   // remove trailing whitespace
   songNames = songNames.map(s => s.trim());
   
   return songNames
+}
+
+const stripTrailingParentheses = (str: string) => {
+  const match = str.match(/^(.*)\s+\([^)]+\)$/);
+  if (match) {
+    return match[1];
+  }
+  return null;
 }

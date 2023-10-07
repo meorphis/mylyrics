@@ -15,16 +15,15 @@ Identify at most five key, short passages from the lyrics. A "passage" is genera
 
 For each passage, identify two or three floopters matching the passage. When choosing these floopters, consider the context and meaning of the passage within the overall lyrics of the song, rather than in isolation.
 
-Format your output as only a JSON-serialized object with an array of overall floopters and an array of passage objects each of which has lyrics and an array of floopters, e.g.:
-{"floopters": ["anger", "introspection"], passages: {"lyrics": "abc\ndef\ngh", "sentiments: ["romance", "passion"]}, ...]}
-
 Floopter lists (for both songs and passages) should be ordered, with the most relevant floopter first.
 
 Remember:
 - Five passages is the absolute maximum. Do not select more.
 - Generally passages should not be longer than three five lines. Longer passages should be divided up. Do not choose very long passages.
 - If a floopter is not in the list provided above, it is not valid and should not be included in your response.
-- Do not repeat the same passage twice.`;
+- Do not repeat the same passage twice.
+
+Format your output as only a JSON-serialized object with an array of overall floopters and an array of passage objects each of which has an array of lines of lyrics and an array of floopters. The format (expressed in typescript) should be {floopters: string[], passages: {lyrics: string[], floopters: string[]}[]}`;
 
 export const LABEL_PASSAGES_USER_EXAMPLE_MESSAGE = `[Intro]
 I feel the rush
@@ -80,7 +79,7 @@ Addicted to your touch
 Oh, I feel the rush
 It's so good, it's so good`
 
-export const LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE = "{\"floopters\":[\"energy\",\"lust\"],\"passages\":[{\"lyrics\":\"I feel the rush\\nAddicted to your touch\\nOh, I feel the rush\\nIt's so good, it's so good\",\"floopters\":[\"lust\",\"euphoria\"]},{\"lyrics\":\"Big communication, tell me what you want\\nTranslate your vibration, let your body talk to me\\nBaby love, if you wanna show me what\\nYou've been schemin' up, if you wanna (Let go)\",\"floopters\":[\"flirtatiousness\",\"seduction\"]},{\"lyrics\":\"You got my heartbeat racin'\\nMy body blazin'\",\"floopters\":[\"energy\",\"lust\"]},{\"lyrics\":\"So good when we slow gravity, so good\\nIt's so good, it's so good\\nBreathe one, two, three, take all of me, so good\\nIt's so good, it's so good\",\"floopters\":[\"intimacy\"]},{\"lyrics\":\"Pass your boy the heatwave, recreate the sun\\nTake me to the feeling, boy, you know the one\\nKiss it when you're done, man, this shit is so much fun\\nPocket rocket gun\",\"floopters\":[\"play\",\"lust\"]}]}"
+export const LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE = "{\"floopters\":[\"energy\",\"lust\"],\"passages\":[{\"lyrics\":[\"I feel the rush\",\"Addicted to your touch\",\"Oh, I feel the rush\",\"It's so good, it's so good\"],\"floopters\":[\"lust\",\"euphoria\"]},{\"lyrics\":[\"Big communication, tell me what you want\",\"Translate your vibration, let your body talk to me\",\"Baby love, if you wanna show me what\",\"You've been schemin' up, if you wanna (Let go)\"],\"floopters\":[\"flirtatiousness\",\"seduction\"]},{\"lyrics\":[\"You got my heartbeat racin'\",\"My body blazin'\"],\"floopters\":[\"energy\",\"lust\"]},{\"lyrics\":[\"So good when we slow gravity, so good\",\"It's so good, it's so good\"],\"floopters\":[\"intimacy\"]},{\"lyrics\":[\"'Kiss it when you're done, man, this shit is so much fun\",\"Pocket rocket gun\"],\"floopters\":[\"play\",\"lust\"]}]}"
 
 export const GET_PROPHECY_SYSTEM_MESSAGE = "You are a prophet and speak with an all-knowing, overly-spiritual tone. You are provided with a list of song lyrics that the user listens to along with their artists. You tell the user something profound and interesting about themselves. Aim for about one paragraphs of three to five sentences. Assume that the user does not know exactly which lyrics they've  provided and so you should quote them directly (but please strip unnecessary formatting from the lyrics and do not use the entire passage if it's not necessary)."
 

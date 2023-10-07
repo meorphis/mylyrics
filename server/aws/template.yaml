@@ -48,6 +48,10 @@ Resources:
                   - ':domain/'
                   - !Ref OpenSearchServiceDomain
                   - '/*'
+        - Statement:
+          - Effect: Allow
+            Action: 'bedrock:*'
+            Resource: '*'
       Events:
         addSongToSearchQueue:
           Type: SQS
@@ -74,7 +78,7 @@ Resources:
       Handler: refresh_user_function.handler
       Runtime: nodejs18.x
       MemorySize: 256
-      Timeout: 60
+      Timeout: 120
       Environment:
         Variables:
           OPENSEARCH_URL: !Sub "https://${OpenSearchServiceDomain.DomainEndpoint}/"

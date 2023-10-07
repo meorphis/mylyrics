@@ -280,14 +280,14 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderColor: '#00000040',
-    shadowColor: '#000', // Adds shadow for iOS
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
-    elevation: 8, // Adds shadow for Android
+    elevation: 8,
     width: 144,
     justifyContent: 'center',
   },
@@ -295,15 +295,15 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#00000040',
     borderRadius: 16,
-    backgroundColor: '#f2f2f240', // Adds a subtle background color
-    shadowColor: '#000', // Adds shadow for iOS
+    backgroundColor: '#f2f2f240',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
-    elevation: 8, // Adds shadow for Android
+    elevation: 8,
 
     padding: 12,
     position: 'absolute',

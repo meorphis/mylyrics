@@ -99,4 +99,8 @@ const reorderPassages = (
       indexToPassage[desiredIndex] = passage;
     });
   });
+
+  passages.forEach((_, index) => {
+    passages[index] = indexToPassage[index];
+  });
 };

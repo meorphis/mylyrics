@@ -58,11 +58,12 @@ const maybeUpdateImpressions = async ({
     const impressions = data?.impressions ?? {};
     let itemsAdded = false;
     bundle.passages.forEach(passage => {
+      const passageKey = passage.passageKey;
       const songId = passage.song.id;
 
       let keys: string[] = [];
       if (bundle.info.type === 'top') {
-        keys = ['top'];
+        keys = ['top', 'top-passages'];
       } else if (bundle.info.type === 'sentiment') {
         keys = passage.bundleInfos
           .map(i => (i.type === 'sentiment' ? i.sentiment : null))
@@ -70,13 +71,15 @@ const maybeUpdateImpressions = async ({
       }
 
       keys.forEach(key => {
+        const id = key === 'top-passages' ? passageKey : songId;
+
         if (impressions[key] == null) {
           impressions[key] = [];
         }
-        if (impressions[key].includes(songId)) {
+        if (impressions[key].includes(id)) {
           return;
         }
-        impressions[key].push(songId);
+        impressions[key].push(id);
         itemsAdded = true;
       });
     });

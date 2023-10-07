@@ -1,4 +1,4 @@
-import { computeProphecy } from "./integrations/open_ai/open_ai_integration";
+import { computeProphecy } from "./integrations/llm/open_ai_integration";
 import { Recommendation } from "./utility/types";
 
 /// *** PUBLIC INTERFACE ***

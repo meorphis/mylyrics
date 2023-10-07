@@ -92,7 +92,7 @@ export const bundlesSlice = createSlice({
         state.bundles.singleton = {
           passages: [action.payload],
           info: {
-            group: 'singleton',
+            group: undefined,
             key: 'singleton',
             type: 'singleton',
           },
@@ -101,7 +101,7 @@ export const bundlesSlice = createSlice({
         state.bundles.singleton = {
           passages: [],
           info: {
-            group: 'singleton',
+            group: undefined,
             key: 'singleton',
             type: 'singleton',
           },

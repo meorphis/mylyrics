@@ -7,14 +7,14 @@ import {
   LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE,
   LABEL_PASSAGES_SYSTEM_MESSAGE,
   LABEL_PASSAGES_USER_EXAMPLE_MESSAGE
-} from "./open_ai_prompt";
+} from "./prompt";
 import { 
-  LabeledPassage, LabelingMetadata, Recommendation, VectorizedAndLabeledPassage
+  LabeledPassage, Recommendation, VectorizedAndLabeledPassage
 } from "../../utility/types";
 import { getSecretString } from "../aws";
 import { ChatCompletionRequestMessageRoleEnum, Configuration, OpenAIApi } from "openai";
 import { cachedFunction } from "../../utility/cache";
-import { addMetadataToPassage } from "../../utility/recommendations";
+import { LabelPassagesOutput, labelPassages } from "./label_passages";
 
 // *** CONSTANTS ***
 const MODEL = "gpt-3.5-turbo";
@@ -26,57 +26,35 @@ const DEFAULT_OPEN_AI_PARAMS = {
 }
 
 // *** PUBLIC INTERFACE ***
-// takes as input a string containing song lyrics delineated by newline characters
-// returns a JSON-serialized object with:
-// - sentiments: an array of overall sentiments
-// - passages: an array of passage objects each of which has a lyrics string
-//    (again delineated by newline characters) and an array of sentiments
-// we should expect errors here occasionally in cases where the model does not
-// produce valid JSON
-export const labelPassages = async (
-  {lyrics} : {lyrics: string}
-): Promise<{sentiments: string[], passages: LabeledPassage[], metadata: LabelingMetadata}> => {
-  const openai = await getOpenAIClient();
+// invokes the OpenAI API to label passages as described in the docstring for
+// labelPassages
+export const labelPassagesOpenAI = async ({lyrics}: {lyrics: string}): Promise<{
+  status: "success",
+  content: LabelPassagesOutput
+} | {
+  status: "error",
+}> => {
+  return await labelPassages({
+    lyrics,
+    invokeModel: async ({lyrics}: {lyrics: string}) => {
+      const openai = await getOpenAIClient();
 
-  const completionObject = await openai.createChatCompletion({
-    messages: [
-      {role: "system", content: LABEL_PASSAGES_SYSTEM_MESSAGE},
-      {role: "user", content: LABEL_PASSAGES_USER_EXAMPLE_MESSAGE},
-      {role: "assistant", content: LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE},
-      {role: "user", content: lyrics},
-    ],
-    ...DEFAULT_OPEN_AI_PARAMS,
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const rawContent = completionObject.data.choices[0].message!.content!;
-  let content;
-  try {
-    content = JSON.parse(rawContent);
-  } catch (e) {
-    throw Error(`could not parse openai response as json
-      lyrics: ${lyrics}
-      response: ${rawContent}
-    `);
-  }
-
-  // we refer to sentiments as "floopters" in our prompt in order to steer the LLM away from
-  // its preconceived notions about what a sentiment is and instead select from our curated list
-  if ("passages" in content && "floopters" in content) {
-    return {
-      sentiments: content.floopters,
-      passages: content.passages.map(addMetadataToPassage),
-      metadata: {
-        labeledBy: "gpt-3.5-turbo",
-      }
-    }
-  } else {
-    throw Error(`openai response contains incorrect fields
-      lyrics: ${lyrics}
-      response: ${JSON.stringify(content)}
-    `);
-  }
-};
+      const completionObject = await openai.createChatCompletion({
+        messages: [
+          {role: "system", content: LABEL_PASSAGES_SYSTEM_MESSAGE},
+          {role: "user", content: LABEL_PASSAGES_USER_EXAMPLE_MESSAGE},
+          {role: "assistant", content: LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE},
+          {role: "user", content: lyrics},
+        ],
+        ...DEFAULT_OPEN_AI_PARAMS,
+      });
+  
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return completionObject.data.choices[0].message!.content!;
+    },
+    modelName: "gpt-3.5-turbo",
+  })
+}
 
 // takes as input a list of labeled passages and returns a list of the same
 // passages with an additional field containing a vector representation of the
@@ -134,6 +112,7 @@ export const computeProphecy = async (
   return completionObject.data.choices[0].message!.content!;  
 }
 
+// gets an emoji (or sometimes a string of multiple emojis) that most closely represents an artist
 export const getArtistEmoji = async (
   {artistName}: {artistName: string}
 ) => {

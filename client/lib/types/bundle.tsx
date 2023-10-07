@@ -31,7 +31,7 @@ export type BundleInfo =
   | {
       type: 'user_made';
       key: string;
-      group: 'user_made';
+      group: undefined;
       title: string;
       creator: {
         id: string;
@@ -44,7 +44,7 @@ export type BundleInfo =
   | {
       type: 'singleton';
       key: 'singleton';
-      group: 'singleton';
+      group: undefined;
     };
 
 // a passage that is part of a bundle
