@@ -69,8 +69,8 @@ const PassageLyrics = (props: Props) => {
       }}
       ref={ref}>
       {splitLyrics
-        .map(({lineText, passageLine}, index) => {
-          if (passageLine == null) {
+        .map(({lineText, passageInfo}, index) => {
+          if (passageInfo == null) {
             return null;
           }
 
@@ -90,7 +90,7 @@ const PassageLyrics = (props: Props) => {
                 color: theme.textColors[0],
                 opacity: scaleFinalized ? 1 : 0,
               }}>
-              {lineText}
+              {lineText.slice(passageInfo.passageStart, passageInfo.passageEnd)}
             </Text>
             // </Animated.View>
           );

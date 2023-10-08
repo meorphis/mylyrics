@@ -9,9 +9,11 @@ import tinycolor from 'tinycolor2';
 type Props = {
   splitLyrics: {
     lineText: string;
-    passageStart: number | null;
-    passageEnd: number | null;
-    passageLine: number | null;
+    passageInfo: {
+      passageStart: number;
+      passageEnd: number;
+      passageLine: number;
+    } | null;
   }[];
   highlightedIndexes: number[];
   setHighlightedIndexes: React.Dispatch<React.SetStateAction<number[]>>;
@@ -78,12 +80,12 @@ const LyricLines = (props: Props) => {
 
   return (
     <React.Fragment>
-      {splitLyrics.map(({lineText, passageLine}, index) => (
+      {splitLyrics.map(({lineText, passageInfo}, index) => (
         <LyricLine
           key={index}
           index={index}
           lineText={lineText}
-          isAppearingText={passageLine == null && !skipAnimation}
+          isAppearingText={passageInfo == null && !skipAnimation}
           skipPressable={skipPressable}
           shouldShowAppearingText={shouldShowAppearingText}
           sharedTransitionKey={sharedTransitionKey}
@@ -114,7 +116,7 @@ const LyricLines = (props: Props) => {
             }
           }}
           onLayout={event => {
-            if (passageLine === 0) {
+            if (passageInfo?.passageLine === 0) {
               onLayoutInitiallyHighlightedLyrics(event.nativeEvent.layout.y);
             }
           }}

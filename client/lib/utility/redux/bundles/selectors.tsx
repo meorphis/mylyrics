@@ -1,7 +1,11 @@
 import {useSelector} from 'react-redux';
 import {RootState} from '..';
 import _ from 'lodash';
-import {BundleInfo} from '../../../types/bundle';
+import {
+  BundleInfo,
+  BundlePassageType,
+  UnhydratedBundlePassageType,
+} from '../../../types/bundle';
 
 // gets all of the passages in a bundle
 export const useBundle = ({bundleKey}: {bundleKey: string}) => {
@@ -124,7 +128,9 @@ export const useBundleIncludesPassage = ({
 }) => {
   return useSelector((state: RootState) => {
     const bundle = state.bundles.bundles[bundleKey];
-    return bundle && bundle.passages.some(p => p.passageKey === passageKey);
+    return (
+      bundle && bundle.passages.data.some(p => p.passageKey === passageKey)
+    );
   });
 };
 
@@ -139,7 +145,9 @@ export const useActiveBundleThemeInfo = () => {
 
     const activeBundle = state.bundles.bundles[activeBundleKey];
     const activePassageIndex = activePassageKey
-      ? activeBundle.passages.findIndex(p => p.passageKey === activePassageKey)
+      ? activeBundle.passages.data.findIndex(
+          p => p.passageKey === activePassageKey,
+        )
       : 0;
     const activeBundleIndex =
       state.requestedBundleChange.allRequestedBundleKeys.findIndex(
@@ -150,7 +158,11 @@ export const useActiveBundleThemeInfo = () => {
       themes: state.requestedBundleChange.allRequestedBundleKeys.map(
         bundleKey => {
           const passages = state.bundles.bundles[bundleKey].passages;
-          return passages.length > 0 ? passages.map(p => p.theme) : [null];
+          return passages.data.length > 0
+            ? passages.data.map(
+                (p: BundlePassageType | UnhydratedBundlePassageType) => p.theme,
+              )
+            : [null];
         },
       ),
       activeBundleIndex,

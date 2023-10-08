@@ -9,5 +9,4 @@ export type AlbumCoverColor = {
   hue: number;
   saturation: number;
   lightness: number;
-  intensity: number;
 };

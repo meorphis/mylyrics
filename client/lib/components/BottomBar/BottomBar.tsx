@@ -54,13 +54,12 @@ const BottomBar = (props: Props) => {
         {shouldShowGroupSelectorButton && (
           <ThemeButton
             text={getBundleEmoji(activeBundle.info) ?? undefined}
-            useSaturatedColor
+            useSaturatedColor={activeBundle.info.type !== 'singleton'}
             onPress={() => {
               groupSelectorBottomSheetRef?.current?.expand();
             }}
             iconName="grid-outline"
             textStyle={styles.buttonText}
-            textContainerStyle={styles.groupSelectorButtonTextContainer}
             style={styles.button}
           />
         )}
@@ -107,8 +106,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 20,
     fontWeight: '500',
-  },
-  groupSelectorButtonTextContainer: {
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.7,

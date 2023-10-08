@@ -1,5 +1,5 @@
 import {RootState} from '..';
-import {BundlePassageType} from '../../../types/bundle';
+import {BundlePassagesType} from '../../../types/bundle';
 import {
   LyricCardMeasurementContext,
   ScaleType,
@@ -34,27 +34,19 @@ export const isDeckFullyMeasured = ({
   passages,
 }: {
   state: RootState;
-  passages: BundlePassageType[];
+  passages: BundlePassagesType;
 }) => {
-  return passages.every(p => {
+  if (!passages.hydrated) {
+    // if there's an error, there will be no further measurements, so we consider it fully measured
+    return !!passages.error;
+  }
+
+  return passages.data.every(p => {
     const measurementKey = getMeasurementKey({
       globalPassageKey: p.passageKey,
       context: 'MAIN_SCREEN',
     });
     const measurement = state.lyricCardMeasurement.measurements[measurementKey];
-
-    if (
-      !(
-        measurement &&
-        measurement.lyricsYPosition != null &&
-        measurement.scaleFinalized
-      )
-    ) {
-      console.log(
-        'missing measurement for passage: ' + p.song.name,
-        JSON.stringify(measurement, null, 2),
-      );
-    }
 
     return (
       measurement &&

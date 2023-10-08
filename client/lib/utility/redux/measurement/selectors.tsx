@@ -62,6 +62,9 @@ export const useLyricsYPosition = ({
 export const useIsDeckFullyMeasured = ({bundleKey}: {bundleKey: string}) => {
   return useSelector((state: RootState) => {
     const passages = state.bundles.bundles[bundleKey].passages;
-    return isDeckFullyMeasured({state, passages: passages});
+    return (
+      (passages.hydrated && isDeckFullyMeasured({state, passages})) ||
+      (!passages.hydrated && passages.error)
+    );
   });
 };

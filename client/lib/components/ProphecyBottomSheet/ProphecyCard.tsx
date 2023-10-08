@@ -71,10 +71,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 16,
     marginHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
     elevation: 2,
   },
   activeContainer: {

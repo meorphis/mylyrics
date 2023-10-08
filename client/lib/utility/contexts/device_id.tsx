@@ -10,7 +10,7 @@ import {mmkvStorage} from '../config/local_storage';
 export const DeviceIdProvider = (props: {
   children: JSX.Element | JSX.Element[];
 }) => {
-  const [deviceId, setDeviceId] = useMMKVStorage(
+  const [deviceId, setDeviceId] = useMMKVStorage<string>(
     'deviceId',
     mmkvStorage,
     undefined,
@@ -22,7 +22,7 @@ export const DeviceIdProvider = (props: {
         new ShortUniqueId({
           dictionary: 'alphanum_upper',
           length: 10,
-        })(),
+        }).randomUUID(),
       );
     }
   }, [deviceId]);

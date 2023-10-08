@@ -4,6 +4,7 @@ import {colorDistance, isColorLight} from './color';
 import convert from 'color-convert';
 import {calcAPCA} from 'apca-w3';
 import {PassageType} from '../../types/passage';
+import tinycolor from 'tinycolor2';
 
 // converts the colors extracted from an album cover into a theme we can use
 // to render the UI
@@ -26,7 +27,16 @@ export const getThemeFromAlbumColors = (
   });
 
   const mainBackgroundColor = sortedColors[0];
-  const alternativeColors = sortedColors.slice(1, 4);
+  const alternativeColors =
+    sortedColors.length > 1
+      ? sortedColors.slice(1, 4)
+      : [
+          albumCoverColorFromHex(
+            isColorLight(mainBackgroundColor.hex)
+              ? tinycolor(mainBackgroundColor.hex).darken(25).toHexString()
+              : tinycolor(mainBackgroundColor.hex).lighten(25).toHexString(),
+          ),
+        ];
 
   const mainBaseTheme = constructBaseTheme({
     backgroundColor: mainBackgroundColor,
@@ -188,7 +198,7 @@ const minimallyLighten = ({
     attemptedLightness += 1;
   }
 
-  return null;
+  return '#ffffff';
 };
 
 const minimallyDarken = ({
@@ -209,5 +219,21 @@ const minimallyDarken = ({
     attemptedLightness -= 1;
   }
 
-  return null;
+  return '#000000';
+};
+
+const albumCoverColorFromHex = (hex: string): AlbumCoverColor => {
+  const [red, green, blue] = convert.hex.rgb(hex);
+  const [hue, saturation, lightness] = convert.hex.hsl(hex);
+
+  return {
+    area: 0,
+    blue,
+    green,
+    red,
+    hex,
+    hue,
+    saturation,
+    lightness,
+  };
 };

@@ -197,8 +197,8 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   });
 
   const initiallyHighlightedIndexes = splitLyrics.reduce(
-    (indexes, {passageLine}, index) => {
-      if (passageLine != null) {
+    (indexes, {passageInfo}, index) => {
+      if (passageInfo != null) {
         indexes.push(index);
       }
       return indexes;
@@ -374,9 +374,11 @@ type SwapableScrollViewProps = {
   song: SongType;
   splitLyrics: {
     lineText: string;
-    passageStart: number | null;
-    passageEnd: number | null;
-    passageLine: number | null;
+    passageInfo: {
+      passageStart: number;
+      passageEnd: number;
+      passageLine: number;
+    } | null;
   }[];
   highlightedIndexes: number[];
   setHighlightedIndexes: React.Dispatch<React.SetStateAction<number[]>>;

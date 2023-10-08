@@ -1,16 +1,18 @@
 import {PassageType, RawPassageType} from '../../types/passage';
-import {getThemeFromAlbumColors} from './theme';
 import {v5 as uuidv5} from 'uuid';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import _ from 'lodash';
+import {
+  BundlePassageType,
+  UnhydratedBundlePassageType,
+} from '../../types/bundle';
 
 // takes a passages as stored in the DB and converts it to the format expected by
 // the UI by hydrating it with an image blob, a theme, and a key
 export const hydratePassage = async (
-  rawPassage: RawPassageType,
-): Promise<PassageType> => {
+  rawPassage: UnhydratedBundlePassageType,
+): Promise<BundlePassageType> => {
   const blob = await fetchImageBlob(rawPassage.song.album.image.url);
-  const theme = getThemeFromAlbumColors(rawPassage.song.album.image.colors);
 
   return {
     ...rawPassage,
@@ -25,7 +27,6 @@ export const hydratePassage = async (
         },
       },
     },
-    theme,
   };
 };
 

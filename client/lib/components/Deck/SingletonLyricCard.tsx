@@ -4,6 +4,7 @@ import {WithSharedTransitionKey} from '../LyricCard/hoc/WithSharedTransitionKey'
 import LyricCard from '../LyricCard/LyricCard';
 import {useLyricCardSize} from '../../utility/helpers/lyric_card';
 import {useBundle} from '../../utility/redux/bundles/selectors';
+import {BundlePassageType} from '../../types/bundle';
 
 const LyricCardComponent = WithSharedTransitionKey(LyricCard);
 
@@ -12,7 +13,8 @@ const LyricCardComponent = WithSharedTransitionKey(LyricCard);
 export const SingletonLyricCard = () => {
   console.log('rendering SingletonPassageItem');
 
-  const singletonPassage = useBundle({bundleKey: 'singleton'}).passages[0];
+  const singletonPassage = useBundle({bundleKey: 'singleton'}).passages
+    .data[0] as BundlePassageType;
   const {deckHeight, marginHorizontal, deckMarginTop, itemMarginTop} =
     useLyricCardSize();
 

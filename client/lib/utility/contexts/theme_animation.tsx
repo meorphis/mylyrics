@@ -274,7 +274,9 @@ const colorsForTheme = (theme: ThemeType | null) => {
     theme.alternateThemes[1]?.backgroundColor ?? theme.farBackgroundColor,
     theme.farBackgroundColor,
     theme.alternateThemes[0]?.backgroundColor ?? theme.farBackgroundColor,
-    theme.alternateThemes[2]?.backgroundColor ?? theme.farBackgroundColor,
+    theme.alternateThemes[2]?.backgroundColor ??
+      theme.alternateThemes[0]?.backgroundColor ??
+      theme.farBackgroundColor,
   ].sort((a, b) => convert.hex.lab(a)[0] - convert.hex.lab(b)[0]);
 };
 

@@ -12,6 +12,7 @@
     "noEmit": true,
     "strict": true,
     "target": "esnext",
+    "types": ["react-native"],
     "useDefineForClassFields": true,
     "typeRoots": ["./node_modules/@types", "./lib/@types"]
   },

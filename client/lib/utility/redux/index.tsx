@@ -21,7 +21,7 @@ const rootReducer = (
     state = undefined;
   }
 
-  const newState = {
+  let newState = {
     bundles: bundlesReducer(state?.bundles, action),
     lyricCardMeasurement: lyricCardMeasurementReducer(
       state?.lyricCardMeasurement,
@@ -46,7 +46,15 @@ const rootReducer = (
       },
     );
 
-    newState.bundles.bundles = originalState.bundles.bundles;
+    newState = {
+      ...newState,
+      bundles: {
+        ...newState.bundles,
+        bundles: originalState.bundles.bundles,
+        bundleKeyToPassageKey: originalState.bundles.bundleKeyToPassageKey,
+      },
+    };
+
     newState.bundles.bundleKeyToPassageKey =
       originalState.bundles.bundleKeyToPassageKey;
   }
