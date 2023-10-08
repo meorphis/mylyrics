@@ -120,6 +120,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     marginHorizontal: 8,
     height: undefined,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   buttonText: {
     fontSize: 12,

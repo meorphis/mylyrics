@@ -1,17 +1,22 @@
-import {PassageType, RawPassageType} from '../../types/passage';
-import {BundleType} from '../../types/bundle';
-import {hydratePassage} from './passage';
+import {RawPassageType} from '../../types/passage';
+import {BundleType, UnhydratedBundlePassageType} from '../../types/bundle';
+import {getPassageId} from './passage';
+import {getThemeFromAlbumColors} from './theme';
+import {cleanLyrics} from './lyrics';
 
 // takes an array of raw passages as well as a set of bundle keys divided into groups,
 // hydrates the passages and adds them to their associated bundles which are then returned
-export const getBundlesFromFlatPassages = async (
+export const getUnhydratedBundlesFromFlatPassages = async (
   flatPassages: RawPassageType[],
   sentiments: string[],
 ): Promise<BundleType[]> => {
-  const hydratedPassages = await Promise.all(flatPassages.map(hydratePassage));
   const bundles: BundleType[] = [];
-  hydratedPassages.forEach((passage, idx) => {
+  flatPassages.forEach((passage, idx) => {
     passage.bundleInfos.forEach(bundleInfo => {
+      if (!cleanLyrics(passage.song.lyrics).includes(passage.lyrics)) {
+        return;
+      }
+
       if (passage.type !== bundleInfo.type) {
         return;
       }
@@ -23,24 +28,33 @@ export const getBundlesFromFlatPassages = async (
         return;
       }
 
-      const bundleKey = bundleInfo.key;
-
       let passages = bundles.find(
         ({info: {key: bk}}) => bk === bundleInfo.key,
       )?.passages;
 
       if (passages == null) {
-        passages = [];
+        passages = {
+          hydrated: false,
+          data: [] as UnhydratedBundlePassageType[],
+        };
         bundles.push({
           passages,
           info: bundleInfo,
         });
       }
 
-      passages.push({
+      (
+        passages as {
+          hydrated: false;
+          data: UnhydratedBundlePassageType[];
+          error: boolean;
+        }
+      ).data.push({
         ...passage,
-        bundleKey,
+        passageKey: getPassageId(passage),
         sortKey: idx,
+        bundleKey: bundleInfo.key,
+        theme: getThemeFromAlbumColors(passage.song.album.image.colors),
       });
     });
   });
@@ -48,20 +62,23 @@ export const getBundlesFromFlatPassages = async (
   // randomize the order of the top passages bundle
   bundles
     .find(({info}) => info.type === 'top')
-    ?.passages.sort(() => Math.random());
+    ?.passages.data.sort(() => Math.random());
 
   // avoid having the same artist back to back in the sentiment bundle
   bundles
     .filter(({info}) => info.type === 'sentiment')
     .forEach(bundle => {
-      reorderPassages(bundle.passages, passage => passage.song.artists[0].name);
+      reorderPassages(
+        bundle.passages.data,
+        passage => passage.song.artists[0].name,
+      );
     });
 
   // avoid having the same album back to back in the artist bundles
   bundles
     .filter(({info}) => info.type === 'artist')
     .forEach(bundle => {
-      reorderPassages(bundle.passages, passage => passage.song.album.name);
+      reorderPassages(bundle.passages.data, passage => passage.song.album.name);
     });
 
   return bundles;
@@ -71,8 +88,8 @@ export const getBundlesFromFlatPassages = async (
 // and tries to reorder the passages so that passages with the same key
 // are not back to back
 const reorderPassages = (
-  passages: PassageType[],
-  getKey: (passage: PassageType) => string,
+  passages: RawPassageType[],
+  getKey: (passage: RawPassageType) => string,
 ) => {
   const keyToPassages = Object.entries(
     passages.reduce((acc, passage) => {
@@ -82,10 +99,10 @@ const reorderPassages = (
       }
       acc[key].push(passage);
       return acc;
-    }, {} as {[key: string]: PassageType[]}),
+    }, {} as {[key: string]: RawPassageType[]}),
   ).sort(([, passagesA], [, passagesB]) => passagesB.length - passagesA.length);
   const usedIndexes = new Set<number>();
-  const indexToPassage = {} as {[index: number]: PassageType};
+  const indexToPassage = {} as {[index: number]: RawPassageType};
 
   // i'm not sure how mathematically sound this logic is, but it will at least
   // roughly distribute the passages evenly

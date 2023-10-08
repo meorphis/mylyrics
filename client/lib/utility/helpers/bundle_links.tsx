@@ -4,10 +4,11 @@ import db from '../db/firestore';
 import {doc, getDoc} from '@firebase/firestore';
 import {useDispatch} from 'react-redux';
 import {RawPassageType} from '../../types/passage';
-import {hydratePassage} from './passage';
 import {addBundles} from '../redux/bundles/slice';
 import {BundleType} from '../../types/bundle';
 import {requestBundleChange} from '../redux/requested_bundle_change/slice';
+import {getThemeFromAlbumColors} from './theme';
+import {getPassageId} from './passage';
 
 // handler for bundles shared as links; loads the bundle from db, adds it to redux
 // and sets it as the active bundle
@@ -49,13 +50,17 @@ export const useBundleLink = () => {
         };
       };
       const {passages: rawPassages, creator, title} = data;
-      const passages = await Promise.all(rawPassages.map(hydratePassage));
       const bundle: BundleType = {
-        passages: passages.map((p, idx) => ({
-          ...p,
-          bundleKey: bundleKey!,
-          sortKey: idx,
-        })),
+        passages: {
+          hydrated: false,
+          data: rawPassages.map((p, idx) => ({
+            ...p,
+            passageKey: getPassageId(p),
+            bundleKey: bundleKey!,
+            sortKey: idx,
+            theme: getThemeFromAlbumColors(p.song.album.image.colors),
+          })),
+        },
         info: {
           key: bundleKey!,
           type: 'user_made',

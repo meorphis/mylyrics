@@ -116,7 +116,6 @@ const reduceOrFinalizeScale = ({
       scale.songNameSize >
       maxContentHeight
   ) {
-    console.log(JSON.stringify(measurement, null, 2));
     if (measurement.scaleIndex < totalNumberOfScales - 1) {
       // the y position is invalid for the new scale size, so do not retain it
       return {

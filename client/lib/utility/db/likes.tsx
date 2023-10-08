@@ -22,7 +22,9 @@ import {
   addToBundle,
   removeFromBundle,
 } from '../redux/bundles/slice';
-import {dehydratePassage, hydratePassage} from '../helpers/passage';
+import {dehydratePassage, getPassageId} from '../helpers/passage';
+import {UnhydratedBundlePassageType} from '../../types/bundle';
+import {getThemeFromAlbumColors} from '../helpers/theme';
 
 const getLikeId = (deviceId: string, passage: PassageType): string => {
   return uuidv5(
@@ -151,21 +153,17 @@ export const useRecentLikesRequest = () => {
 
       const snapshot = await getDocs(d);
 
-      const rawPassages: (RawPassageType & {
-        sortKey: number;
-        bundleKey: string;
-      })[] = snapshot.docs.map(entry => ({
-        ...entry.data().passage,
-        sortKey: entry.data().timestamp,
-        bundleKey: 'likes',
-      }));
-
-      const passages = (await Promise.all(
-        rawPassages.map(hydratePassage),
-      )) as (PassageType & {
-        sortKey: number;
-        bundleKey: string;
-      })[];
+      const unhydratedPassages: UnhydratedBundlePassageType[] =
+        snapshot.docs.map(entry => {
+          const rawPassage: RawPassageType = entry.data().passage;
+          return {
+            ...rawPassage,
+            passageKey: getPassageId(rawPassage),
+            sortKey: entry.data().timestamp,
+            bundleKey: 'likes',
+            theme: getThemeFromAlbumColors(rawPassage.song.album.image.colors),
+          };
+        });
 
       dispatch(
         addBundles([
@@ -175,7 +173,10 @@ export const useRecentLikesRequest = () => {
               key: 'likes',
               group: 'essentials',
             },
-            passages,
+            passages: {
+              hydrated: false,
+              data: unhydratedPassages,
+            },
             sortOrder: 'desc',
           },
         ]),

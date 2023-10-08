@@ -5,6 +5,7 @@ import {useEffect, useState} from 'react';
 import _ from 'lodash';
 import {useAllRequestedBundles} from '../redux/requested_bundle_change/selectors';
 import {useDeviceId} from '../contexts/device_id';
+import {getPassageId} from '../helpers/passage';
 
 // a hook that updates the user's logged impressions in firestore when they request a new bundle
 export const useImpressionsUpdates = () => {
@@ -57,8 +58,8 @@ const maybeUpdateImpressions = async ({
     const data = docSnap.data();
     const impressions = data?.impressions ?? {};
     let itemsAdded = false;
-    bundle.passages.forEach(passage => {
-      const passageKey = passage.passageKey;
+    bundle.passages.data.forEach(passage => {
+      const passageKey = getPassageId(passage);
       const songId = passage.song.id;
 
       let keys: string[] = [];

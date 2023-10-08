@@ -9,7 +9,7 @@ import PendingRecommendations from './PendingRecommendations';
 import {useNotifications} from '../../utility/helpers/notifications';
 import {useSpotifyAuthentication} from '../../utility/helpers/spotify_auth';
 import AppearingView from '../common/AppearingView';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, TouchableOpacity, Text} from 'react-native';
 import {useRecentLikesRequest} from '../../utility/db/likes';
 import Animated, {
   useAnimatedStyle,
@@ -18,18 +18,25 @@ import Animated, {
 } from 'react-native-reanimated';
 import {useActiveBundleKey} from '../../utility/redux/bundles/selectors';
 import {useIsDeckFullyMeasured} from '../../utility/redux/measurement/selectors';
+import {textStyleCommon} from '../../utility/helpers/text';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useImpressionsUpdates} from '../../utility/db/impressions';
 
 const MainScreen = () => {
   const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
   const setUserRequest = useSetUserRequest();
-  const {recommendationsRequest, makeRecommendationsRequest} =
-    useRecommendationsRequest();
+  const {
+    recommendationsRequestStatus,
+    makeRecommendationsRequest,
+    applyPendingReload,
+  } = useRecommendationsRequest();
   const {request: recentLikesRequest, makeRequest: makeRecentLikesRequest} =
     useRecentLikesRequest();
   const {notificationStatus, expoPushToken} = useNotifications();
   const [spotifyAuthStatus, handleSpotifyLogin] = useSpotifyAuthentication();
   const activeBundleKey = useActiveBundleKey();
   const [loading, setLoading] = useState(true);
+  useImpressionsUpdates();
 
   useEffect(() => {
     makeRecommendationsRequest();
@@ -47,8 +54,7 @@ const MainScreen = () => {
     }
   }, [getUserRequest.status, expoPushToken]);
 
-  if (recommendationsRequest.status === 'error') {
-    console.log(recommendationsRequest.error);
+  if (recommendationsRequestStatus === 'error') {
     return <ErrorComponent />;
   }
 
@@ -62,9 +68,9 @@ const MainScreen = () => {
     return <ErrorComponent />;
   }
 
-  const showOnlyLoader =
-    recommendationsRequest.status === 'loading' ||
-    recommendationsRequest.status === 'init' ||
+  const dataIsLoading =
+    recommendationsRequestStatus === 'loading' ||
+    recommendationsRequestStatus === 'init' ||
     getUserRequest.status === 'loading' ||
     getUserRequest.status === 'init' ||
     recentLikesRequest.status === 'loading' ||
@@ -72,7 +78,7 @@ const MainScreen = () => {
     spotifyAuthStatus === 'pending';
 
   const showSpotifyLogin =
-    !showOnlyLoader &&
+    !dataIsLoading &&
     !getUserRequest.data?.hasSpotifyAuth &&
     spotifyAuthStatus !== 'succeeded';
 
@@ -81,7 +87,7 @@ const MainScreen = () => {
   }
 
   const showPendingRecommendations =
-    !showOnlyLoader && recommendationsRequest.data == null;
+    !dataIsLoading && recommendationsRequestStatus === 'loaded_with_no_data';
 
   if (showPendingRecommendations) {
     return <PendingRecommendations notificationStatus={notificationStatus} />;
@@ -90,11 +96,15 @@ const MainScreen = () => {
   // TODO: take another look at this
   return (
     <React.Fragment>
+      {recommendationsRequestStatus === 'pending_reload' && (
+        <PendingReload applyPendingReload={applyPendingReload} />
+      )}
       {loading && renderLoading()}
       {activeBundleKey != null && (
         <MainScreenInner
           activeBundleKey={activeBundleKey}
           setLoading={setLoading}
+          dataIsLoading={dataIsLoading}
         />
       )}
     </React.Fragment>
@@ -105,11 +115,11 @@ const MainScreenInner = memo(
   (props: {
     activeBundleKey: string;
     setLoading: (loading: boolean) => void;
+    dataIsLoading: boolean;
   }) => {
-    const {activeBundleKey, setLoading} = props;
-    const contentReady = useIsDeckFullyMeasured({bundleKey: activeBundleKey});
-
-    console.log(`CONTENT READY: ${contentReady}`);
+    const {activeBundleKey, setLoading, dataIsLoading} = props;
+    const contentReady =
+      useIsDeckFullyMeasured({bundleKey: activeBundleKey}) && !dataIsLoading;
 
     const recommendationsOpacitySharedValue = useSharedValue(0);
 
@@ -117,6 +127,11 @@ const MainScreenInner = memo(
       if (contentReady) {
         setLoading(false);
         recommendationsOpacitySharedValue.value = withTiming(1, {
+          duration: 250,
+        });
+      } else {
+        setLoading(true);
+        recommendationsOpacitySharedValue.value = withTiming(0, {
           duration: 250,
         });
       }
@@ -144,9 +159,46 @@ const renderLoading = () => {
   );
 };
 
+const PendingReload = (props: {applyPendingReload: () => void}) => {
+  const {applyPendingReload} = props;
+  const insets = useSafeAreaInsets();
+
+  return (
+    <AppearingView
+      duration={500}
+      style={{...styles.pendingReloadContainer, top: insets.top + 12}}>
+      <TouchableOpacity
+        onPress={applyPendingReload}
+        style={styles.pendingReloadButton}>
+        <Text style={{...textStyleCommon, ...styles.pendingReloadText}}>
+          load latest updates
+        </Text>
+      </TouchableOpacity>
+    </AppearingView>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  pendingReloadContainer: {
+    zIndex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingReloadButton: {
+    backgroundColor: '#d4af37',
+    padding: 12,
+    borderRadius: 24,
+    borderColor: '#00000040',
+    borderWidth: 3,
+  },
+  pendingReloadText: {
+    fontSize: 16,
   },
   recommendations: {
     position: 'absolute',

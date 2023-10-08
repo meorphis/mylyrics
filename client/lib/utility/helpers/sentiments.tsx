@@ -8,6 +8,8 @@ export const getBundleDisplayName = (info: BundleInfo) => {
       return info.sentiment;
     case 'top':
       return 'heavy rotation';
+    case 'likes':
+      return 'recent likes';
     case 'user_made':
       return info.title.length > 15
         ? `${info.title.slice(0, 15)}...`

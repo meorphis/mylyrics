@@ -35,21 +35,57 @@ export const bundlesSlice = createSlice({
         throw Error(`${passage.bundleKey} does not exist in bundles state`);
       }
       const sortOrder = bundle.sortOrder || 'asc';
-      const index = bundle.passages.findIndex(p =>
+      const index = bundle.passages.data.findIndex(p =>
         sortOrder === 'asc'
           ? p.sortKey > passage.sortKey
           : p.sortKey < passage.sortKey,
       );
       if (index === -1) {
-        bundle.passages.push(passage);
+        bundle.passages.data.push(passage);
       } else {
-        bundle.passages = [
-          ...bundle.passages.slice(0, index),
+        bundle.passages.data = [
+          ...bundle.passages.data.slice(0, index),
           passage,
-          ...bundle.passages.slice(index),
+          ...bundle.passages.data.slice(index),
         ];
       }
       state.bundleKeyToPassageKey[passage.bundleKey] = passage.passageKey;
+    },
+    addHydratedPassagesToBundle: (
+      state: BundlesState,
+      action: PayloadAction<{
+        bundleKey: string;
+        passages: BundlePassageType[];
+      }>,
+    ) => {
+      const {bundleKey, passages} = action.payload;
+
+      const bundle = state.bundles[bundleKey];
+      if (!bundle) {
+        throw Error(`${bundleKey} does not exist in bundles state`);
+      }
+
+      bundle.passages.data = passages;
+      bundle.passages.hydrated = true;
+    },
+    markPassagesAsErrored: (
+      state: BundlesState,
+      action: PayloadAction<{
+        bundleKey: string;
+      }>,
+    ) => {
+      const {bundleKey} = action.payload;
+
+      const bundle = state.bundles[bundleKey];
+      if (!bundle) {
+        throw Error(`${bundleKey} does not exist in bundles state`);
+      }
+
+      bundle.passages = {
+        ...bundle.passages,
+        hydrated: false,
+        error: true,
+      };
     },
     removeFromBundle: (
       state: BundlesState,
@@ -63,20 +99,22 @@ export const bundlesSlice = createSlice({
       if (!bundle) {
         throw Error(`${bundleKey} does not exist in bundles state`);
       }
-      const index = bundle.passages.findIndex(p => p.passageKey === passageKey);
+      const index = bundle.passages.data.findIndex(
+        p => p.passageKey === passageKey,
+      );
       if (index === -1) {
         throw Error(`${passageKey} does not exist in ${bundleKey}`);
       }
-      bundle.passages = [
-        ...bundle.passages.slice(0, index),
-        ...bundle.passages.slice(index + 1),
+      bundle.passages.data = [
+        ...bundle.passages.data.slice(0, index),
+        ...bundle.passages.data.slice(index + 1),
       ];
 
       // keep the same index (or zero if the index is now out of bounds) to
       // essentially go to the next passage
       if (state.bundleKeyToPassageKey[bundleKey] === passageKey) {
         state.bundleKeyToPassageKey[bundleKey] =
-          bundle.passages[index % bundle.passages.length].passageKey;
+          bundle.passages[index % bundle.passages.data.length].passageKey;
       }
     },
     setActiveBundlePassage: (
@@ -90,7 +128,10 @@ export const bundlesSlice = createSlice({
       // TODO: clean this up
       if (bundleKey === 'singleton') {
         state.bundles.singleton = {
-          passages: [action.payload],
+          passages: {
+            hydrated: true,
+            data: [action.payload],
+          },
           info: {
             group: undefined,
             key: 'singleton',
@@ -99,7 +140,10 @@ export const bundlesSlice = createSlice({
         };
       } else {
         state.bundles.singleton = {
-          passages: [],
+          passages: {
+            hydrated: false,
+            data: [],
+          },
           info: {
             group: undefined,
             key: 'singleton',
@@ -145,6 +189,7 @@ export const bundlesSlice = createSlice({
 export const {
   addBundles,
   addToBundle,
+  addHydratedPassagesToBundle,
   removeFromBundle,
   setActiveBundlePassage,
   setEmptyBundle,

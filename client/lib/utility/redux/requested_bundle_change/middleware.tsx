@@ -22,10 +22,13 @@ export const requestedBundleChangeMiddleware =
       const requestedBundlePassageKey =
         state.bundles.bundleKeyToPassageKey[requestedBundleKey];
 
-      if (requestedBundlePassageKey === null) {
+      if (
+        requestedBundlePassageKey === null ||
+        !requestedBundle.passages.hydrated
+      ) {
         store.dispatch(setEmptyBundle({bundleKey: requestedBundleKey}));
       } else {
-        const requestedBundlePassage = requestedBundle.passages.find(
+        const requestedBundlePassage = requestedBundle.passages.data.find(
           p => p.passageKey === requestedBundlePassageKey,
         )!;
         store.dispatch(setActiveBundlePassage(requestedBundlePassage));

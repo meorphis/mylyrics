@@ -5,6 +5,8 @@ import {textStyleCommon} from '../../utility/helpers/text';
 import {useBottomSheetBackdrop} from '../../utility/helpers/bottom_sheet';
 import {useGroupedBundleInfos} from '../../utility/redux/bundles/selectors';
 import GroupSelectorButton from './GroupSelectorButton';
+import {BundleInfo} from '../../types/bundle';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type Props = {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -13,6 +15,7 @@ type Props = {
 // bottom sheet to allow the user to change the active bundle
 const GroupSelectorBottomSheet = (props: Props) => {
   const {bottomSheetRef} = props;
+  const insets = useSafeAreaInsets();
   const groupedBundleInfos = useGroupedBundleInfos();
   const groupsToShow = Object.keys(groupedBundleInfos);
 
@@ -26,7 +29,11 @@ const GroupSelectorBottomSheet = (props: Props) => {
       backdropComponent={useBottomSheetBackdrop({opacity: 0.8})}
       enablePanDownToClose
       backgroundStyle={styles.bottomSheet}>
-      <BottomSheetScrollView contentContainerStyle={styles.container}>
+      <BottomSheetScrollView
+        contentContainerStyle={{
+          ...styles.container,
+          paddingBottom: insets.bottom + 12,
+        }}>
         <Text style={{...textStyleCommon, ...styles.titleText}}>
           🎶 your daily lines 🎶
         </Text>
@@ -45,14 +52,14 @@ const GroupSelectorBottomSheet = (props: Props) => {
                 }}>
                 {group}
               </Text>
-              <View style={styles.groupLabelEmoji}>
+              <View>
                 <Text style={styles.groupLabelEmojiText}>
                   {groupEmojis[group]}
                 </Text>
               </View>
             </View>
             <View style={styles.tagsContainer}>
-              {groupedBundleInfos[group].map(info => (
+              {groupedBundleInfos[group].sort(compareBundles).map(info => (
                 <View style={styles.tagContainer} key={info.key}>
                   <GroupSelectorButton
                     bundleInfo={info}
@@ -68,6 +75,19 @@ const GroupSelectorBottomSheet = (props: Props) => {
       </BottomSheetScrollView>
     </BottomSheet>
   );
+};
+
+const compareBundles = (a: BundleInfo, b: BundleInfo) => {
+  if (a.group !== 'essentials' || b.group !== 'essentials') {
+    return 0;
+  }
+
+  const order = ['top', 'likes', 'artist'];
+
+  const aIndex = order.indexOf(a.type);
+  const bIndex = order.indexOf(b.type);
+
+  return aIndex - bIndex;
 };
 
 // re-arranges the list, putting the item at the front of the array but retaining
@@ -106,10 +126,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginBottom: 20,
     backgroundColor: '#00000040',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
     borderWidth: 3,
     borderColor: '#00000040',
   },
@@ -123,14 +139,16 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     color: '#333',
     fontWeight: '600',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
-  groupLabelEmoji: {
+  groupLabelEmojiText: {
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.4,
     shadowRadius: 2,
-  },
-  groupLabelEmojiText: {
     fontSize: 28,
   },
   tagsContainer: {

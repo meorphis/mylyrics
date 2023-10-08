@@ -36,7 +36,6 @@ const GroupSelectorButton = (props: Props) => {
     <ThemeButton
       text={fullDisplayName ?? undefined}
       textStyle={styles.buttonText}
-      textContainerStyle={styles.buttonTextContainer}
       useSaturatedColor={isActiveBundle}
       onPress={() => {
         // allow some time for the animation to close the bundle sheet since it
@@ -58,8 +57,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  buttonTextContainer: {
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.2,

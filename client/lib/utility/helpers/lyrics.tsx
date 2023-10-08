@@ -13,42 +13,53 @@ export const splitLyricsWithPassages = ({
   songLyrics: string;
   passageLyrics: string;
 }) => {
+  // inclusive range
   const highlightStart = songLyrics.indexOf(passageLyrics);
-  const highlightEnd = highlightStart + passageLyrics.length;
+  const highlightEnd = highlightStart + passageLyrics.length - 1;
 
-  let passageStarted = false;
-  let passageEnded = false;
   let passageLine: number | null = null;
 
-  return splitWithIndexes(songLyrics, '\n').map(({value, index}) => {
-    const includesPassage = index >= highlightStart && index <= highlightEnd;
+  return splitWithIndexes(songLyrics, '\n').map(
+    ({value, lineStart, nextLineStart}) => {
+      const lineEnd = nextLineStart - 1;
+      // first line of passage: the highlight starts somewhere on this line
+      const isPassageFirstLine =
+        highlightStart >= lineStart && highlightStart <= lineEnd;
 
-    if (passageStarted && !passageEnded && passageLine != null) {
-      passageLine += 1;
-    } else {
-      passageLine = null;
-    }
+      // middle line of passage: the highlight is fully contained within this line
+      const isPassageMiddeLine =
+        lineStart > highlightStart && lineEnd < highlightEnd;
 
-    let passageStart = null;
-    if (includesPassage && !passageStarted) {
-      passageStart = index - highlightStart;
-      passageStarted = true;
-      passageLine = 0;
-    }
+      // last line of passage: the highlight ends somewhere on this line
+      const isPassageLastLine =
+        highlightEnd >= lineStart && highlightEnd <= lineEnd;
 
-    let passageEnd = null;
-    if (highlightEnd >= index && highlightEnd <= index + value.length) {
-      passageEnd = highlightEnd - index;
-      passageEnded = true;
-    }
+      const lineIncludesPassage =
+        isPassageFirstLine || isPassageMiddeLine || isPassageLastLine;
 
-    return {
-      lineText: value,
-      passageStart,
-      passageEnd,
-      passageLine,
-    };
-  });
+      if (!lineIncludesPassage) {
+        return {
+          lineText: value,
+          passageInfo: null,
+        };
+      }
+
+      passageLine = passageLine == null ? 0 : passageLine + 1;
+      const passageStart = isPassageFirstLine ? highlightStart - lineStart : 0;
+      const passageEnd = isPassageLastLine
+        ? highlightEnd - lineStart + 1
+        : value.length;
+
+      return {
+        lineText: value,
+        passageInfo: {
+          passageStart,
+          passageEnd,
+          passageLine,
+        },
+      };
+    },
+  );
 };
 
 // takes as input a raw lyrics string as returned from the database and returns a cleaned version
@@ -70,15 +81,20 @@ export const cleanLyrics = (lyrics: string) => {
 
 const splitWithIndexes = (str: string, delimiter: string) => {
   const parts = str.split(delimiter);
-  let currentIndex = 0;
+  let lineStart = 0;
+  let nextLineStart: number;
 
   const result = parts.map(part => {
+    nextLineStart = lineStart + part.length + delimiter.length;
+
     const obj = {
       value: part,
-      index: currentIndex,
+      lineStart,
+      nextLineStart,
     };
 
-    currentIndex += part.length + delimiter.length;
+    lineStart = nextLineStart;
+
     return obj;
   });
 

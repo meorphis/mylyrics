@@ -144,8 +144,6 @@ const computeContrastColor = (color: number) => {
 
   const contrast = interpolate(y, [0, 147, 163, 255], [239, 221, 31, 15]);
 
-  console.log(contrast);
-
   // Combine ARGB components back into a single 32-bit integer, keeping the original alpha
   const newColor =
     ((a << 24) | (contrast << 16) | (contrast << 8) | contrast) >>> 0;

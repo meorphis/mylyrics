@@ -21,7 +21,6 @@ type Props = {
   iconName?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
-  textContainerStyle?: ViewStyle;
   triggerHapticFeedback?: boolean;
 };
 
@@ -34,7 +33,6 @@ const ThemeButton = (props: Props) => {
     iconName,
     style,
     textStyle,
-    textContainerStyle,
   } = props;
 
   const borderColor = useSaturatedColor ? '#ffffff80' : '#00000040';
@@ -58,17 +56,15 @@ const ThemeButton = (props: Props) => {
         {iconName && <Ionicon name={iconName} size={28} color={textColor} />}
         {iconName && text && <View style={styles.textIconPadding} />}
         {text && (
-          <View style={textContainerStyle}>
-            <Text
-              style={{
-                ...textStyleCommon,
-                ...styles.text,
-                ...textStyle,
-                color: textColor,
-              }}>
-              {text}
-            </Text>
-          </View>
+          <Text
+            style={{
+              ...textStyleCommon,
+              ...styles.text,
+              ...textStyle,
+              color: textColor,
+            }}>
+            {text}
+          </Text>
         )}
       </SolidBackground>
     </TouchableOpacity>

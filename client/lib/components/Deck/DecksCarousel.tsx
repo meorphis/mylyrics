@@ -4,7 +4,7 @@ import NativeCarousel from '../../forks/react-native-reanimated-carousel/src';
 import {SingletonLyricCard} from './SingletonLyricCard';
 import _ from 'lodash';
 import Animated, {Easing, useAnimatedStyle} from 'react-native-reanimated';
-import {useSharedDecksOpacity} from '../../utility/helpers/deck';
+import {useSharedDecksTransition} from '../../utility/helpers/deck';
 import {useScrollToBundleIndex} from '../../utility/redux/bundles/selectors';
 import {useAllRequestedBundleKeys} from '../../utility/redux/requested_bundle_change/selectors';
 import Deck from './Deck';
@@ -20,7 +20,7 @@ const DecksCarousel = () => {
   console.log('rendering DeckCarousel');
 
   const scrollToBundleIndex = useScrollToBundleIndex();
-  const selectedGroupOpacity = useSharedDecksOpacity();
+  const selectedGroupOpacity = useSharedDecksTransition();
 
   // to reduce up front computation, only render decks once their bundles have
   // been requested
@@ -29,31 +29,6 @@ const DecksCarousel = () => {
 
   // @ts-ignore
   const carouselRef = useRef<Carousel>(null);
-
-  // const previouslyRequestedBundleKeys = useRef<string[]>([]);
-
-  // useLayoutEffect(() => {
-  //   // find the index of the newly requested bundle key
-  //   const newlyBundleKeyIndex = allRequestedBundleKeys.findIndex(
-  //     bundleKey => !previouslyRequestedBundleKeys.current.includes(bundleKey),
-  //   );
-
-  //   if (newlyBundleKeyIndex === -1) {
-  //     return;
-  //   }
-
-  //   previouslyRequestedBundleKeys.current = allRequestedBundleKeys;
-
-  //   console.log(
-  //     `newly requested bundle key index: ${newlyBundleKeyIndex}, current index: ${carouselRef.current?.getCurrentIndex()}`,
-  //   );
-
-  //   if (newlyBundleKeyIndex <= carouselRef.current?.getCurrentIndex()) {
-  //     carouselRef.current?.next({
-  //       animated: false,
-  //     });
-  //   }
-  // }, [allRequestedBundleKeys]);
 
   useLayoutEffect(() => {
     if (carouselRef.current?.getCurrentIndex() !== scrollToBundleIndex) {
