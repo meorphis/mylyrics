@@ -13,11 +13,11 @@ import {
 import {useDispatch} from 'react-redux';
 import {RawPassageType} from '../../types/passage';
 import {setProphecy} from '../redux/prophecy/slice';
-import {getUnhydratedBundlesFromFlatPassages} from '../helpers/recommendations';
+import {getBundlesFromFlatPassages} from '../helpers/recommendations';
 import {addBundles, setActiveBundlePassage} from '../redux/bundles/slice';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import {AppState} from 'react-native';
-import {hydratePassage} from '../helpers/passage';
+import {usePassageHydration} from '../helpers/passage';
 import {BundlePassageType} from '../../types/bundle';
 
 // returns:
@@ -48,8 +48,14 @@ export const useRecommendationsRequest = () => {
     return await getDoc(doc(collection(db, 'user-recommendations'), deviceId));
   };
 
-  const oldDataIsStale = ({newSnap}: {newSnap: DocumentSnapshot}) => {
-    return newSnap.data()?.lastRefreshedAt !== lastRefreshedAt.current;
+  // returns true if there is data in the document and it's different from the data
+  // that is currently loaded
+  const isNewDataAvailable = ({newSnap}: {newSnap: DocumentSnapshot}) => {
+    const newLastRefreshedAt = newSnap.data()?.lastRefreshedAt;
+    return (
+      newLastRefreshedAt != null &&
+      newLastRefreshedAt !== lastRefreshedAt.current
+    );
   };
 
   // when the app comes into focus (either cold start or foregrounding), we should update
@@ -60,7 +66,7 @@ export const useRecommendationsRequest = () => {
       // if there's no data loaded, it's always ok to set new data
       !recommendationsRequestStatus.current.startsWith('loaded') ||
       // if there is data loaded, only set new data if it's different from the old data
-      oldDataIsStale({newSnap: docSnap})
+      isNewDataAvailable({newSnap: docSnap})
     );
   };
 
@@ -84,19 +90,21 @@ export const useRecommendationsRequest = () => {
   // check for updates by subscribing to the user-recommendations document in firestore;
   // called when the app first starts up and when the app comes into the foreground
   const maybeUpdateThenContinuouslyCheckForUpdatesOnFocus = async ({
-    ignoreError,
+    isInitialLoad,
   }: {
-    ignoreError: boolean;
+    isInitialLoad: boolean;
   }) => {
     try {
       const docSnap = await getRecommendationsFromFirestore();
 
-      if (shouldUpdateRecommendationsOnFocus(docSnap)) {
+      if (isInitialLoad || shouldUpdateRecommendationsOnFocus(docSnap)) {
         await setRecommendations(docSnap);
       }
     } catch (e) {
       console.error(e);
-      if (!ignoreError) {
+      // do not worry about errors if it's not a cold start, since we can just continue
+      // to display whatever we're currently displaying
+      if (isInitialLoad) {
         recommendationsRequestStatus.current = 'error';
         setRecommendationsRequestStatus('error');
       }
@@ -116,7 +124,7 @@ export const useRecommendationsRequest = () => {
       d => {
         if (
           recommendationsRequestStatus.current === 'loaded_with_data' &&
-          oldDataIsStale({newSnap: d})
+          isNewDataAvailable({newSnap: d})
         ) {
           // if we have data but it's stale, do not immediately refresh as this could disrupt the user's experience
           // instead - mark it as pending and wait until either user manually refreshes or app leaves the foreground
@@ -151,7 +159,7 @@ export const useRecommendationsRequest = () => {
           if (recommendationsRequestStatus.current.startsWith('loaded')) {
             // we should not override our successfully loaded data with an error
             await maybeUpdateThenContinuouslyCheckForUpdatesOnFocus({
-              ignoreError: true,
+              isInitialLoad: false,
             });
           } else if (
             recommendationsRequestStatus.current === 'pending_reload'
@@ -184,7 +192,7 @@ export const useRecommendationsRequest = () => {
   const makeRecommendationsRequest = async () => {
     recommendationsRequestStatus.current = 'loading';
     setRecommendationsRequestStatus('loading');
-    maybeUpdateThenContinuouslyCheckForUpdatesOnFocus({ignoreError: false});
+    maybeUpdateThenContinuouslyCheckForUpdatesOnFocus({isInitialLoad: true});
   };
 
   const applyPendingReload = async () => {
@@ -206,6 +214,7 @@ export const useRecommendationsRequest = () => {
 
 const useSetupRecommendations = () => {
   const dispatch = useDispatch();
+  const hydratePassages = usePassageHydration();
 
   const setupRecommendations = async ({
     docSnap,
@@ -223,37 +232,19 @@ const useSetupRecommendations = () => {
     const prophecy = data.prophecy as string;
 
     await CacheManager.clearCache();
-    const bundles = await getUnhydratedBundlesFromFlatPassages(
+    const bundles = await getBundlesFromFlatPassages(
       recommendations,
       sentiments,
     );
 
     const firstBundle = bundles[0];
 
-    try {
-      const hydratedPassages = await Promise.all(
-        firstBundle.passages.data.map(hydratePassage),
-      );
-      firstBundle.passages = {
-        hydrated: true,
-        data: hydratedPassages.map((passage, idx) => ({
-          ...passage,
-          bundleKey: firstBundle.info.key,
-          sortKey: idx,
-        })),
-      };
-    } catch (e) {
-      firstBundle.passages = {
-        hydrated: false,
-        data: firstBundle.passages.data,
-        error: true,
-      };
-    }
+    await hydratePassages(firstBundle.passages);
 
     dispatch({type: 'RESET_RECOMMENDATIONS'});
     dispatch(addBundles(bundles));
     dispatch(
-      setActiveBundlePassage(bundles[0].passages.data[0] as BundlePassageType),
+      setActiveBundlePassage(bundles[0].passages[0] as BundlePassageType),
     );
     dispatch(setProphecy(prophecy ?? null));
 

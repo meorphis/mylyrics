@@ -5,7 +5,7 @@ import {doc, getDoc} from '@firebase/firestore';
 import {useDispatch} from 'react-redux';
 import {RawPassageType} from '../../types/passage';
 import {addBundles} from '../redux/bundles/slice';
-import {BundleType} from '../../types/bundle';
+import {BundlePassageType, BundleType} from '../../types/bundle';
 import {requestBundleChange} from '../redux/requested_bundle_change/slice';
 import {getThemeFromAlbumColors} from './theme';
 import {getPassageId} from './passage';
@@ -51,16 +51,13 @@ export const useBundleLink = () => {
       };
       const {passages: rawPassages, creator, title} = data;
       const bundle: BundleType = {
-        passages: {
-          hydrated: false,
-          data: rawPassages.map((p, idx) => ({
-            ...p,
-            passageKey: getPassageId(p),
-            bundleKey: bundleKey!,
-            sortKey: idx,
-            theme: getThemeFromAlbumColors(p.song.album.image.colors),
-          })),
-        },
+        passages: rawPassages.map((p, idx) => ({
+          ...p,
+          passageKey: getPassageId(p),
+          bundleKey: bundleKey!,
+          sortKey: idx,
+          theme: getThemeFromAlbumColors(p.song.album.image.colors),
+        })) as BundlePassageType[],
         info: {
           key: bundleKey!,
           type: 'user_made',

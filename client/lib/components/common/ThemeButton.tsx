@@ -16,6 +16,7 @@ import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 type Props = {
   text?: string;
   useSaturatedColor?: boolean;
+  isSemiTransparent?: boolean;
   isDisabled?: boolean;
   onPress: () => void;
   iconName?: string;
@@ -28,6 +29,7 @@ const ThemeButton = (props: Props) => {
   const {
     text,
     useSaturatedColor = false,
+    isSemiTransparent = true,
     isDisabled,
     onPress,
     iconName,
@@ -43,57 +45,65 @@ const ThemeButton = (props: Props) => {
       // eslint-disable-next-line react-native/no-inline-styles
       style={{
         ...styles.button,
-        ...style,
+        backgroundColor: getBackgroundColor({
+          useSaturatedColor,
+          isSemiTransparent,
+        }),
+        ...(!isSemiTransparent && !isDisabled ? styles.buttonShadow : {}),
         opacity: isDisabled ? 0.15 : 1,
         borderColor,
+        ...style,
       }}
       onPress={() => {
         triggerHapticFeedback('impactLight');
         onPress();
       }}
       disabled={isDisabled}>
-      <SolidBackground {...props}>
-        {iconName && <Ionicon name={iconName} size={28} color={textColor} />}
-        {iconName && text && <View style={styles.textIconPadding} />}
-        {text && (
-          <Text
-            style={{
-              ...textStyleCommon,
-              ...styles.text,
-              ...textStyle,
-              color: textColor,
-            }}>
-            {text}
-          </Text>
-        )}
-      </SolidBackground>
+      {iconName && <Ionicon name={iconName} size={28} color={textColor} />}
+      {iconName && text && <View style={styles.textIconPadding} />}
+      {text && (
+        <Text
+          style={{
+            ...textStyleCommon,
+            ...styles.text,
+            ...textStyle,
+            color: textColor,
+          }}>
+          {text}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 };
 
-const SolidBackground = (
-  props: Props & {
-    children: React.ReactNode;
-  },
-) => {
-  const {useSaturatedColor, children} = props;
-
-  return (
-    <View
-      // eslint-disable-next-line react-native/no-inline-styles
-      style={{
-        ...styles.solidBackground,
-        backgroundColor: useSaturatedColor ? '#444444c0' : '#ffffffc0',
-      }}>
-      {children}
-    </View>
-  );
+const getBackgroundColor = ({
+  useSaturatedColor,
+  isSemiTransparent,
+}: {
+  useSaturatedColor: boolean;
+  isSemiTransparent: boolean;
+}) => {
+  if (isSemiTransparent) {
+    return useSaturatedColor ? '#444444c0' : '#ffffffc0';
+  } else {
+    return useSaturatedColor ? '#888888' : '#ffffff';
+  }
 };
 
 const styles = StyleSheet.create({
   button: {
     borderRadius: 18,
     borderWidth: 3,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    padding: 16,
+    height: '100%',
+  },
+  buttonShadow: {
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.3,
+    shadowRadius: 3.84,
   },
   text: {
     alignSelf: 'center',
@@ -103,12 +113,6 @@ const styles = StyleSheet.create({
   },
   textIconPadding: {
     width: 8,
-  },
-  solidBackground: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 15,
   },
 });
 

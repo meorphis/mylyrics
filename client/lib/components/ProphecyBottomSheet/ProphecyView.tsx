@@ -5,6 +5,7 @@ import {useProphecyRequest} from '../../utility/helpers/prophecy';
 import CrossFadeView from '../common/CrossFadeView';
 import CrystalBall from './CrystalBall';
 import {PassageType} from '../../types/passage';
+import { useAlbumArtMulti } from '../../utility/redux/album_art/selectors';
 
 type Props = {
   cards: PassageType[];
@@ -16,6 +17,8 @@ type Props = {
 const ProphecyView = (props: Props) => {
   const {cards, prophecy} = props;
 
+  const albumArt = useAlbumArtMulti(cards.map(c => c.song.album.image.url));
+
   const {requestStatus, makeProphecyRequest} = useProphecyRequest();
   const trigger = `${prophecy != null}-${requestStatus === 'loading'}`;
 
@@ -26,7 +29,7 @@ const ProphecyView = (props: Props) => {
 
     if (requestStatus === 'loading') {
       return (
-        <CrystalBall imageUrls={cards.map(c => c.song.album.image.blob)} />
+        <CrystalBall imageUrls={albumArt.filter(Boolean) as string[]} />
       );
     }
 

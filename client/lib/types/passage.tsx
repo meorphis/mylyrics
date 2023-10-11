@@ -1,5 +1,5 @@
 import {BundleInfo} from './bundle';
-import {RawSongType, SongType} from './song';
+import {SongType} from './song';
 import ThemeType, {ThemeSelection} from './theme';
 
 export type RawPassageTypeType = 'top' | 'artist' | 'sentiment';
@@ -9,21 +9,17 @@ export type RawPassageTypeType = 'top' | 'artist' | 'sentiment';
 // PassageType
 export type RawPassageType = {
   lyrics: string;
-  song: RawSongType;
+  song: SongType;
   bundleInfos: BundleInfo[];
   type: RawPassageTypeType;
 };
 
-// contains a single passage of lyrics with metadata, providing enough info to be
-// rendered in a LyricCard component
-export type PassageType = {
-  lyrics: string;
-  song: SongType;
+// has a theme and a passage key, allowing it to be rendered in a LyricCard
+export type PassageType = RawPassageType & {
   theme: ThemeType;
   passageKey: string;
-  bundleInfos: BundleInfo[];
-  type: RawPassageTypeType;
-};
+  hydrated: false;
+}
 
 // a passage with some optional customization metadata to alter its rendering
 export type CustomizablePassageType = {

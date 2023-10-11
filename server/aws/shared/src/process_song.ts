@@ -11,6 +11,7 @@ import { getImageColors } from "./utility/image";
 import { FinalColor } from "extract-colors/lib/types/Color";
 import { labelPassagesAnthropic } from "./integrations/llm/anthropic_integration";
 import { addMetadataToPassage } from "./utility/recommendations";
+import { normalizePassageLyrics, normalizeSongLyrics } from "./utility/lyrics";
 
 // *** PUBLIC INTERFACE ***
 // takes as input a song name and artist name and processes the song:
@@ -53,12 +54,12 @@ export const processSong = async (
     return;
   }
 
-  const {lyrics} = getLyricsResponse;
+  const {lyrics: unnormalizedSongLyrics} = getLyricsResponse;
 
   console.log(`got lyrics for song: ${JSON.stringify(
     {
       song: `${song.primaryArtist.name}: ${song.name}`,
-      lyrics,
+      unnormalizedSongLyrics,
     }
   )}`);
 
@@ -69,7 +70,7 @@ export const processSong = async (
 
   // get analysis from anthropic integration and image colors in parallel
   const [labelPassagesResponseAnthropic, colors] = await Promise.all([
-    labelPassagesAnthropic({lyrics}),
+    labelPassagesAnthropic({lyrics: unnormalizedSongLyrics}),
     getImageColors({url: song.album.image.url})
   ]);
 
@@ -77,7 +78,7 @@ export const processSong = async (
     successfuLabelPassagesResponse = labelPassagesResponseAnthropic;
   } else {
     // try open AI if for some reason anthropic fails
-    const labelPassagesOpenAIResponse = await labelPassagesOpenAI({lyrics});
+    const labelPassagesOpenAIResponse = await labelPassagesOpenAI({lyrics: unnormalizedSongLyrics});
     if (labelPassagesOpenAIResponse.status === "success") {
       successfuLabelPassagesResponse = labelPassagesOpenAIResponse;
     } else {
@@ -90,10 +91,10 @@ export const processSong = async (
   }
 
   const {
-    sentiments: songSentiments, passages, metadata: labelingMetadata
+    sentiments: songSentiments, passages: unnormalizedPassages, metadata: labelingMetadata
   } = successfuLabelPassagesResponse.content;
 
-  if (passages.length === 0) {
+  if (unnormalizedPassages.length === 0) {
     console.log(
       `no passages found for song: ${song.primaryArtist.name}: ${song.name}`
     )
@@ -113,16 +114,40 @@ export const processSong = async (
     {
       song,
       songSentiments,
-      passages,
+      unnormalizedPassages,
     }
   )}`);
 
+  const normalizedSongLyrics = normalizeSongLyrics(unnormalizedSongLyrics);
+  const normalizedPassages: LabeledPassage[] = unnormalizedPassages.map((passage) => {
+    const normalizedPassageLyrics = normalizePassageLyrics({
+      normalizedSongLyrics,
+      passageLyrics: passage.lyrics,
+    });
+
+    if (normalizedPassageLyrics == null) {
+      console.log(
+        // eslint-disable-next-line max-len
+        `passage lyrics not found in song lyrics for song: ${song.primaryArtist.name}: ${song.name}; passage lyrics: ${passage.lyrics}`
+      )
+      return null;
+    }
+
+    return {
+      ...passage,
+      lyrics: normalizedPassageLyrics,
+      metadata: {
+        ...passage.metadata,
+      },
+    }
+  }).filter((passage) => passage != null) as LabeledPassage[];
+
   const vectorizedPassages = await vectorizePassages({labeledPassages: [
-    ...passages,
+    ...normalizedPassages,
     // include the full song as a passage since it may be useful for semantic search
     {
       ...addMetadataToPassage({
-        lyrics,
+        lyrics: normalizedSongLyrics,
         sentiments: songSentiments,
       }),
       isFullSong: true,
@@ -135,9 +160,9 @@ export const processSong = async (
     song,
     {
       songSentiments,
-      songLyrics: lyrics,
+      songLyrics: normalizedSongLyrics,
       albumColors: colors,
-      unvectorizedPassages: passages,
+      unvectorizedPassages: normalizedPassages,
       vectorizedPassages,
       labelingMetadata
     }

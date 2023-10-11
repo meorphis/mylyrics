@@ -4,6 +4,7 @@ import prophecyReducer from './prophecy/slice';
 import lyricCardMeasurementReducer from './measurement/slice';
 import requestedBundleChangeReducer from './requested_bundle_change/slice';
 import shareablePassagetReducer from './shareable_passage/slice';
+import albumArtReducer from './album_art/slice';
 import {enableMapSet} from 'immer';
 import {requestedBundleChangeMiddleware} from './requested_bundle_change/middleware';
 import {logTimingMiddleware} from './timing/middleware';
@@ -33,6 +34,7 @@ const rootReducer = (
       action,
     ),
     shareablePassage: shareablePassagetReducer(state?.shareablePassage, action),
+    albumArt: albumArtReducer(state?.albumArt, action),
   };
 
   // keep the bundles that are not from recommendations when resetting recommendations
@@ -73,4 +75,5 @@ export type RootState = {
   prophecy: ReturnType<typeof prophecyReducer>;
   requestedBundleChange: ReturnType<typeof requestedBundleChangeReducer>;
   shareablePassage: ReturnType<typeof shareablePassagetReducer>;
+  albumArt: ReturnType<typeof albumArtReducer>;
 };

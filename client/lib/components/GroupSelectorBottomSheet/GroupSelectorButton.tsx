@@ -29,14 +29,16 @@ const GroupSelectorButton = (props: Props) => {
   const displayName = getBundleDisplayName(bundleInfo);
   const fullDisplayName =
     displayName && isActiveBundle
-      ? `${displayName} ${getBundleEmoji(bundleInfo)}`
+      ? `${getBundleEmoji(bundleInfo)}\n${displayName}`
       : displayName;
 
   return (
     <ThemeButton
       text={fullDisplayName ?? undefined}
+      style={styles.button}
       textStyle={styles.buttonText}
       useSaturatedColor={isActiveBundle}
+      isSemiTransparent={false}
       onPress={() => {
         // allow some time for the animation to close the bundle sheet since it
         // runs on JS and changing the bundle is expensive
@@ -54,6 +56,11 @@ const GroupSelectorButton = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
+  button: {
+    height: '100%',
+    borderRadius: 8,
+    borderWidth: 0,
+  },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',

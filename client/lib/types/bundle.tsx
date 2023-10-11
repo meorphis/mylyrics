@@ -1,5 +1,4 @@
-import {PassageType, RawPassageType} from './passage';
-import ThemeType from './theme';
+import {PassageType} from './passage';
 
 // metadata attached to a bundle
 export type BundleInfo =
@@ -18,7 +17,7 @@ export type BundleInfo =
   | {
       type: 'artist';
       key: string;
-      group: 'essentials';
+      group: 'featured';
       artist: {
         name: string;
         emoji: string;
@@ -54,27 +53,9 @@ export type BundlePassageType = PassageType & {
   sortKey: number | string;
 };
 
-export type UnhydratedBundlePassageType = RawPassageType & {
-  passageKey: string;
-  theme: ThemeType;
-  bundleKey: string;
-  sortKey: number | string;
-};
-
-export type BundlePassagesType =
-  | {
-      hydrated: true;
-      data: BundlePassageType[];
-    }
-  | {
-      hydrated: false;
-      data: UnhydratedBundlePassageType[];
-      error?: true;
-    };
-
 // a deck of lyric passages with metadata
 export type BundleType = {
-  passages: BundlePassagesType;
+  passages: BundlePassageType[];
   info: BundleInfo;
   sortOrder?: 'asc' | 'desc';
 };

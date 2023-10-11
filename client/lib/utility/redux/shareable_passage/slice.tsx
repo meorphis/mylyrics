@@ -65,12 +65,13 @@ export const shareablePassagetSlice = createSlice({
     builder.addCase(setActiveBundlePassage, (state, action) => {
       const passage = {
         ...action.payload,
-        bundleKey: undefined,
-      } as PassageType;
+      } as PassageType & {bundleKey?: string};
+
+      delete passage.bundleKey;
 
       state.passage = {
         passage,
-        customization: getDefaultCustomizationForPassage(passage),
+        customization: getDefaultCustomizationForPassage(passage as PassageType),
       };
     });
   },

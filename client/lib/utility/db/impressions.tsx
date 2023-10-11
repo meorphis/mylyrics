@@ -58,7 +58,7 @@ const maybeUpdateImpressions = async ({
     const data = docSnap.data();
     const impressions = data?.impressions ?? {};
     let itemsAdded = false;
-    bundle.passages.data.forEach(passage => {
+    bundle.passages.forEach(passage => {
       const passageKey = getPassageId(passage);
       const songId = passage.song.id;
 

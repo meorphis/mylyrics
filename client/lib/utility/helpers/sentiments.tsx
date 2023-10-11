@@ -3,7 +3,7 @@ import {BundleInfo} from '../../types/bundle';
 export const getBundleDisplayName = (info: BundleInfo) => {
   switch (info.type) {
     case 'artist':
-      return `featured: ${info.artist.name}`;
+      return `${info.artist.name}`;
     case 'sentiment':
       return info.sentiment;
     case 'top':
@@ -26,7 +26,7 @@ export const getBundleEmoji = (info: BundleInfo) => {
     case 'sentiment':
       return sentimentToEmojiMap[info.sentiment];
     case 'top':
-      return '🥇';
+      return '🎧';
     case 'likes':
       return '❤️';
     case 'user_made':

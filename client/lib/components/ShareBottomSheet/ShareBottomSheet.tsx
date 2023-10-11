@@ -28,8 +28,6 @@ const ShareBottomSheet = () => {
   const shareablePassage = useShareablePassage();
   const dispatch = useDispatch();
 
-  console.log(shareablePassage.passage.lyrics);
-
   const {passage, customization} = shareablePassage;
   const {themeSelection, textColorSelection} = customization;
 

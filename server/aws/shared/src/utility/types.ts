@@ -120,7 +120,7 @@ export type BundleInfo = {
 } | {
     type: "artist",
     key: string,
-    group: "essentials",
+    group: "featured",
     artist: {
         name: string,
         emoji: string,

@@ -17,10 +17,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import {useActiveBundleKey} from '../../utility/redux/bundles/selectors';
-import {useIsDeckFullyMeasured} from '../../utility/redux/measurement/selectors';
 import {textStyleCommon} from '../../utility/helpers/text';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useImpressionsUpdates} from '../../utility/db/impressions';
+import { useIsDeckReadyForDisplay } from '../../utility/helpers/deck';
 
 const MainScreen = () => {
   const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
@@ -119,7 +119,7 @@ const MainScreenInner = memo(
   }) => {
     const {activeBundleKey, setLoading, dataIsLoading} = props;
     const contentReady =
-      useIsDeckFullyMeasured({bundleKey: activeBundleKey}) && !dataIsLoading;
+      useIsDeckReadyForDisplay({bundleKey: activeBundleKey}) && !dataIsLoading;
 
     const recommendationsOpacitySharedValue = useSharedValue(0);
 

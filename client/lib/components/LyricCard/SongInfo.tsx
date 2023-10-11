@@ -8,6 +8,9 @@ import _ from 'lodash';
 import {useScaleInfo} from '../../utility/redux/measurement/selectors';
 import {PassageType} from '../../types/passage';
 import {LyricCardMeasurementContext} from '../../types/measurement';
+import { SongType } from '../../types/song';
+import { useAlbumArt } from '../../utility/redux/album_art/selectors';
+import AlbumArt from './AlbumArt';
 
 type Props = {
   passage: PassageType;
@@ -21,35 +24,24 @@ const SongInfo = (props: Props) => {
   const {passage, measurementContext} = props;
   const {song, theme, passageKey} = passage;
 
-  const {scale, scaleFinalized} = useScaleInfo({
+  const {scale} = useScaleInfo({
     globalPassageKey: passageKey,
     context: measurementContext,
   });
 
   const {songNameSize, artistNameSize, albumNameSize, albumImageSize} = scale;
 
-  const opacity = {opacity: scaleFinalized ? 1 : 0};
   const textColor = theme.textColors[0];
 
   return (
     <View style={{...styles.metadataRow, paddingBottom: songNameSize}}>
-      <Image
-        source={{uri: song.album.image.blob}}
-        style={{
-          ...{
-            width: albumImageSize,
-            height: albumImageSize,
-          },
-          ...opacity,
-        }}
-      />
+      <AlbumArt url={song.album.image.url} albumImageSize={albumImageSize}/>
       <View style={styles.metadataText}>
         <Text
           numberOfLines={2}
           style={{
             ...textStyleCommon,
             ...styles.songName,
-            ...opacity,
             fontSize: songNameSize,
             color: textColor,
           }}>
@@ -59,7 +51,6 @@ const SongInfo = (props: Props) => {
           numberOfLines={1}
           style={{
             ...textStyleCommon,
-            ...opacity,
             fontSize: artistNameSize,
             color: textColor,
           }}>
@@ -69,7 +60,6 @@ const SongInfo = (props: Props) => {
           numberOfLines={1}
           style={{
             ...textStyleCommon,
-            ...opacity,
             fontSize: albumNameSize,
             color: textColor,
           }}>

@@ -1,8 +1,11 @@
 import React, {memo, useMemo} from 'react';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
-import {StyleSheet, Text, View} from 'react-native';
+import {Dimensions, StyleSheet, Text, View} from 'react-native';
 import {textStyleCommon} from '../../utility/helpers/text';
-import {useBottomSheetBackdrop} from '../../utility/helpers/bottom_sheet';
+import {
+  BottomSheetBackgroundComponent,
+  useBottomSheetBackdrop,
+} from '../../utility/helpers/bottom_sheet';
 import {useGroupedBundleInfos} from '../../utility/redux/bundles/selectors';
 import GroupSelectorButton from './GroupSelectorButton';
 import {BundleInfo} from '../../types/bundle';
@@ -16,10 +19,11 @@ type Props = {
 const GroupSelectorBottomSheet = (props: Props) => {
   const {bottomSheetRef} = props;
   const insets = useSafeAreaInsets();
+  const windowHeight = Dimensions.get('window').height;
   const groupedBundleInfos = useGroupedBundleInfos();
   const groupsToShow = Object.keys(groupedBundleInfos);
 
-  const snapPoints = useMemo(() => ['85%'], []);
+  const snapPoints = useMemo(() => [windowHeight - insets.top - 24], []);
 
   return (
     <BottomSheet
@@ -28,16 +32,13 @@ const GroupSelectorBottomSheet = (props: Props) => {
       snapPoints={snapPoints}
       backdropComponent={useBottomSheetBackdrop({opacity: 0.8})}
       enablePanDownToClose
-      backgroundStyle={styles.bottomSheet}>
+      // backgroundStyle={styles.bottomSheet}
+      backgroundComponent={BottomSheetBackgroundComponent}>
       <BottomSheetScrollView
         contentContainerStyle={{
           ...styles.container,
           paddingBottom: insets.bottom + 12,
         }}>
-        <Text style={{...textStyleCommon, ...styles.titleText}}>
-          🎶 your daily lines 🎶
-        </Text>
-
         {putAtFrontOfArray(groupsToShow, i => i === 'essentials').map(group => (
           <View
             style={{
@@ -50,13 +51,11 @@ const GroupSelectorBottomSheet = (props: Props) => {
                   ...textStyleCommon,
                   ...styles.groupLabelText,
                 }}>
-                {group}
+                {groupDisplayName(group)}
               </Text>
-              <View>
-                <Text style={styles.groupLabelEmojiText}>
-                  {groupEmojis[group]}
-                </Text>
-              </View>
+              <Text style={styles.groupLabelEmojiText}>
+                {groupEmojis[group]}
+              </Text>
             </View>
             <View style={styles.tagsContainer}>
               {groupedBundleInfos[group].sort(compareBundles).map(info => (
@@ -82,7 +81,7 @@ const compareBundles = (a: BundleInfo, b: BundleInfo) => {
     return 0;
   }
 
-  const order = ['top', 'likes', 'artist'];
+  const order = ['top', 'likes'];
 
   const aIndex = order.indexOf(a.type);
   const bIndex = order.indexOf(b.type);
@@ -102,6 +101,14 @@ const putAtFrontOfArray = (array: any[], isItem: (i: any) => boolean) => {
   return [...array.slice(index), ...array.slice(0, index)];
 };
 
+const groupDisplayName = (group: string) => {
+  if (group === 'featured') {
+    return 'featured artist';
+  }
+
+  return group;
+};
+
 const styles = StyleSheet.create({
   container: {
     marginTop: 12,
@@ -110,24 +117,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   bottomSheet: {
-    backgroundColor: '#CCC',
+    backgroundColor: '#EEE',
   },
-  titleText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    paddingBottom: 16,
-    textAlign: 'center',
-    color: '#333',
-  },
+  // titleText: {
+  //   fontSize: 28,
+  //   fontWeight: 'bold',
+  //   paddingBottom: 16,
+  //   textAlign: 'center',
+  //   color: '#333',
+  // },
   group: {
     flexDirection: 'column',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    paddingBottom: 20,
     borderRadius: 30,
-    marginBottom: 20,
-    backgroundColor: '#00000040',
-    borderWidth: 3,
-    borderColor: '#00000040',
   },
   groupLabel: {
     flexDirection: 'row',
@@ -157,8 +159,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   tagContainer: {
-    marginHorizontal: 4,
-    paddingTop: 12,
+    marginHorizontal: 0,
+    padding: 8,
+    width: '50%',
+    height: 100,
   },
 });
 
@@ -172,6 +176,7 @@ const groupEmojis: {[key: string]: string} = {
   soul: '🕊️',
   spine: '🦾',
   essentials: '🤠',
+  featured: '🤩',
 };
 
 export default memo(GroupSelectorBottomSheet, () => true);

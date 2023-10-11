@@ -1,10 +1,7 @@
 import React, {memo, useRef} from 'react';
 import {LayoutChangeEvent, StyleSheet, Text, View} from 'react-native';
 import {textStyleCommon} from '../../utility/helpers/text';
-import {
-  cleanLyrics,
-  splitLyricsWithPassages,
-} from '../../utility/helpers/lyrics';
+import {splitLyricsWithPassages} from '../../utility/helpers/lyrics';
 import _ from 'lodash';
 import {PassageType} from '../../types/passage';
 import {LyricCardMeasurementContext} from '../../types/measurement';
@@ -38,7 +35,7 @@ const PassageLyrics = (props: Props) => {
   const dispatch = useDispatch();
 
   const splitLyrics = splitLyricsWithPassages({
-    songLyrics: cleanLyrics(song.lyrics),
+    songLyrics: song.lyrics,
     passageLyrics: lyrics,
   });
 
