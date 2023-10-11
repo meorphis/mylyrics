@@ -35,10 +35,7 @@ import {StackNavigationProp} from '@react-navigation/stack';
 import {SongType} from '../../types/song';
 import ThemeType from '../../types/theme';
 import _ from 'lodash';
-import {
-  cleanLyrics,
-  splitLyricsWithPassages,
-} from '../../utility/helpers/lyrics';
+import {splitLyricsWithPassages} from '../../utility/helpers/lyrics';
 import {useLyricsYPosition} from '../../utility/redux/measurement/selectors';
 import {useDispatch} from 'react-redux';
 import {setLyrics} from '../../utility/redux/shareable_passage/slice';
@@ -73,8 +70,6 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
   const theme = themeSelection.inverted
     ? themeSelection.theme.invertedTheme!
     : themeSelection.theme;
-
-  const songLyrics = cleanLyrics(song.lyrics);
 
   const dispatch = useDispatch();
 
@@ -191,10 +186,7 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
       scrollViewHeight != null,
   ]);
 
-  const splitLyrics = splitLyricsWithPassages({
-    songLyrics,
-    passageLyrics: passage.lyrics,
-  });
+  const splitLyrics = splitLyricsWithPassages({passageLyrics: passage.lyrics, songLyrics: song.lyrics});
 
   const initiallyHighlightedIndexes = splitLyrics.reduce(
     (indexes, {passageInfo}, index) => {

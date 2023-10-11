@@ -7,6 +7,7 @@ import {useDispatch} from 'react-redux';
 import {removeCard} from '../../utility/redux/prophecy/slice';
 import {isColorLight} from '../../utility/helpers/color';
 import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
+import { useAlbumArt } from '../../utility/redux/album_art/selectors';
 
 type Props = {
   card: PassageType | undefined;
@@ -18,6 +19,8 @@ const ProphecyCard = (props: Props) => {
   const {card, index} = props;
 
   const dispatch = useDispatch();
+  const imageUrl = card?.song.album.image.url;
+  const imageBlob = useAlbumArt(card?.song.album.image.url);
 
   if (card === undefined) {
     return (
@@ -50,7 +53,9 @@ const ProphecyCard = (props: Props) => {
         borderColor,
         backgroundColor: theme.backgroundColor,
       }}>
-      <Image source={{uri: song.album.image.blob}} style={styles.albumImage} />
+      {imageBlob ? <Image source={{uri: imageBlob}} style={styles.albumImage} /> 
+        : <View style={{...styles.albumImage, backgroundColor: theme.backgroundColor}}/>
+      }
       <Text style={{...textStyleCommon, ...styles.lyrics, color: textColor}}>
         {lyrics}
       </Text>

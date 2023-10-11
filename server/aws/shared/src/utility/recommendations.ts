@@ -3,6 +3,7 @@ import { LabeledPassage } from "./types";
 export const NUMBER_OF_RECOMMENDATIONS_FOR_MAIN_SENTIMENT = 10;
 export const NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS = 5;
 
+// adds information about a passage's size to the passage object
 export const addMetadataToPassage = (passage: {
     lyrics: string,
     sentiments: string[],

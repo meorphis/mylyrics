@@ -1,9 +1,5 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
-import {
-  BundlePassageType,
-  BundleType,
-  BundlesState,
-} from '../../../types/bundle';
+import {BundlePassageType, BundleType, BundlesState} from '../../../types/bundle';
 
 // allows adding bundles, adding or removing passages from bundles, and
 // marking a bundle and/or a passage within a bundle as currently active
@@ -35,57 +31,24 @@ export const bundlesSlice = createSlice({
         throw Error(`${passage.bundleKey} does not exist in bundles state`);
       }
       const sortOrder = bundle.sortOrder || 'asc';
-      const index = bundle.passages.data.findIndex(p =>
+      const index = bundle.passages.findIndex(p =>
         sortOrder === 'asc'
           ? p.sortKey > passage.sortKey
           : p.sortKey < passage.sortKey,
       );
+
+      const existingPassages = bundle.passages;
+
       if (index === -1) {
-        bundle.passages.data.push(passage);
+        existingPassages.push(passage);
       } else {
-        bundle.passages.data = [
-          ...bundle.passages.data.slice(0, index),
+        bundle.passages = [
+          ...existingPassages.slice(0, index),
           passage,
-          ...bundle.passages.data.slice(index),
+          ...existingPassages.slice(index),
         ];
       }
       state.bundleKeyToPassageKey[passage.bundleKey] = passage.passageKey;
-    },
-    addHydratedPassagesToBundle: (
-      state: BundlesState,
-      action: PayloadAction<{
-        bundleKey: string;
-        passages: BundlePassageType[];
-      }>,
-    ) => {
-      const {bundleKey, passages} = action.payload;
-
-      const bundle = state.bundles[bundleKey];
-      if (!bundle) {
-        throw Error(`${bundleKey} does not exist in bundles state`);
-      }
-
-      bundle.passages.data = passages;
-      bundle.passages.hydrated = true;
-    },
-    markPassagesAsErrored: (
-      state: BundlesState,
-      action: PayloadAction<{
-        bundleKey: string;
-      }>,
-    ) => {
-      const {bundleKey} = action.payload;
-
-      const bundle = state.bundles[bundleKey];
-      if (!bundle) {
-        throw Error(`${bundleKey} does not exist in bundles state`);
-      }
-
-      bundle.passages = {
-        ...bundle.passages,
-        hydrated: false,
-        error: true,
-      };
     },
     removeFromBundle: (
       state: BundlesState,
@@ -99,22 +62,22 @@ export const bundlesSlice = createSlice({
       if (!bundle) {
         throw Error(`${bundleKey} does not exist in bundles state`);
       }
-      const index = bundle.passages.data.findIndex(
+      const index = bundle.passages.findIndex(
         p => p.passageKey === passageKey,
       );
       if (index === -1) {
         throw Error(`${passageKey} does not exist in ${bundleKey}`);
       }
-      bundle.passages.data = [
-        ...bundle.passages.data.slice(0, index),
-        ...bundle.passages.data.slice(index + 1),
+      bundle.passages = [
+        ...bundle.passages.slice(0, index),
+        ...bundle.passages.slice(index + 1),
       ];
 
       // keep the same index (or zero if the index is now out of bounds) to
       // essentially go to the next passage
       if (state.bundleKeyToPassageKey[bundleKey] === passageKey) {
         state.bundleKeyToPassageKey[bundleKey] =
-          bundle.passages[index % bundle.passages.data.length].passageKey;
+          bundle.passages[index % bundle.passages.length].passageKey;
       }
     },
     setActiveBundlePassage: (
@@ -128,10 +91,7 @@ export const bundlesSlice = createSlice({
       // TODO: clean this up
       if (bundleKey === 'singleton') {
         state.bundles.singleton = {
-          passages: {
-            hydrated: true,
-            data: [action.payload],
-          },
+          passages: [action.payload as BundlePassageType],
           info: {
             group: undefined,
             key: 'singleton',
@@ -140,10 +100,7 @@ export const bundlesSlice = createSlice({
         };
       } else {
         state.bundles.singleton = {
-          passages: {
-            hydrated: false,
-            data: [],
-          },
+          passages: [],
           info: {
             group: undefined,
             key: 'singleton',
@@ -189,7 +146,6 @@ export const bundlesSlice = createSlice({
 export const {
   addBundles,
   addToBundle,
-  addHydratedPassagesToBundle,
   removeFromBundle,
   setActiveBundlePassage,
   setEmptyBundle,

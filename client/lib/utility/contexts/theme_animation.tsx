@@ -110,9 +110,6 @@ export const ThemeAnimationProvider = (props: {
             ? sharedNextActivePassage.value.passageIndex
             : curr.sharedDeckProgress,
         };
-        console.log(
-          `snapped to bundle ${curr.sharedDecksCarouselProgress}, passage ${curr.sharedDeckProgress}`,
-        );
         sharedSnappedColors.value = sharedNextColors.value;
         sharedSnappedRandom.value = sharedNextRandom.value;
       }

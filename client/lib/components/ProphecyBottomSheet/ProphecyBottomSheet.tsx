@@ -1,9 +1,13 @@
 import React, {memo, useMemo} from 'react';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
-import {StyleSheet} from 'react-native';
+import {Dimensions, StyleSheet} from 'react-native';
 import ProphecyView from './ProphecyView';
 import {useProphecyInfo} from '../../utility/redux/prophecy/selectors';
-import {useBottomSheetBackdrop} from '../../utility/helpers/bottom_sheet';
+import {
+  BottomSheetBackgroundComponent,
+  useBottomSheetBackdrop,
+} from '../../utility/helpers/bottom_sheet';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type Props = {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -14,7 +18,10 @@ type Props = {
 const ProphecyBottomSheet = (props: Props) => {
   const {bottomSheetRef} = props;
 
-  const snapPoints = useMemo(() => ['85%'], []);
+  const insets = useSafeAreaInsets();
+  const windowHeight = Dimensions.get('window').height;
+
+  const snapPoints = useMemo(() => [windowHeight - insets.top - 24], []);
   const {cards, prophecy} = useProphecyInfo();
 
   return (
@@ -24,7 +31,7 @@ const ProphecyBottomSheet = (props: Props) => {
       snapPoints={snapPoints}
       backdropComponent={useBottomSheetBackdrop({opacity: 0.8})}
       enablePanDownToClose
-      backgroundStyle={styles.bottomSheet}>
+      backgroundComponent={BottomSheetBackgroundComponent}>
       <BottomSheetScrollView contentContainerStyle={styles.container}>
         <ProphecyView cards={cards} prophecy={prophecy} />
       </BottomSheetScrollView>

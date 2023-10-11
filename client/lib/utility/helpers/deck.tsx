@@ -1,12 +1,11 @@
-import {useDispatch, useSelector} from 'react-redux';
+import {useSelector} from 'react-redux';
 import {useEffect, useState} from 'react';
 import {runOnJS, useSharedValue, withTiming} from 'react-native-reanimated';
 import {RootState} from '../redux';
 import {isDeckFullyMeasured} from '../redux/measurement/helpers';
-import {BundleType, UnhydratedBundlePassageType} from '../../types/bundle';
+import {BundlePassageType, BundleType} from '../../types/bundle';
 import _ from 'lodash';
-import {hydratePassage} from './passage';
-import {addHydratedPassagesToBundle} from '../redux/bundles/slice';
+import {usePassageHydration} from './passage';
 
 // detects when we are going to have to wait for a bundle to be hydrated and/or measured before we
 // can set it as active and (a) hydrates it if necessary and (b) returns a shared value that will
@@ -14,65 +13,39 @@ import {addHydratedPassagesToBundle} from '../redux/bundles/slice';
 // - once we request a bundle change, if we need hydration/measurement, we animate the shared value to 0
 // - once the hydration/measurement is complete, we animate the shared value back to 1
 export const useSharedDecksTransition = () => {
-  const dispatch = useDispatch();
-
   const sharedDecksOpacity = useSharedValue(1);
 
-  const pendingBundleInfo = useSelector((state: RootState) => {
+  const hydratePassages = usePassageHydration();
+
+  const bundleInfo = useSelector((state: RootState) => {
     const requestedBundleKey =
       state.requestedBundleChange.currentlyRequestedBundleKey;
 
     if (requestedBundleKey == null) {
-      return null;
+      return {
+        requestedBundleKey: null,
+        unhydratedPassages: [],
+        deckIsReady: true,
+      }
     }
 
     const bundle = state.bundles.bundles[requestedBundleKey];
 
-    if (!bundle.passages.hydrated) {
-      return {
-        requestedBundleKey,
-        unhydratedPassages: bundle.passages.data,
-        measured: false,
-      };
-    }
+    // includes passages that timed out previously
+    const unhydratedPassages =  bundle.passages.filter(
+      (passage) => state.albumArt[passage.song.album.image.url] == null
+    );
 
-    if (!isDeckFullyMeasured({state, passages: bundle.passages})) {
-      return {
-        requestedBundleKey,
-        unhydratedPassages: null,
-        measured: false,
-      };
-    }
-
-    return null;
+    return {
+      requestedBundleKey,
+      unhydratedPassages,
+      deckIsReady: isDeckReadyForDisplay({state, passages: bundle.passages}),
+    };
   }, _.isEqual);
 
   useEffect(() => {
-    const hydratePassages = async ({
-      bundleKey,
-      unhydratedPassages,
-    }: {
-      bundleKey: string;
-      unhydratedPassages: UnhydratedBundlePassageType[];
-    }) => {
-      const hydratedPassages = await Promise.all(
-        unhydratedPassages.map(hydratePassage),
-      );
-      dispatch(
-        addHydratedPassagesToBundle({
-          bundleKey,
-          passages: hydratedPassages,
-        }),
-      );
-    };
-
-    if (pendingBundleInfo && pendingBundleInfo.unhydratedPassages) {
-      hydratePassages({
-        bundleKey: pendingBundleInfo.requestedBundleKey,
-        unhydratedPassages: pendingBundleInfo.unhydratedPassages,
-      });
-    }
-  }, [Boolean(pendingBundleInfo?.unhydratedPassages)]);
+    hydratePassages(bundleInfo.unhydratedPassages);
+  }, [bundleInfo.requestedBundleKey, bundleInfo.unhydratedPassages.length > 0]);
 
   const [fadeState, setFadeState] = useState<{
     fadingOut: boolean;
@@ -87,8 +60,7 @@ export const useSharedDecksTransition = () => {
 
   useEffect(() => {
     if (
-      pendingBundleInfo &&
-      !pendingBundleInfo.measured &&
+      !bundleInfo.deckIsReady &&
       !fadingOut &&
       !fadedOut
     ) {
@@ -103,16 +75,16 @@ export const useSharedDecksTransition = () => {
         },
       );
     }
-  }, [pendingBundleInfo?.measured, fadingOut, fadedOut]);
+  }, [bundleInfo.deckIsReady, fadingOut, fadedOut]);
 
   useEffect(() => {
-    if (!pendingBundleInfo && fadedOut) {
+    if (bundleInfo.deckIsReady && fadedOut) {
       setFadeState({fadingOut: false, fadedOut: false});
       sharedDecksOpacity.value = withTiming(1, {
         duration: 250,
       });
     }
-  }, [Boolean(pendingBundleInfo), fadedOut]);
+  }, [bundleInfo.deckIsReady, fadedOut]);
 
   return sharedDecksOpacity;
 };
@@ -129,4 +101,26 @@ export const getEmptyDeckText = ({bundle}: {bundle: BundleType}) => {
   } else {
     throw Error(`bundle ${bundleKey} should not be empty`);
   }
+};
+
+// returns a boolean indicating whether every lyric card contained in a deck
+// has been fully measured and every image has either been downloaded or timed out
+export const isDeckReadyForDisplay = (
+  {state, passages}: {state: RootState, passages: BundlePassageType[]}
+) => {
+  return passages.every(p => {
+    const imageUrl = p.song.album.image.url;
+    // includes images with a null blob (i.e. images that were marked as timed out)
+    return imageUrl in state.albumArt
+  }) && isDeckFullyMeasured({state, passages});
+}
+
+// a hook wrapper for isDeckReadyForDisplay
+export const useIsDeckReadyForDisplay = ({bundleKey}: {bundleKey: string}) => {
+  return useSelector((state: RootState) => {
+    const passages = state.bundles.bundles[bundleKey].passages;
+    return (
+      isDeckReadyForDisplay({state, passages})
+    );
+  });
 };

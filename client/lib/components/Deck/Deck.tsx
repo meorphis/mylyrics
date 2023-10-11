@@ -52,11 +52,7 @@ const Deck = (props: Props) => {
   const ref = React.useRef<NativeCarousel>(null);
 
   useEffect(() => {
-    if (!passages.hydrated) {
-      return;
-    }
-
-    const expectedIndex = passages.data.findIndex(
+    const expectedIndex = passages.findIndex(
       p => p.passageKey === activePassageKeyForBundle,
     );
 
@@ -69,14 +65,10 @@ const Deck = (props: Props) => {
   }, [
     activePassageKeyForBundle,
     ref.current?.getCurrentIndex(),
-    passages.hydrated,
   ]);
 
-  if (!passages.hydrated) {
-    return null;
-  }
 
-  if (passages.data.length === 0) {
+  if (passages.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>{getEmptyDeckText({bundle})}</Text>
@@ -94,13 +86,13 @@ const Deck = (props: Props) => {
         ref={ref}
         style={{...styles.carouselContainer, marginTop: deckMarginTop}}
         loop
-        data={passages.data}
+        data={passages}
         height={deckHeight}
         width={Dimensions.get('window').width}
         vertical
         mode="vertical-stack"
         modeConfig={{
-          stackInterval: passages.data.length > 1 ? 30 : 0,
+          stackInterval: passages.length > 1 ? 30 : 0,
           scaleInterval: 0.04,
           opacityInterval: 0.3,
           rotateZDeg: 90,
@@ -113,7 +105,7 @@ const Deck = (props: Props) => {
           }
         }}
         onSnapToItem={(slideIndex: number) => {
-          const item = passages.data[slideIndex];
+          const item = passages[slideIndex];
 
           if (isActiveBundle) {
             dispatch(setActiveBundlePassage(item));
@@ -131,7 +123,7 @@ const Deck = (props: Props) => {
         keyExtractor={(item: unknown, index: number) =>
           `${(item as BundlePassageType).passageKey}-${bundleKey}-${index}`
         }
-        enabled={passages.data.length > 1}
+        enabled={passages.length > 1}
       />
     </React.Fragment>
   );

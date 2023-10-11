@@ -4,7 +4,6 @@ import {LyricCardMeasurementContext} from '../../../types/measurement';
 import {
   getMeasurementKey,
   getScaleForIndex,
-  isDeckFullyMeasured,
 } from './helpers';
 
 // returns the scale to use to render a particular lyric card in a particular context,
@@ -54,17 +53,5 @@ export const useLyricsYPosition = ({
   return useSelector((state: RootState) => {
     const measurement = state.lyricCardMeasurement.measurements[measurementKey];
     return measurement.lyricsYPosition;
-  });
-};
-
-// returns a boolean indicating whether every lyric card contained in a deck
-// has been fully measured
-export const useIsDeckFullyMeasured = ({bundleKey}: {bundleKey: string}) => {
-  return useSelector((state: RootState) => {
-    const passages = state.bundles.bundles[bundleKey].passages;
-    return (
-      (passages.hydrated && isDeckFullyMeasured({state, passages})) ||
-      (!passages.hydrated && passages.error)
-    );
   });
 };

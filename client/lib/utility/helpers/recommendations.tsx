@@ -1,22 +1,31 @@
 import {RawPassageType} from '../../types/passage';
-import {BundleType, UnhydratedBundlePassageType} from '../../types/bundle';
+import {BundlePassageType, BundleType} from '../../types/bundle';
 import {getPassageId} from './passage';
 import {getThemeFromAlbumColors} from './theme';
-import {cleanLyrics} from './lyrics';
+import { cleanGeneratedPassage } from './lyrics';
 
 // takes an array of raw passages as well as a set of bundle keys divided into groups,
 // hydrates the passages and adds them to their associated bundles which are then returned
-export const getUnhydratedBundlesFromFlatPassages = async (
+export const getBundlesFromFlatPassages = async (
   flatPassages: RawPassageType[],
   sentiments: string[],
 ): Promise<BundleType[]> => {
   const bundles: BundleType[] = [];
   flatPassages.forEach((passage, idx) => {
-    passage.bundleInfos.forEach(bundleInfo => {
-      if (!cleanLyrics(passage.song.lyrics).includes(passage.lyrics)) {
-        return;
-      }
+    // TODO: clean up
+    const normalizedLyrics = cleanGeneratedPassage({
+      songLyrics: passage.song.lyrics,
+      passageLyrics: passage.lyrics,
+    });
 
+    if (normalizedLyrics == null) {
+      return;
+    }
+
+    passage.song.lyrics = normalizedLyrics.normalizedSongLyrics;
+    passage.lyrics = normalizedLyrics.normalizedPassageLyrics;
+
+    passage.bundleInfos.forEach(bundleInfo => {
       if (passage.type !== bundleInfo.type) {
         return;
       }
@@ -33,28 +42,25 @@ export const getUnhydratedBundlesFromFlatPassages = async (
       )?.passages;
 
       if (passages == null) {
-        passages = {
-          hydrated: false,
-          data: [] as UnhydratedBundlePassageType[],
-        };
+        passages = [] as BundlePassageType[];
         bundles.push({
           passages,
-          info: bundleInfo,
+          // TODO: clean up temporary hack
+          //@ts-ignore
+          info: {
+            ...bundleInfo,
+            group: bundleInfo.type === 'artist' ? 'featured' : bundleInfo.group,
+          },
         });
       }
 
-      (
-        passages as {
-          hydrated: false;
-          data: UnhydratedBundlePassageType[];
-          error: boolean;
-        }
-      ).data.push({
+      passages.push({
         ...passage,
         passageKey: getPassageId(passage),
         sortKey: idx,
         bundleKey: bundleInfo.key,
         theme: getThemeFromAlbumColors(passage.song.album.image.colors),
+        hydrated: false,
       });
     });
   });
@@ -62,14 +68,14 @@ export const getUnhydratedBundlesFromFlatPassages = async (
   // randomize the order of the top passages bundle
   bundles
     .find(({info}) => info.type === 'top')
-    ?.passages.data.sort(() => Math.random());
+    ?.passages.sort(() => Math.random());
 
   // avoid having the same artist back to back in the sentiment bundle
   bundles
     .filter(({info}) => info.type === 'sentiment')
     .forEach(bundle => {
       reorderPassages(
-        bundle.passages.data,
+        bundle.passages,
         passage => passage.song.artists[0].name,
       );
     });
@@ -78,7 +84,7 @@ export const getUnhydratedBundlesFromFlatPassages = async (
   bundles
     .filter(({info}) => info.type === 'artist')
     .forEach(bundle => {
-      reorderPassages(bundle.passages.data, passage => passage.song.album.name);
+      reorderPassages(bundle.passages, passage => passage.song.album.name);
     });
 
   return bundles;

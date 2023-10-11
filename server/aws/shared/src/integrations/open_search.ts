@@ -132,7 +132,7 @@ export const getDailyRecommendations = async (
         getBundleInfos: (passage: LabeledPassage) => [{
           type: "artist",
           key: "artist",
-          group: "essentials",
+          group: "featured",
           artist: {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             name: featuredArtist!.name,

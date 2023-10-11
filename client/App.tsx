@@ -62,60 +62,12 @@ const AppInner = () => {
       <Stack.Screen
         name="Main"
         component={MainScreen}
-        options={{
-          headerShown: false,
-          // cardStyleInterpolator: forFade,
-        }}
+        options={{headerShown: false}}
       />
       <Stack.Screen
         name="FullLyrics"
         component={FullLyrics}
-        options={{
-          headerShown: false,
-          // cardStyleInterpolator: forFade,
-        }}
-        // sharedElements={(route, _, showing) => {
-        //   if (route.name !== 'FullLyrics' || !showing) {
-        //     return [];
-        //   }
-        //   const {
-        //     originalPassage,
-        //     sharedTransitionKey,
-        //     initiallyHighlightedPassageLyrics,
-        //   } = route.params as {
-        //     originalPassage: PassageType;
-        //     sharedTransitionKey: string;
-        //     initiallyHighlightedPassageLyrics: string;
-        //   };
-
-        //   const splitLyrics = splitLyricsWithPassages({
-        //     songLyrics: cleanLyrics(
-        //       originalPassage.song.lyrics,
-        //     ),
-        //     passageLyrics: initiallyHighlightedPassageLyrics,
-        //   });
-
-        //   return [
-        //     ...(splitLyrics
-        //       .map(({passageLine}, index) => {
-        //         if (passageLine == null) {
-        //           return null;
-        //         }
-
-        //         return {
-        //           id: `${sharedTransitionKey}:lyrics:${index}`,
-        //           animation: 'fade' as SharedElementAnimation,
-        //         };
-        //       })
-        //       .filter(
-        //         line => line != null,
-        //       ) as SharedElementConfig[]),
-        //     {
-        //       id: `${sharedTransitionKey}:buttons`,
-        //       animation: 'fade' as SharedElementAnimation,
-        //     },
-        //   ];
-        // }}
+        options={{headerShown: false}}
       />
     </Stack.Navigator>
   );

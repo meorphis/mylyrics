@@ -112,9 +112,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   button: {
-    padding: 0,
     borderRadius: 18,
-    minWidth: 62,
     marginHorizontal: 8,
   },
   tooltipText: {

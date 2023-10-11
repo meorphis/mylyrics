@@ -23,8 +23,8 @@ import {
   removeFromBundle,
 } from '../redux/bundles/slice';
 import {dehydratePassage, getPassageId} from '../helpers/passage';
-import {UnhydratedBundlePassageType} from '../../types/bundle';
 import {getThemeFromAlbumColors} from '../helpers/theme';
+import { BundlePassageType } from '../../types/bundle';
 
 const getLikeId = (deviceId: string, passage: PassageType): string => {
   return uuidv5(
@@ -153,7 +153,7 @@ export const useRecentLikesRequest = () => {
 
       const snapshot = await getDocs(d);
 
-      const unhydratedPassages: UnhydratedBundlePassageType[] =
+      const passages: BundlePassageType[] =
         snapshot.docs.map(entry => {
           const rawPassage: RawPassageType = entry.data().passage;
           return {
@@ -162,6 +162,7 @@ export const useRecentLikesRequest = () => {
             sortKey: entry.data().timestamp,
             bundleKey: 'likes',
             theme: getThemeFromAlbumColors(rawPassage.song.album.image.colors),
+            hydrated: false,
           };
         });
 
@@ -173,10 +174,7 @@ export const useRecentLikesRequest = () => {
               key: 'likes',
               group: 'essentials',
             },
-            passages: {
-              hydrated: false,
-              data: unhydratedPassages,
-            },
+            passages,
             sortOrder: 'desc',
           },
         ]),
