@@ -26,14 +26,14 @@ export const useSharedDecksTransition = () => {
         requestedBundleKey: null,
         unhydratedPassages: [],
         deckIsReady: true,
-      }
+      };
     }
 
     const bundle = state.bundles.bundles[requestedBundleKey];
 
     // includes passages that timed out previously
-    const unhydratedPassages =  bundle.passages.filter(
-      (passage) => state.albumArt[passage.song.album.image.url] == null
+    const unhydratedPassages = bundle.passages.filter(
+      passage => state.albumArt[passage.song.album.image.url] == null,
     );
 
     return {
@@ -59,11 +59,7 @@ export const useSharedDecksTransition = () => {
   };
 
   useEffect(() => {
-    if (
-      !bundleInfo.deckIsReady &&
-      !fadingOut &&
-      !fadedOut
-    ) {
+    if (!bundleInfo.deckIsReady && !fadingOut && !fadedOut) {
       setFadeState({fadingOut: true, fadedOut: false});
       sharedDecksOpacity.value = withTiming(
         0.5,
@@ -105,22 +101,26 @@ export const getEmptyDeckText = ({bundle}: {bundle: BundleType}) => {
 
 // returns a boolean indicating whether every lyric card contained in a deck
 // has been fully measured and every image has either been downloaded or timed out
-export const isDeckReadyForDisplay = (
-  {state, passages}: {state: RootState, passages: BundlePassageType[]}
-) => {
-  return passages.every(p => {
-    const imageUrl = p.song.album.image.url;
-    // includes images with a null blob (i.e. images that were marked as timed out)
-    return imageUrl in state.albumArt
-  }) && isDeckFullyMeasured({state, passages});
-}
+export const isDeckReadyForDisplay = ({
+  state,
+  passages,
+}: {
+  state: RootState;
+  passages: BundlePassageType[];
+}) => {
+  return (
+    passages.every(p => {
+      const imageUrl = p.song.album.image.url;
+      // includes images with a null blob (i.e. images that were marked as timed out)
+      return imageUrl in state.albumArt;
+    }) && isDeckFullyMeasured({state, passages})
+  );
+};
 
 // a hook wrapper for isDeckReadyForDisplay
 export const useIsDeckReadyForDisplay = ({bundleKey}: {bundleKey: string}) => {
   return useSelector((state: RootState) => {
     const passages = state.bundles.bundles[bundleKey].passages;
-    return (
-      isDeckReadyForDisplay({state, passages})
-    );
+    return isDeckReadyForDisplay({state, passages});
   });
 };

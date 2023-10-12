@@ -124,9 +124,7 @@ export const useBundleIncludesPassage = ({
 }) => {
   return useSelector((state: RootState) => {
     const bundle = state.bundles.bundles[bundleKey];
-    return (
-      bundle && bundle.passages.some(p => p.passageKey === passageKey)
-    );
+    return bundle && bundle.passages.some(p => p.passageKey === passageKey);
   });
 };
 
@@ -141,9 +139,7 @@ export const useActiveBundleThemeInfo = () => {
 
     const activeBundle = state.bundles.bundles[activeBundleKey];
     const activePassageIndex = activePassageKey
-      ? activeBundle.passages.findIndex(
-          p => p.passageKey === activePassageKey,
-        )
+      ? activeBundle.passages.findIndex(p => p.passageKey === activePassageKey)
       : 0;
     const activeBundleIndex =
       state.requestedBundleChange.allRequestedBundleKeys.findIndex(
@@ -154,11 +150,7 @@ export const useActiveBundleThemeInfo = () => {
       themes: state.requestedBundleChange.allRequestedBundleKeys.map(
         bundleKey => {
           const passages = state.bundles.bundles[bundleKey].passages;
-          return passages.length > 0
-            ? passages.map(
-                (p) => p.theme,
-              )
-            : [null];
+          return passages.length > 0 ? passages.map(p => p.theme) : [null];
         },
       ),
       activeBundleIndex,

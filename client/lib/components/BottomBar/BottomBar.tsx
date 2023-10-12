@@ -12,6 +12,7 @@ import {
 import {useDispatch} from 'react-redux';
 import {requestBundleChange} from '../../utility/redux/requested_bundle_change/slice';
 import {getBundleEmoji} from '../../utility/helpers/sentiments';
+import StatsBottomSheet from '../StatsBottomSheet/StatsBottomSheet';
 
 type Props = {
   style?: ViewStyle;
@@ -22,6 +23,7 @@ const BottomBar = (props: Props) => {
   const {style} = props;
 
   const groupSelectorBottomSheetRef = React.useRef<BottomSheet>(null);
+  const statsBottomSheetRef = React.useRef<BottomSheet>(null);
   const prophecyBottomSheetRef = React.useRef<BottomSheet>(null);
   const activeBundle = useActiveBundle();
   const previouslyActiveBundleKey = usePreviouslyActiveBundleKey();
@@ -33,6 +35,7 @@ const BottomBar = (props: Props) => {
     previouslyActiveBundleKey != null;
   const shouldShowGroupSelectorButton = activeBundle.info.type !== 'user_made';
   const shouldShowProphecyButton = activeBundle.info.type !== 'user_made';
+  const shouldShowStatsButton = activeBundle.info.type !== 'user_made';
 
   return (
     <React.Fragment>
@@ -63,17 +66,16 @@ const BottomBar = (props: Props) => {
             style={styles.button}
           />
         )}
-        {/* {shouldShowLikesButton && (
+        {shouldShowStatsButton && (
           <ThemeButton
-            useSaturatedColor={activeBundleKey === 'likes'}
             onPress={() => {
-              dispatch(requestBundleChange({bundleKey: 'likes'}));
+              statsBottomSheetRef?.current?.expand();
             }}
-            iconName="heart-outline"
+            iconName="stats-chart-outline"
             textStyle={styles.buttonText}
             style={styles.button}
           />
-        )} */}
+        )}
         {shouldShowProphecyButton && (
           <ThemeButton
             onPress={() => {
@@ -86,6 +88,7 @@ const BottomBar = (props: Props) => {
         )}
       </SafeAreaView>
       <GroupSelectorBottomSheet bottomSheetRef={groupSelectorBottomSheetRef} />
+      <StatsBottomSheet bottomSheetRef={statsBottomSheetRef} />
       <ProphecyBottomSheet bottomSheetRef={prophecyBottomSheetRef} />
     </React.Fragment>
   );

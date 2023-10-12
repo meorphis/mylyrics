@@ -5,7 +5,7 @@ import {useProphecyRequest} from '../../utility/helpers/prophecy';
 import CrossFadeView from '../common/CrossFadeView';
 import CrystalBall from './CrystalBall';
 import {PassageType} from '../../types/passage';
-import { useAlbumArtMulti } from '../../utility/redux/album_art/selectors';
+import {useAlbumArtMulti} from '../../utility/redux/album_art/selectors';
 
 type Props = {
   cards: PassageType[];
@@ -28,9 +28,7 @@ const ProphecyView = (props: Props) => {
     }
 
     if (requestStatus === 'loading') {
-      return (
-        <CrystalBall imageUrls={albumArt.filter(Boolean) as string[]} />
-      );
+      return <CrystalBall imageUrls={albumArt.filter(Boolean) as string[]} />;
     }
 
     return (

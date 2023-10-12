@@ -62,7 +62,13 @@ export const splitLyricsWithPassages = ({
   );
 };
 
-export const cleanGeneratedPassage = ({songLyrics, passageLyrics}: {songLyrics: string, passageLyrics: string}) => {
+export const cleanGeneratedPassage = ({
+  songLyrics,
+  passageLyrics,
+}: {
+  songLyrics: string;
+  passageLyrics: string;
+}) => {
   // Normalize original song lyrics and generated passages
   const normalizedSongLyrics = normalizeText(cleanSongLyrics(songLyrics));
   const normalizedPassageLyrics = normalizeText(passageLyrics);
@@ -74,7 +80,10 @@ export const cleanGeneratedPassage = ({songLyrics, passageLyrics}: {songLyrics: 
     };
   }
 
-  const renormalizedPassageLyrics = normalizeSingleToDoubleQuotes({songLyrics: normalizedSongLyrics, passageLyrics: normalizedPassageLyrics});
+  const renormalizedPassageLyrics = normalizeSingleToDoubleQuotes({
+    songLyrics: normalizedSongLyrics,
+    passageLyrics: normalizedPassageLyrics,
+  });
 
   if (normalizedSongLyrics.includes(renormalizedPassageLyrics)) {
     return {
@@ -84,7 +93,7 @@ export const cleanGeneratedPassage = ({songLyrics, passageLyrics}: {songLyrics: 
   }
 
   return null;
-}
+};
 
 // takes as input a raw lyrics string as returned from the database and returns a cleaned version
 // with a few modifications (see inline comments)
@@ -114,26 +123,35 @@ const normalizeText = (text: string) => {
   text = text.replace(/“|”|„|‟/g, '"');
 
   return text;
-}
+};
 
-const normalizeSingleToDoubleQuotes = ({songLyrics, passageLyrics}: {songLyrics: string, passageLyrics: string}) => {
+const normalizeSingleToDoubleQuotes = ({
+  songLyrics,
+  passageLyrics,
+}: {
+  songLyrics: string;
+  passageLyrics: string;
+}) => {
   let normalizedPassageLyrics = passageLyrics;
 
   // Use a dynamic index because the string length may change as we replace quotes
   for (let i = 0; i < normalizedPassageLyrics.length; i++) {
     if (normalizedPassageLyrics[i] === "'") {
-      let [start, end] = getWordBoundaries({text: normalizedPassageLyrics, index: i});
+      let [start, end] = getWordBoundaries({
+        text: normalizedPassageLyrics,
+        index: i,
+      });
       let precedingWord = normalizedPassageLyrics.substring(start, i);
       let followingWord = normalizedPassageLyrics.substring(i + 1, end + 1);
 
       let withDoubleQuote;
 
       // Handle special cases where the quote is at the beginning or end of the passage
-      if (precedingWord === "" && followingWord === "") {
-        continue;  // Skip this quote as it has no surrounding context
-      } else if (precedingWord === "") {
+      if (precedingWord === '' && followingWord === '') {
+        continue; // Skip this quote as it has no surrounding context
+      } else if (precedingWord === '') {
         withDoubleQuote = '"' + followingWord;
-      } else if (followingWord === "") {
+      } else if (followingWord === '') {
         withDoubleQuote = precedingWord + '"';
       } else {
         withDoubleQuote = precedingWord + '"' + followingWord;
@@ -142,16 +160,18 @@ const normalizeSingleToDoubleQuotes = ({songLyrics, passageLyrics}: {songLyrics:
       // Check if this pattern exists in the original song
       if (songLyrics.includes(withDoubleQuote)) {
         // Replace single quote with double quote
-        normalizedPassageLyrics = normalizedPassageLyrics.substring(0, i) + '"' + normalizedPassageLyrics.substring(i + 1);
+        normalizedPassageLyrics =
+          normalizedPassageLyrics.substring(0, i) +
+          '"' +
+          normalizedPassageLyrics.substring(i + 1);
       }
     }
   }
 
   return normalizedPassageLyrics;
-}
+};
 
-
-const getWordBoundaries = ({text, index}: {text: string, index: number}) => {
+const getWordBoundaries = ({text, index}: {text: string; index: number}) => {
   let start = index;
   let end = index;
 
@@ -166,7 +186,7 @@ const getWordBoundaries = ({text, index}: {text: string, index: number}) => {
   }
 
   return [start, end];
-}
+};
 
 const splitWithIndexes = (str: string, delimiter: string) => {
   const parts = str.split(delimiter);

@@ -33,9 +33,7 @@ const ComputedProphecyView = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 12,
-  },
+  container: {},
   titleText: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -43,20 +41,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   prophecyContainer: {
-    flexDirection: 'column',
-    borderRadius: 30,
-    margin: 12,
-    marginTop: 18,
-    marginBottom: 24,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-    backgroundColor: '#00000040',
-    borderWidth: 3,
-    borderColor: '#00000040',
   },
   prophecyText: {
     fontSize: 24,

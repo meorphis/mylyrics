@@ -62,11 +62,7 @@ const Deck = (props: Props) => {
         index: expectedIndex,
       });
     }
-  }, [
-    activePassageKeyForBundle,
-    ref.current?.getCurrentIndex(),
-  ]);
-
+  }, [activePassageKeyForBundle, ref.current?.getCurrentIndex()]);
 
   if (passages.length === 0) {
     return (

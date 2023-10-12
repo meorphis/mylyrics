@@ -2,8 +2,8 @@ import {PassageType, RawPassageType} from '../../types/passage';
 import {v5 as uuidv5} from 'uuid';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import _ from 'lodash';
-import { useDispatch } from 'react-redux';
-import { addAlbumArt, maybeSetAlbumArtAsMissing } from '../redux/album_art/slice';
+import {useDispatch} from 'react-redux';
+import {addAlbumArt, maybeSetAlbumArtAsMissing} from '../redux/album_art/slice';
 
 // passages stored in the DB have a URL for their album art, but we need to fetch the image blob
 // to render the UI; this hook allows its caller to fetch the image blob and dispatch it to the
@@ -18,34 +18,33 @@ export const usePassageHydration = () => {
         try {
           const blob = await fetchImageBlob(url);
           dispatch(addAlbumArt({url, blob}));
-          return () => {}
+          return () => {};
         } catch (e) {
           console.error(e);
           return () => dispatch(maybeSetAlbumArtAsMissing({url}));
         }
       })(),
-      new Promise<() => void>(resolve => setTimeout(() => {
-        resolve(() => dispatch(maybeSetAlbumArtAsMissing({url})));
-      }, 2000)),
+      new Promise<() => void>(resolve =>
+        setTimeout(() => {
+          resolve(() => dispatch(maybeSetAlbumArtAsMissing({url})));
+        }, 2000),
+      ),
     ]);
 
     fn();
-  }
+  };
 
-  const hydratePassages = async (
-    passages: RawPassageType[],
-  ): Promise<void> => {
-    
+  const hydratePassages = async (passages: RawPassageType[]): Promise<void> => {
     Promise.all(
-      passages.map(async (passage) => {
+      passages.map(async passage => {
         const url = passage.song.album.image.url;
         await hydrateUrlWithTimeout(url);
       }),
     );
-  }
+  };
 
   return hydratePassages;
-}
+};
 
 // inverts hydratePassage so that we can save a passage to the DB
 export const dehydratePassage = (passage: PassageType): RawPassageType => {

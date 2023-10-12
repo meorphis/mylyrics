@@ -14,7 +14,6 @@ import AnimatedThemeBackground from '../common/AnimatedThemeBackground';
 import Animated, {
   Easing,
   runOnJS,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -81,15 +80,10 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
       context: lyricCardMeasurementContext,
     }) ?? 0);
 
+  console.log(lyricsYPositionOffset, parentYPosition);
+
   // scroll view position
   const innerScrollViewPaddingTop = 24;
-  // const scrollView = useRef<Animated.ScrollView>(null);
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler({
-    onScroll: event => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
 
   // scroll view boundaries
   const [scrollViewHeight, setScrollViewHeight] = React.useState<number | null>(
@@ -186,7 +180,10 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
       scrollViewHeight != null,
   ]);
 
-  const splitLyrics = splitLyricsWithPassages({passageLyrics: passage.lyrics, songLyrics: song.lyrics});
+  const splitLyrics = splitLyricsWithPassages({
+    passageLyrics: passage.lyrics,
+    songLyrics: song.lyrics,
+  });
 
   const initiallyHighlightedIndexes = splitLyrics.reduce(
     (indexes, {passageInfo}, index) => {
@@ -240,7 +237,6 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                   <SwapableScrollView
                     key="hidden"
                     isInitialVersion={false}
-                    onScroll={onScroll}
                     onInnerViewLayout={
                       setInnerScrollViewLayoutAfterAppearingTextIsRendered
                     }

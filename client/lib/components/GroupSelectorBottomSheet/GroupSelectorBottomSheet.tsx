@@ -53,9 +53,9 @@ const GroupSelectorBottomSheet = (props: Props) => {
                 }}>
                 {groupDisplayName(group)}
               </Text>
-              <Text style={styles.groupLabelEmojiText}>
+              {/* <Text style={styles.groupLabelEmojiText}>
                 {groupEmojis[group]}
-              </Text>
+              </Text> */}
             </View>
             <View style={styles.tagsContainer}>
               {groupedBundleInfos[group].sort(compareBundles).map(info => (
@@ -166,17 +166,17 @@ const styles = StyleSheet.create({
   },
 });
 
-const groupEmojis: {[key: string]: string} = {
-  body: '🤸‍♂️',
-  eyes: '👁️',
-  gut: '🤢',
-  heart: '💖',
-  mind: '🧠',
-  skin: '🫦',
-  soul: '🕊️',
-  spine: '🦾',
-  essentials: '🤠',
-  featured: '🤩',
-};
+// const groupEmojis: {[key: string]: string} = {
+//   body: '🤸‍♂️',
+//   eyes: '👁️',
+//   gut: '🤢',
+//   heart: '💖',
+//   mind: '🧠',
+//   skin: '🫦',
+//   soul: '🕊️',
+//   spine: '🦾',
+//   essentials: '🤠',
+//   featured: '🤩',
+// };
 
 export default memo(GroupSelectorBottomSheet, () => true);

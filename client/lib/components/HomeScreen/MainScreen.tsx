@@ -20,7 +20,8 @@ import {useActiveBundleKey} from '../../utility/redux/bundles/selectors';
 import {textStyleCommon} from '../../utility/helpers/text';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useImpressionsUpdates} from '../../utility/db/impressions';
-import { useIsDeckReadyForDisplay } from '../../utility/helpers/deck';
+import {useIsDeckReadyForDisplay} from '../../utility/helpers/deck';
+import {SetUserType} from '../../types/user';
 
 const MainScreen = () => {
   const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
@@ -45,12 +46,21 @@ const MainScreen = () => {
   }, []);
 
   useEffect(() => {
-    if (
-      getUserRequest.status === 'loaded' &&
-      expoPushToken &&
-      getUserRequest.data?.hasExpoPushToken !== true
-    ) {
-      setUserRequest({expoPushToken});
+    let setUserData: SetUserType = {};
+
+    if (getUserRequest.status === 'loaded') {
+      if (expoPushToken && getUserRequest.data?.hasExpoPushToken !== true) {
+        setUserData.expoPushToken = expoPushToken;
+      }
+
+      const timezoneOffset = new Date().getTimezoneOffset();
+      if (getUserRequest.data.timezoneOffset !== timezoneOffset) {
+        setUserData.timezoneOffset = timezoneOffset;
+      }
+    }
+
+    if (Object.keys(setUserData).length > 0) {
+      setUserRequest(setUserData);
     }
   }, [getUserRequest.status, expoPushToken]);
 

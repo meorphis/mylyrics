@@ -1,5 +1,5 @@
 import {RootState} from '..';
-import { BundlePassageType } from '../../../types/bundle';
+import {BundlePassageType} from '../../../types/bundle';
 import {
   LyricCardMeasurementContext,
   ScaleType,
@@ -29,14 +29,17 @@ export const getScaleForIndex = (index: number) => {
 
 // indicates whether every card passage contained in the deck has a finalized
 // scale and a measured y position
-export const isDeckFullyMeasured = ({state, passages}: {
+export const isDeckFullyMeasured = ({
+  state,
+  passages,
+}: {
   state: RootState;
   passages: BundlePassageType[];
 }) => {
   return passages.every(p => {
     const measurementKey = getMeasurementKey({
       globalPassageKey: p.passageKey,
-      context: "MAIN_SCREEN",
+      context: 'MAIN_SCREEN',
     });
     const measurement = state.lyricCardMeasurement.measurements[measurementKey];
 
