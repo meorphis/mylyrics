@@ -1,5 +1,9 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
-import {BundlePassageType, BundleType, BundlesState} from '../../../types/bundle';
+import {
+  BundlePassageType,
+  BundleType,
+  BundlesState,
+} from '../../../types/bundle';
 
 // allows adding bundles, adding or removing passages from bundles, and
 // marking a bundle and/or a passage within a bundle as currently active
@@ -62,9 +66,7 @@ export const bundlesSlice = createSlice({
       if (!bundle) {
         throw Error(`${bundleKey} does not exist in bundles state`);
       }
-      const index = bundle.passages.findIndex(
-        p => p.passageKey === passageKey,
-      );
+      const index = bundle.passages.findIndex(p => p.passageKey === passageKey);
       if (index === -1) {
         throw Error(`${passageKey} does not exist in ${bundleKey}`);
       }

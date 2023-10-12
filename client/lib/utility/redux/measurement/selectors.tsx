@@ -1,10 +1,7 @@
 import {useSelector} from 'react-redux';
 import {RootState} from '..';
 import {LyricCardMeasurementContext} from '../../../types/measurement';
-import {
-  getMeasurementKey,
-  getScaleForIndex,
-} from './helpers';
+import {getMeasurementKey, getScaleForIndex} from './helpers';
 
 // returns the scale to use to render a particular lyric card in a particular context,
 // along with a boolean indicating whether it is finalized

@@ -502,6 +502,8 @@ PODS:
     - React-Core
   - RNSpotifyRemote (1.0.0-1):
     - React-Core
+  - RNSVG (13.14.0):
+    - React-Core
   - SocketRocket (0.6.1)
   - Yoga (1.14.0)
   - ZIPFoundation (0.9.11)
@@ -567,6 +569,7 @@ DEPENDENCIES:
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNShare (from `../node_modules/react-native-share`)
   - RNSpotifyRemote (from `../node_modules/react-native-spotify-remote`)
+  - RNSVG (from `../node_modules/react-native-svg`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -696,6 +699,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-share"
   RNSpotifyRemote:
     :path: "../node_modules/react-native-spotify-remote"
+  RNSVG:
+    :path: "../node_modules/react-native-svg"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -762,6 +767,7 @@ SPEC CHECKSUMS:
   RNScreens: 85d3880b52d34db7b8eeebe2f1a0e807c05e69fa
   RNShare: 32e97adc8d8c97d4a26bcdd3c45516882184f8b6
   RNSpotifyRemote: d4b990cf88ced47cb8dfb6e41ae839007da47ca0
+  RNSVG: d00c8f91c3cbf6d476451313a18f04d220d4f396
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
   Yoga: 86fed2e4d425ee4c6eab3813ba1791101ee153c6
   ZIPFoundation: b1f0de4eed33e74a676f76e12559ab6b75990197

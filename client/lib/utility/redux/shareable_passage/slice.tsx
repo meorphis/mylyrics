@@ -71,7 +71,9 @@ export const shareablePassagetSlice = createSlice({
 
       state.passage = {
         passage,
-        customization: getDefaultCustomizationForPassage(passage as PassageType),
+        customization: getDefaultCustomizationForPassage(
+          passage as PassageType,
+        ),
       };
     });
   },

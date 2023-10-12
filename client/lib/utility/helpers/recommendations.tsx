@@ -2,7 +2,7 @@ import {RawPassageType} from '../../types/passage';
 import {BundlePassageType, BundleType} from '../../types/bundle';
 import {getPassageId} from './passage';
 import {getThemeFromAlbumColors} from './theme';
-import { cleanGeneratedPassage } from './lyrics';
+import {cleanGeneratedPassage} from './lyrics';
 
 // takes an array of raw passages as well as a set of bundle keys divided into groups,
 // hydrates the passages and adds them to their associated bundles which are then returned
@@ -37,9 +37,8 @@ export const getBundlesFromFlatPassages = async (
         return;
       }
 
-      let passages = bundles.find(
-        ({info: {key: bk}}) => bk === bundleInfo.key,
-      )?.passages;
+      let passages = bundles.find(({info: {key: bk}}) => bk === bundleInfo.key)
+        ?.passages;
 
       if (passages == null) {
         passages = [] as BundlePassageType[];
@@ -74,10 +73,7 @@ export const getBundlesFromFlatPassages = async (
   bundles
     .filter(({info}) => info.type === 'sentiment')
     .forEach(bundle => {
-      reorderPassages(
-        bundle.passages,
-        passage => passage.song.artists[0].name,
-      );
+      reorderPassages(bundle.passages, passage => passage.song.artists[0].name);
     });
 
   // avoid having the same album back to back in the artist bundles
@@ -98,14 +94,17 @@ const reorderPassages = (
   getKey: (passage: RawPassageType) => string,
 ) => {
   const keyToPassages = Object.entries(
-    passages.reduce((acc, passage) => {
-      const key = getKey(passage);
-      if (acc[key] == null) {
-        acc[key] = [];
-      }
-      acc[key].push(passage);
-      return acc;
-    }, {} as {[key: string]: RawPassageType[]}),
+    passages.reduce(
+      (acc, passage) => {
+        const key = getKey(passage);
+        if (acc[key] == null) {
+          acc[key] = [];
+        }
+        acc[key].push(passage);
+        return acc;
+      },
+      {} as {[key: string]: RawPassageType[]},
+    ),
   ).sort(([, passagesA], [, passagesB]) => passagesB.length - passagesA.length);
   const usedIndexes = new Set<number>();
   const indexToPassage = {} as {[index: number]: RawPassageType};

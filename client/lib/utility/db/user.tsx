@@ -24,6 +24,7 @@ export const useGetUserRequest = () => {
         data: {
           hasSpotifyAuth: d.data()?.spotifyAuth != null,
           hasExpoPushToken: d.data()?.expoPushToken != null,
+          timezoneOffset: d.data()?.timezoneOffset,
         },
       });
     });
@@ -34,6 +35,7 @@ export const useGetUserRequest = () => {
       data: {
         hasSpotifyAuth: docSnap.data()?.spotifyAuth != null,
         hasExpoPushToken: docSnap.data()?.expoPushToken != null,
+        timezoneOffset: docSnap.data()?.timezoneOffset,
       },
     });
   };

@@ -32,6 +32,7 @@ import {
 } from '../../utility/redux/shareable_passage/slice';
 import {useShareablePassage} from '../../utility/redux/shareable_passage/selectors';
 import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 export const CONTROL_PANEL_HEIGHTS = {
   margin_top: 24,
@@ -53,6 +54,7 @@ const ControlPanel = (props: Props) => {
   const {snapPoint, bottomSheetTriggered, sharedTransitionKey, viewShotRef} =
     props;
   const {height: windowHeight} = Dimensions.get('window');
+  const safeAreaInsets = useSafeAreaInsets();
 
   const {
     passage,
@@ -153,7 +155,10 @@ const ControlPanel = (props: Props) => {
                   },
                   lyricCardMeasurementContext: 'SHARE_BOTTOM_SHEET',
                   lyricsYPositionOffset:
-                    windowHeight - snapPoint - BOTTOM_SHEET_HANDLE_HEIGHT,
+                    windowHeight -
+                    snapPoint +
+                    BOTTOM_SHEET_HANDLE_HEIGHT -
+                    safeAreaInsets.top,
                   sharedTransitionKey,
                   onSelect: 'UPDATE_SHAREABLE',
                 });

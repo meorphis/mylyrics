@@ -1,15 +1,13 @@
 // shows metadata for a song, including album art, song name, artist name, and
 // album name
 
-import {View, StyleSheet, Text, Image} from 'react-native';
+import {View, StyleSheet, Text} from 'react-native';
 import React, {memo} from 'react';
 import {textStyleCommon} from '../../utility/helpers/text';
 import _ from 'lodash';
 import {useScaleInfo} from '../../utility/redux/measurement/selectors';
 import {PassageType} from '../../types/passage';
 import {LyricCardMeasurementContext} from '../../types/measurement';
-import { SongType } from '../../types/song';
-import { useAlbumArt } from '../../utility/redux/album_art/selectors';
 import AlbumArt from './AlbumArt';
 
 type Props = {
@@ -35,7 +33,7 @@ const SongInfo = (props: Props) => {
 
   return (
     <View style={{...styles.metadataRow, paddingBottom: songNameSize}}>
-      <AlbumArt url={song.album.image.url} albumImageSize={albumImageSize}/>
+      <AlbumArt url={song.album.image.url} albumImageSize={albumImageSize} />
       <View style={styles.metadataText}>
         <Text
           numberOfLines={2}
