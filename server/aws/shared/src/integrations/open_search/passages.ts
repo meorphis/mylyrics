@@ -34,7 +34,8 @@ type RawPassageResult = {
 
 const NUMBER_OF_RECOMMENDATIONS_FOR_SECONDARY_SENTIMENTS = 5;
 const NUMBER_OF_RECOMMENDATIONS_FOR_TOP_TRACKS = 10;
-const NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 10;
+const MAX_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 10;
+const MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 5;
 
 // *** PUBLIC INTERFACE ***
 // function to get recommendations for a given user, across a few different categories:
@@ -48,7 +49,7 @@ export const getDailyPassageRecommendations = async (
     recentListens,
     topSpotifyArtists,
     topSpotifySongs,
-    featuredArtistOptions,
+    featuredArtistIdOptions,
     recommendationSentiments,
   }:
   {
@@ -56,40 +57,64 @@ export const getDailyPassageRecommendations = async (
     recentListens: Record<string, {songs?: string[]; artists?: string[];}>,
     topSpotifyArtists: Artist[],
     topSpotifySongs: SimplifiedSong[],
-    featuredArtistOptions: Artist[],
+    featuredArtistIdOptions: string[],
     recommendationSentiments: string[],
   }
 ): Promise<{
   recommendations: Recommendation[],
-  featuredArtist: Artist | null,
+  featuredArtist: {
+    id: string,
+    name: string,
+    emoji: string,
+  } | null,
 }> => {
   const db = await getFirestoreDb();
 
-  let featuredArtist: Artist | null = null;
-  let featuredArtistEmoji: string | null = null;
+  let featuredArtist: {
+    id: string,
+    name: string,
+    emoji: string,
+  } | null = null;
+  
   let artistSearchResults: SearchResult[] = [];
 
-  for (const potentialFeaturedArtist of featuredArtistOptions) {
-    const docSnap = await db.collection("artists").doc(potentialFeaturedArtist.id).get()
+  for (const potentialFeaturedArtistId of featuredArtistIdOptions) {
+    const docSnap = await db.collection("artists").doc(potentialFeaturedArtistId).get()
     const data = docSnap.data();
-    const potentialFeaturedArtistEmoji = data && data.artistEmoji;
 
-    if (!potentialFeaturedArtistEmoji) {
-      console.log(`no emoji found for artist ${potentialFeaturedArtist.name}`)
+    if ((data?.numIndexedSongs ?? 0) < MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST) {
+      console.log(`artist ${potentialFeaturedArtistId} has too few indexed songs`);
+      continue;
+    }
+
+    const potentialFeaturedArtist = {
+      id: potentialFeaturedArtistId,
+      emoji: data && data.artistEmoji,
+      name: data && data.artistName,
+    }
+
+    if (!potentialFeaturedArtist.emoji) {
+      console.log(`no emoji found for artist ${potentialFeaturedArtistId}`)
+      continue;
+    }
+
+    if (!potentialFeaturedArtist.name) {
+      console.log(`no name found for artist ${potentialFeaturedArtistId}`)
       continue;
     }
     
     console.log(`looking for passages for artist ${potentialFeaturedArtist.name}`)
 
+    // TODO: should be able to use ID here
     const results = await getSearchResultsForArtist({
       artistName: potentialFeaturedArtist.name,
     });
 
-    if (results.length >= 3) {
+    // this should be covered by the numIndexedSongs check above, but let's double-check
+    if (results.length >= MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST) {
       featuredArtist = potentialFeaturedArtist;
-      featuredArtistEmoji = potentialFeaturedArtistEmoji;
       artistSearchResults = results;
-      console.log(`found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
+      console.log(`found ${results.length} results for artist ${featuredArtist.name}`)
       break;
     } else {
       console.log(`only found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
@@ -137,7 +162,7 @@ export const getDailyPassageRecommendations = async (
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             name: featuredArtist!.name,
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            emoji: featuredArtistEmoji!,
+            emoji: featuredArtist!.emoji,
           }
         },
         ...getSentimentBundleInfos(passage)
@@ -423,7 +448,7 @@ const getSearchResultsForArtist = async (
           ],
         }
       },
-      "size": NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST,
+      "size": MAX_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST,
     }
   }
   const results = await searchClient.search(query);

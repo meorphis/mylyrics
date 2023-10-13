@@ -41,9 +41,16 @@ export const prophecySlice = createSlice({
     ) => {
       state.prophecy = action.payload;
     },
+    resetProphecyState: () => {
+      return {
+        cards: [],
+        prophecy: null,
+      };
+    },
   },
 });
 
-export const {addCard, removeCard, setProphecy} = prophecySlice.actions;
+export const {addCard, removeCard, setProphecy, resetProphecyState} =
+  prophecySlice.actions;
 
 export default prophecySlice.reducer as Reducer<ProphecyState>;

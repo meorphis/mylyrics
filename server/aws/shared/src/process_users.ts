@@ -183,6 +183,20 @@ const processOneUser = async (
     && additionalArtists.length === 0
   ) {
     console.log(`user ${userId} has not listened to anything since we last checked`);
+
+    if (isNew) {
+      // TODO: handle this better
+      console.log(`unexpectedly, new user ${userId} has no listens to process`);
+    } else if (shouldRefresh({
+      userId,
+      isNew: false, // we checked this above
+      lastRefreshedAt: userData.lastRefreshedAt,
+      timezoneOffset: userData.timezoneOffset,
+      hasRecentListens: false,
+    })) {
+      await createRefreshUserTask({userId})
+    }
+
     return;
   }
 
@@ -229,6 +243,7 @@ const processOneUser = async (
   
   // if an artist does not have enough songs to ever be considered fully indexed, mark them as
   // such in the db
+  const db = await getFirestoreDb();
   topSongsForArtists.forEach((topSongs, index) => {
     const artist = artistsWithoutEnoughIndexedSongs[index];
     if (topSongs.length < MAX_SONGS_PER_ARTIST) {
@@ -294,14 +309,14 @@ const processOneUser = async (
 
   await createProcessSongTasks({songs: enrichedSongsToProcess, userId});
 
-  const db = await getFirestoreDb();
-  const userRecommendations = (
-    await db.collection("user-recommendations").doc(userId).get()
-  ).data();
-
-  const lastRefreshedAt = userRecommendations?.lastRefreshedAt;
   // if we haven't refreshed recommendations in the last ~24 hours, do so
-  if (lastRefreshedAt == null || Date.now() - lastRefreshedAt > 1000 * 60 * 60 * 23.5) {
+  if (shouldRefresh({
+    userId,
+    isNew,
+    lastRefreshedAt: userData.lastRefreshedAt,
+    timezoneOffset: userData.timezoneOffset,
+    hasRecentListens: true,
+  })) {
     await createRefreshUserTask({
       userId,
       numRetries: isNew ? 5 : 0,
@@ -555,4 +570,59 @@ const createProcessSongTasks = async (
       }
     }
   });
+}
+
+const shouldRefresh = ({userId, isNew, lastRefreshedAt, timezoneOffset, hasRecentListens}: {
+  userId: string,
+  isNew: boolean,
+  lastRefreshedAt: number | undefined,
+  timezoneOffset: number | undefined,
+  hasRecentListens: boolean,
+}) => {
+  if (isNew) {
+    // new users should be refreshed immediately
+    return true;
+  }
+
+  if (timezoneOffset == null) {
+    console.log(`user ${userId} has no timezoneOffset`);
+    timezoneOffset = 0;
+  }
+
+  if (lastRefreshedAt == null) {
+    console.log(`user ${userId} has no lastRefreshedAt`);
+    lastRefreshedAt = 0;
+  }
+
+  const now = Date.now();
+  const startOfDay = new Date(now - timezoneOffset).setHours(0, 0, 0, 0);
+
+  if (lastRefreshedAt > startOfDay) {
+    // already refreshed today
+    return false;
+  }
+
+  const noon = new Date(now - timezoneOffset).setHours(12, 0, 0, 0);
+
+  if (lastRefreshedAt < noon) {
+    // do not send a notif in the morning
+    return false;
+  }
+
+  if (hasRecentListens) {
+    // if the user's listening to music in the afternoon, refresh
+    return true;
+  }
+
+  const fourPm = new Date(now - timezoneOffset).setHours(4, 0, 0, 0);
+
+  if (lastRefreshedAt < fourPm) {
+    // wait a while to see if we can send a notif around the time the user is
+    // listening to music
+    return false;
+  }
+
+  // make sure we get the notif out before the work day is over, regardless of
+  // whether the user has listened to music
+  return true;
 }

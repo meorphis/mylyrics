@@ -13,6 +13,7 @@ import {useDispatch} from 'react-redux';
 import {requestBundleChange} from '../../utility/redux/requested_bundle_change/slice';
 import {getBundleEmoji} from '../../utility/helpers/sentiments';
 import StatsBottomSheet from '../StatsBottomSheet/StatsBottomSheet';
+import {useHasTopSentiments} from '../../utility/redux/stats/selectors';
 
 type Props = {
   style?: ViewStyle;
@@ -28,6 +29,7 @@ const BottomBar = (props: Props) => {
   const activeBundle = useActiveBundle();
   const previouslyActiveBundleKey = usePreviouslyActiveBundleKey();
   const dispatch = useDispatch();
+  const hasTopSentiments = useHasTopSentiments();
 
   const shouldShowBackButton =
     (activeBundle.info.type === 'singleton' ||
@@ -35,7 +37,8 @@ const BottomBar = (props: Props) => {
     previouslyActiveBundleKey != null;
   const shouldShowGroupSelectorButton = activeBundle.info.type !== 'user_made';
   const shouldShowProphecyButton = activeBundle.info.type !== 'user_made';
-  const shouldShowStatsButton = activeBundle.info.type !== 'user_made';
+  const shouldShowStatsButton =
+    hasTopSentiments && activeBundle.info.type !== 'user_made';
 
   return (
     <React.Fragment>
@@ -88,7 +91,9 @@ const BottomBar = (props: Props) => {
         )}
       </SafeAreaView>
       <GroupSelectorBottomSheet bottomSheetRef={groupSelectorBottomSheetRef} />
-      <StatsBottomSheet bottomSheetRef={statsBottomSheetRef} />
+      {hasTopSentiments && (
+        <StatsBottomSheet bottomSheetRef={statsBottomSheetRef} />
+      )}
       <ProphecyBottomSheet bottomSheetRef={prophecyBottomSheetRef} />
     </React.Fragment>
   );

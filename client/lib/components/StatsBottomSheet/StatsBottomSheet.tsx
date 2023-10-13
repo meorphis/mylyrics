@@ -1,6 +1,6 @@
 import React, {memo, useMemo, useState} from 'react';
 import BottomSheet from '@gorhom/bottom-sheet';
-import {Dimensions, FlatList, StyleSheet, Text, View} from 'react-native';
+import {Dimensions, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {BarChart} from 'react-native-gifted-charts';
 
@@ -9,14 +9,24 @@ import {
   useBottomSheetBackdrop,
 } from '../../utility/helpers/bottom_sheet';
 import {textStyleCommon} from '../../utility/helpers/text';
-import Animated from 'react-native-reanimated';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import Svg, {Path} from 'react-native-svg';
-
-const AnimatedFlatlist = Animated.createAnimatedComponent(FlatList);
+import {useTopSentiments} from '../../utility/redux/stats/selectors';
+import {TopSentimentData, TopSentimentsInterval} from '../../types/sentiments';
 
 type Props = {
   bottomSheetRef: React.RefObject<BottomSheet>;
+};
+
+const labelForInterval = (interval: TopSentimentsInterval) => {
+  switch (interval) {
+    case 'last-day':
+      return 'past day';
+    case 'last-week':
+      return 'past week';
+    case 'all-time':
+      return 'all time';
+  }
 };
 
 const StatsBottomSheet = (props: Props) => {
@@ -25,9 +35,26 @@ const StatsBottomSheet = (props: Props) => {
   const windowHeight = Dimensions.get('window').height;
   const windowWidth = Dimensions.get('window').width;
   const snapPoints = useMemo(() => [windowHeight - insets.top - 24], []);
-  // @ts-ignore
-  const flatListRef = React.useRef<AnimatedFlatlist>(null);
   const [activeTabKey, setActiveTabKey] = useState('last-day');
+
+  const data = useTopSentiments();
+  const intervals = Object.keys(data).sort((a, b) => {
+    const order = ['last-day', 'last-week', 'all-time'];
+    return order.indexOf(a) - order.indexOf(b);
+  });
+  const intervalData = intervals.map(interval => ({
+    interval: interval as TopSentimentsInterval,
+    data:
+      (data[interval] as TopSentimentData[] | null)?.map((d, index) => {
+        return {
+          label: d.sentiment,
+          value: Math.round(d.percentage),
+          artists: d.artists.map(artist => artist.name),
+          leftShiftForTooltip:
+            index >= data[interval].length - 2 ? 5 * 24 + 12 : undefined,
+        };
+      }) ?? null,
+  }));
 
   return (
     <BottomSheet
@@ -59,14 +86,14 @@ const StatsBottomSheet = (props: Props) => {
               paddingBottom: 0,
               zIndex: 1,
             }}>
-            {tabs.map(value => {
+            {intervalData.map(d => {
+              const {interval} = d;
               return (
                 <FlatListText
-                  key={value.tabName}
-                  item={value}
-                  isActive={value.tabKey === activeTabKey}
+                  interval={interval}
+                  isActive={interval === activeTabKey}
                   setAsActive={() => {
-                    setActiveTabKey(value.tabKey);
+                    setActiveTabKey(interval);
                   }}
                 />
               );
@@ -75,7 +102,7 @@ const StatsBottomSheet = (props: Props) => {
           <Chart
             windowWidth={windowWidth}
             snapPoints={snapPoints}
-            tabProps={tabs.find(value => value.tabKey === activeTabKey)!}
+            tabProps={intervalData.find(d => d.interval === activeTabKey)}
           />
         </View>
       </View>
@@ -85,16 +112,16 @@ const StatsBottomSheet = (props: Props) => {
 };
 
 type FlatListTextProps = {
-  item: TabsProps;
+  interval: TopSentimentsInterval;
   isActive: boolean;
   setAsActive: () => void;
 };
 
 const FlatListText = (props: FlatListTextProps) => {
-  const {item, isActive, setAsActive} = props;
+  const {interval, isActive, setAsActive} = props;
 
   return (
-    <View key={item.tabName}>
+    <View key={interval}>
       <TouchableOpacity onPress={setAsActive}>
         <Text
           style={{
@@ -105,68 +132,38 @@ const FlatListText = (props: FlatListTextProps) => {
               : {}),
             textAlign: 'center',
           }}>
-          {item.tabName}
+          {labelForInterval(interval)}
         </Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-type TabsProps = {
-  tabKey: string;
-  tabName: string;
-  data: {
-    label: string;
-    value: number;
-    leftShiftForTooltip?: number;
-    artists?: string[];
-  }[];
-};
-
-const tabs: TabsProps[] = [
-  {
-    tabKey: 'last-day',
-    tabName: 'past day',
-    data: [
-      {value: 30, label: 'despair', artists: ['The Smiths']},
-      {value: 21, label: 'longing'},
-      {value: 18, label: 'tragicomedy'},
-      {value: 10, label: 'surrealism'},
-      {value: 8, label: 'violence'},
-    ],
-  },
-  {
-    tabKey: 'last-week',
-    tabName: 'past week',
-    data: [
-      {value: 25, label: 'love'},
-      {value: 19, label: 'lust'},
-      {value: 16, label: 'rebellion'},
-      {value: 13, label: 'joy'},
-      {value: 3, label: 'melancholy'},
-    ],
-  },
-  {
-    tabKey: 'all-time',
-    tabName: 'all time',
-    data: [
-      {value: 42, label: 'despair'},
-      {value: 21, label: 'longing'},
-      {value: 18, label: 'tragicomedy'},
-      {value: 10, label: 'surrealism'},
-      {value: 8, label: 'disillusionment'},
-    ],
-  },
-];
-
 type ChartProps = {
   windowWidth: number;
   snapPoints: number[];
-  tabProps: TabsProps;
+  tabProps:
+    | {
+        interval: TopSentimentsInterval;
+        data:
+          | {
+              label: string;
+              value: number;
+              artists: string[];
+              leftShiftForTooltip: number | undefined;
+            }[]
+          | null;
+      }
+    | null
+    | undefined;
 };
 
 const Chart = memo((props: ChartProps) => {
   const {windowWidth, snapPoints, tabProps} = props;
+
+  if (tabProps == null || tabProps.data == null) {
+    return null;
+  }
 
   const desiredWidth = windowWidth - 112;
   const widthUnit = Math.floor(desiredWidth / 11.5);
@@ -174,12 +171,12 @@ const Chart = memo((props: ChartProps) => {
   return (
     <View style={{width: windowWidth, paddingLeft: 12}}>
       <BarChart
-        key={tabProps.tabKey}
+        key={tabProps.interval}
         data={tabProps.data.map((d, i) => {
           return {
             ...d,
             leftShiftForTooltip:
-              i >= tabProps.data.length - 2 ? 5 * widthUnit + 12 : undefined,
+              i >= tabProps.data!.length - 2 ? 5 * widthUnit + 12 : undefined,
           };
         })}
         width={desiredWidth + 48}
@@ -191,6 +188,7 @@ const Chart = memo((props: ChartProps) => {
         rotateLabel
         barBorderRadius={4}
         labelsExtraHeight={144}
+        activeOpacity={0.8}
         labelWidth={72}
         noOfSections={5}
         frontColor="#555"
@@ -205,15 +203,16 @@ const Chart = memo((props: ChartProps) => {
         leftShiftForTooltip={-12}
         leftShiftForLastIndexTooltip={5 * widthUnit + 12}
         renderTooltip={({label, value}, index) => {
-          const shouldFlip = index >= tabProps.data.length - 2;
+          const shouldFlip = index >= tabProps.data!.length - 2;
+          const artists = tabProps.data![index]?.artists;
 
           return (
             <View
               style={{
                 bottom:
-                  tabProps.data[index].value < tabProps.data[0].value / 2
+                  tabProps.data![index].value < tabProps.data![0].value / 2
                     ? 120
-                    : 80,
+                    : 0,
                 shadowColor: '#000',
                 shadowOffset: {
                   width: 0,
@@ -230,30 +229,32 @@ const Chart = memo((props: ChartProps) => {
                   borderBottomRightRadius: shouldFlip ? 0 : 18,
                   borderWidth: 0,
                   borderColor: '#00000040',
-                  padding: 8,
+                  paddingHorizontal: 8,
+                  paddingVertical: 8,
                   width: 6.5 * widthUnit,
-                  height: 72,
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}>
                 <Text
                   style={{
                     ...textStyleCommon,
-                    fontSize: 16,
+                    fontSize: 18,
                     color: '#333',
                     textAlign: 'center',
                   }}>
                   {value}% {label}
                 </Text>
-                <Text
-                  style={{
-                    ...textStyleCommon,
-                    fontSize: 14,
-                    color: '#555',
-                    textAlign: 'center',
-                  }}>
-                  (e.g. {(tabProps.data[index]?.artists ?? []).join(', ')})
-                </Text>
+                {artists.length > 0 && (
+                  <Text
+                    style={{
+                      ...textStyleCommon,
+                      fontSize: 14,
+                      color: '#555',
+                      textAlign: 'center',
+                    }}>
+                    (e.g. {artists.join(', ')})
+                  </Text>
+                )}
               </View>
               <View
                 style={{

@@ -26,6 +26,8 @@ export const processSong = async (
   // make sure we have all the environment variables we need
   assertEnvironmentVariables();
 
+  const db = await getFirestoreDb();
+
   // the song was already added to the db so we assume that another lambda
   // is already processing it
   if (!(await addSongToDb(song))) {
@@ -130,6 +132,18 @@ export const processSong = async (
         // eslint-disable-next-line max-len
         `passage lyrics not found in song lyrics for song: ${song.primaryArtist.name}: ${song.name}; passage lyrics: ${passage.lyrics}`
       )
+      db.collection("orphan-passages").doc(uuidForPassage({
+        lyrics: passage.lyrics,
+        songName: song.name,
+        artistName: song.primaryArtist.name,
+      })).set({
+        songId: song.id,
+        songName: song.name,
+        artistId: song.primaryArtist.id,
+        artistName: song.primaryArtist.name,
+        passageLyrics: passage.lyrics,
+        normalizedSongLyrics,
+      });
       return null;
     }
 
