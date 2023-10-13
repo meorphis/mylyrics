@@ -12,13 +12,14 @@ import {
 } from '@firebase/firestore';
 import {useDispatch} from 'react-redux';
 import {RawPassageType} from '../../types/passage';
-import {setProphecy} from '../redux/prophecy/slice';
+import {resetProphecyState} from '../redux/prophecy/slice';
 import {getBundlesFromFlatPassages} from '../helpers/recommendations';
 import {addBundles, setActiveBundlePassage} from '../redux/bundles/slice';
 import {CacheManager} from '@georstat/react-native-image-cache';
 import {AppState} from 'react-native';
 import {usePassageHydration} from '../helpers/passage';
 import {BundlePassageType} from '../../types/bundle';
+import {setTopSentiments} from '../redux/stats/slice';
 
 // returns:
 // - the current status of fetching recommendations from firestore
@@ -228,13 +229,12 @@ const useSetupRecommendations = () => {
     const data = docSnap.data();
 
     const recommendations = data.recommendations as RawPassageType[];
-    const sentiments = data.sentiments as string[];
-    const prophecy = data.prophecy as string;
+    const recommendationSentiments = data.recommendationSentiments as string[];
 
     await CacheManager.clearCache();
     const bundles = await getBundlesFromFlatPassages(
       recommendations,
-      sentiments,
+      recommendationSentiments,
     );
 
     const firstBundle = bundles[0];
@@ -246,7 +246,8 @@ const useSetupRecommendations = () => {
     dispatch(
       setActiveBundlePassage(bundles[0].passages[0] as BundlePassageType),
     );
-    dispatch(setProphecy(prophecy ?? null));
+    dispatch(resetProphecyState());
+    dispatch(setTopSentiments(data.topSentiments));
 
     return true;
   };

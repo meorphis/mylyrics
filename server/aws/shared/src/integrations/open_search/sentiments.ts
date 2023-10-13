@@ -6,11 +6,11 @@ import { getBoostsTerm } from "./common";
 
 type SentimentResult = {
     sentiment: string;
-    count: number;
+    score: number;
     percentage: number;
     topArtists: {
         id: string;
-        count: number;
+        score: number;
     }[];
   }
 
@@ -37,25 +37,53 @@ export const getTopSentimentsWithTopArtistsInInterval = async (
   if (interval === "all-time") {
     songIds.push(...(recentListens.longerAgo?.songs || []) as string[]);
   }
-  
-  const uniqueSongIds = [...new Set(songIds)];
-  
-  if (uniqueSongIds.length < 10) {
+
+  if (songIds.length < 10) {
     return null;
   }
+  
+  console.log(`computing boosts for ${songIds.length} songs`);
+  const songIdsToCount = songIds.reduce((acc, songId) => {
+    acc[songId] = (acc[songId] || 0) + 1;
+    return acc;
+  }, {} as {[key: string]: number});
+
+  const bucketToSongIds = Object.entries(songIdsToCount).reduce((acc, [songId, count]) => {
+    const bucket = Math.pow(2, Math.round(Math.log2(count)))
+    if (!acc[bucket]) {
+      acc[bucket] = [];
+    }
+    acc[bucket].push(songId);
+    return acc;
+  }, {} as {[key: number]: string[]});
+
+  const boosts = Object.entries(bucketToSongIds).map(([bucket, songIds]) => {
+    return {
+      "filter": {
+        "ids": {
+          "values": songIds
+        }
+      },
+      "weight": parseInt(bucket)
+    }
+  });
+  console.log(`computed sentiment boosts for ${songIds.length} songs`);
+
+  const uniqueSongIds = uniq(songIds);
   
   const query = {
     index: "song-lyric-songs",
     body: {
       "query": {
-        "bool": {
-          "filter": [
-            {
-              "ids": {
-                "values": uniqueSongIds
-              }
+        "function_score": {
+          "query": {
+            "ids": {
+              "values": uniqueSongIds
             }
-          ]
+            
+          },
+          "functions": boosts,
+          "score_mode": "sum"
         }
       },
       "aggs": {
@@ -67,37 +95,58 @@ export const getTopSentimentsWithTopArtistsInInterval = async (
             ) => {
               acc[sentiment] = { "term": { "sentiments": sentiment } };
               return acc;
-            }, {}),
-          },
+            }, {}),      
+          },    
           "aggs": {
+            // unfortunately this sorts by count not score - there deoesn't seem to be
+            // a straightforward way to sort by score
             "top_artists": {
               "terms": {
                 "field": "primaryArtist.id",
-                "size": 5  // Top 5 artists for each sentiment
+                "size": 10
+              },
+              "aggs": {
+                "total_score": {
+                  "sum": {
+                    "script": "_score"
+                  }
+                }
+              }
+            },
+            "total_score": {
+              "sum": {
+                "script": "_score"
               }
             }
           }
         }
       },
-      "size": 0  // No hits, just aggregations
+      "size": 0
     }
   }
   
   const output = await searchClient.search(query);
   
-  const results = Object.entries(
+  const rawResults = Object.entries(
       output.body.aggregations.by_sentiment.buckets as {
         [sentiment: string]: {
           doc_count: number,
-          top_artists: {buckets: {key: string, doc_count: number}[]},
+          total_score: {value: number},
+          top_artists: {buckets: {key: string, doc_count: number, total_score: {value: number}}[]},
         }
       }
-  ).map(([sentiment, {doc_count, top_artists}]) => {
+  )
+
+  const aggregateScore = rawResults.reduce((acc, [_, {total_score}]) => {
+    return acc + total_score.value;
+  }, 0);
+
+  const results = rawResults.map(([sentiment, {total_score, top_artists}]) => {
     return {
       sentiment,
-      count: doc_count,
-      percentage: 100 * doc_count / uniqueSongIds.length,
-      topArtists: top_artists.buckets.map((b) => ({id: b.key, count: b.doc_count})),
+      score: total_score.value,
+      percentage: 100 * total_score.value / aggregateScore,
+      topArtists: top_artists.buckets.map((b) => ({id: b.key, score: b.total_score.value})),
     }
   });
   
@@ -225,39 +274,39 @@ export const getScoredSentiments = async (
 // along with a modified form of top artists (see inline comments)
 const parseTopSentimentResults = (results: SentimentResult[]) => {
   const topSentiments = results
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.score - a.score)
     .slice(0, 5)
     .map((r) => ({...r, artists: [] as {id: string}[]}));
-  const artistToSentimentCounts = results.reduce((acc, {topArtists, sentiment}) => {
-    topArtists.forEach(({id, count}) => {
+  const artistToSentimentScores = results.reduce((acc, {topArtists, sentiment}) => {
+    topArtists.forEach(({id, score}) => {
       if (!acc[id]) {
         acc[id] = {};
       }
-      acc[id][sentiment] = count;
-      acc[id].total = (acc[id].total || 0) + count;
+      acc[id][sentiment] = score;
+      acc[id].total = (acc[id].total || 0) + score;
     });
     return acc;
   }, {} as {[key: string]: {[key: string]: number}});
   
-  Object.entries(artistToSentimentCounts)
-  // iterate through artists in order of total count
+  Object.entries(artistToSentimentScores)
+  // iterate through artists in order of total score
     .sort((a, b) => b[1].total - a[1].total)
-    .forEach(([artistId, sentimentCounts]) => {
-      let addedCount = 0;
-      Object.entries(sentimentCounts)
-        .filter(([_, count]) => count > 1)
+    .forEach(([artistId, sentimentScore]) => {
+      let addedNum = 0;
+      Object.entries(sentimentScore)
+        .filter(([_, score]) => score > 1)
         .sort((a, b) => b[1] - a[1])
-      // if a sentiment appears in an artist's top five, we consider that artist to be a good
-      // representative for that sentiment
-        .slice(0, 5)
+        // if a sentiment appears in an artist's top three, we consider that artist to be a good
+        // representative for that sentiment
+        .slice(0, 3)
         .forEach(([sentiment]) => {
           // allow an artist to represent at most two sentiments
-          if (addedCount < 2) {
+          if (addedNum < 2) {
             const topSentiment = topSentiments.find((s) => s.sentiment === sentiment);
-            // allow at most three artists per sentiment
-            if (topSentiment && topSentiment.artists.length < 3) {
+            // allow at most two artists per sentiment
+            if (topSentiment && topSentiment.artists.length < 2) {
               topSentiment.artists.push({id: artistId});
-              addedCount += 1;
+              addedNum += 1;
             }
           }
         })

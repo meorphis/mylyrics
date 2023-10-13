@@ -5,6 +5,7 @@ import lyricCardMeasurementReducer from './measurement/slice';
 import requestedBundleChangeReducer from './requested_bundle_change/slice';
 import shareablePassagetReducer from './shareable_passage/slice';
 import albumArtReducer from './album_art/slice';
+import statsReducer from './stats/slice';
 import {enableMapSet} from 'immer';
 import {requestedBundleChangeMiddleware} from './requested_bundle_change/middleware';
 import {logTimingMiddleware} from './timing/middleware';
@@ -35,19 +36,11 @@ const rootReducer = (
     ),
     shareablePassage: shareablePassagetReducer(state?.shareablePassage, action),
     albumArt: albumArtReducer(state?.albumArt, action),
+    stats: statsReducer(state?.stats, action),
   };
 
   // keep the bundles that are not from recommendations when resetting recommendations
   if (action.type === 'RESET_RECOMMENDATIONS' && originalState) {
-    Object.entries(originalState.bundles.bundles).forEach(
-      ([bundleKey, bundle]) => {
-        if (['top', 'artist', 'sentiment'].includes(bundle.info.type)) {
-          delete originalState.bundles.bundles[bundleKey];
-          delete originalState.bundles.bundleKeyToPassageKey[bundleKey];
-        }
-      },
-    );
-
     newState = {
       ...newState,
       bundles: {
@@ -56,6 +49,18 @@ const rootReducer = (
         bundleKeyToPassageKey: originalState.bundles.bundleKeyToPassageKey,
       },
     };
+
+    Object.entries(newState.bundles.bundles).forEach(([bundleKey, bundle]) => {
+      if (['top', 'artist', 'sentiment'].includes(bundle.info.type)) {
+        delete newState.bundles.bundles[bundleKey];
+        delete newState.bundles.bundleKeyToPassageKey[bundleKey];
+      }
+    });
+
+    console.log(
+      Object.values(originalState.bundles.bundles).map(b => b.info.type),
+    );
+    console.log(Object.values(newState.bundles.bundles).map(b => b.info.type));
 
     newState.bundles.bundleKeyToPassageKey =
       originalState.bundles.bundleKeyToPassageKey;
@@ -76,4 +81,5 @@ export type RootState = {
   requestedBundleChange: ReturnType<typeof requestedBundleChangeReducer>;
   shareablePassage: ReturnType<typeof shareablePassagetReducer>;
   albumArt: ReturnType<typeof albumArtReducer>;
+  stats: ReturnType<typeof statsReducer>;
 };

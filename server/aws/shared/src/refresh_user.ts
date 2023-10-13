@@ -8,7 +8,7 @@ import { sqs } from "./integrations/aws";
 import { sendRecommendationNotif } from "./integrations/notifications";
 import { getTopArtistsForUser, getTopTracksForUser } from "./integrations/spotify/spotify_data";
 import { getFreshSpotifyResponse } from "./integrations/spotify/spotify_auth";
-import { Artist, Recommendation } from "./utility/types";
+import { Recommendation } from "./utility/types";
 import { 
   getScoredSentiments, getTopSentimentsWithTopArtistsInInterval 
 } from "./integrations/open_search/sentiments";
@@ -29,7 +29,7 @@ const MAX_TOP_TRACK_IMPRESSIONS_TO_REMEMBER = 250;
 const MAX_TOP_PASSAGE_IMPRESSIONS_TO_REMEMBER = 250;
 
 const MAX_NOTIFICATIONS_TO_REMEMBER = 500;
-const MAX_FEATURED_ARTISTS_TO_REMEMBER = 10;
+const MAX_FEATURED_ARTISTS_TO_REMEMBER = 14;
 
 // we aggregate song impressions from across sentiments into the "all" category; top-passage is
 // excluded because it consists of passage IDs, not song IDs
@@ -72,15 +72,15 @@ export const refreshUser = async ({
   const {
     lastRefreshedAt,
     lastPushedBackRecentPlaysAt,
-    updateCount,
+    dayCount = 1,
     recommendationSentiments: previousRecommendationSentiments,
   } = userRecommendations;
 
-  // this shouldn't happen, but if we somehow create a task for a user that already has
-  // recommendations for today, don't do anything
+  // this shouldn't happen, but if we somehow create a task for a user that already been
+  // refreshed within the last 12 hours, just skip it
   if (
     lastRefreshedAt != null &&
-    lastRefreshedAt > Date.now() - 23.5 * 60 * 60 * 1000
+    lastRefreshedAt > Date.now() - 12 * 60 * 60 * 1000
   ) {
     console.log(`recommendations already refreshed for user ${userId}`);
     return;
@@ -95,7 +95,7 @@ export const refreshUser = async ({
   // so it's fine to do it multiple times
   if (
     lastPushedBackRecentPlaysAt == null ||
-    lastPushedBackRecentPlaysAt < Date.now() - 23.5 * 60 * 60 * 1000
+    lastPushedBackRecentPlaysAt < Date.now() - 12 * 60 * 60 * 1000
   ) {
     console.log(`pushing back recent plays for user ${userId}`);
     promises.push(pushBackUserRecentListens({userId}));
@@ -153,30 +153,64 @@ export const refreshUser = async ({
   
   const {access_token: spotifyAccessToken} = spotifyResponse.data;
   
-  const recentlyFeaturedArtists = userRecommendations.featuredArtistHistory ?? [];
+  const recentlyFeaturedArtistIds = new Set(userRecommendations.featuredArtistHistory ?? []);
   const topSpotifyArtists = await getTopArtistsForUser({spotifyAccessToken, limit: 15});
   const topSpotifySongs = useSpotifyTopTracks ? await getTopTracksForUser({
     spotifyAccessToken, limit: 20, time_range: "short_term"
   }) : [];
 
-  let featuredArtistOptions: Artist[];
+  let featuredArtistIdOptions: string[];
 
+  // just pick one of the user's top artists
   if (alwaysFeatureVeryTopArtist) {
-    featuredArtistOptions = topSpotifyArtists.slice(0, 3);
+    featuredArtistIdOptions = topSpotifyArtists.slice(0, 3).map(a => a.id);
   } else {
-    const artistsEligibleForFeature = topSpotifyArtists.filter((artist) => {
-      return !recentlyFeaturedArtists.includes(artist.id);
-    });
-    featuredArtistOptions = getRandomIndexes(
-      artistsEligibleForFeature.length,
-      Math.min(artistsEligibleForFeature.length, 3)
-    ).map(idx => artistsEligibleForFeature[idx])
+    // first look at artists that were played a lot yesterday
+    featuredArtistIdOptions = Object.entries(
+      ((recentListens.yesterday?.artists ?? []) as string[])
+        .reduce((acc, artist) => {
+          acc[artist] = (acc[artist] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+    ).filter(([artist, count]) => 
+      !recentlyFeaturedArtistIds.has(artist) && count >= 10
+    ).sort(
+      ([_, count1], [__, count2]) => count2 - count1
+    )
+      .slice(0, 3)
+      .map(([artist]) => artist);
+
+    // if not enough artists pass the frequency bar, look at the user's top spotify artists
+    // to fill in the rest
+    if (featuredArtistIdOptions.length < 3) {
+      const topArtistIdsEligibleForFeature = topSpotifyArtists
+        .map((artist) => artist.id)
+        .filter((artistId) => {
+          return !recentlyFeaturedArtistIds.has(artistId);
+        });
+
+      featuredArtistIdOptions.push(...getRandomIndexes(
+        topArtistIdsEligibleForFeature.length,
+        Math.min(topArtistIdsEligibleForFeature.length, 3 - featuredArtistIdOptions.length)
+      ).map(idx => topArtistIdsEligibleForFeature[idx]))
+    }
   }
 
   console.log(
     // eslint-disable-next-line max-len
-    `featured artist options for user ${userId}: ${JSON.stringify(featuredArtistOptions.map(a => a.name))}`
+    `featured artist options for user ${userId}: ${JSON.stringify(featuredArtistIdOptions)}`
   );
+
+  const intervals = ["last-day"];
+
+  // we're on day #2 at least (or many of the songs that we already have on the first day are NOT
+  // from the last day), so we can plausibly represent a week's worth of data
+  if (dayCount > 1 || recentListens?.yesterday?.songs?.length < 10) {
+    intervals.push("last-week");
+  }
+
+  // we have all-time statistics from the start from indexing the user's top spotify statistics
+  intervals.push("all-time");
 
   const [{recommendations, featuredArtist}, ...topSentimentArray] = await Promise.all([
     getDailyPassageRecommendations(
@@ -185,24 +219,21 @@ export const refreshUser = async ({
         recentListens,
         topSpotifyArtists,
         topSpotifySongs,
-        featuredArtistOptions,
+        featuredArtistIdOptions,
         recommendationSentiments,
       }
     ),
-    ...(
-      ["last-day", "last-week", "all-time"]
-        .map((interval) => getTopSentimentsWithTopArtistsInInterval({
-          recentListens,
-          interval: interval as "last-day" | "last-week" | "all-time",
-        }))
-    )
+    ...intervals.map((interval) => getTopSentimentsWithTopArtistsInInterval({
+      recentListens,
+      interval: interval as "last-day" | "last-week" | "all-time",
+    }))
   ]);
 
-  const topSentiments = {
-    "last-day": topSentimentArray[0],
-    "last-week": topSentimentArray[1],
-    "all-time": topSentimentArray[2],
-  }
+  const topSentiments = Object.fromEntries(
+    topSentimentArray.map((topSentiments, i) => {
+      return [intervals[i], topSentiments];
+    })
+  );
 
   if (recommendations.length === 0) {
     console.log(`no recommendations for sentiments ${recommendationSentiments} for user ${userId}`);
@@ -220,25 +251,35 @@ export const refreshUser = async ({
     ...recommendations.slice(recommendationIndex + 1),
   ]
 
+  const now = Date.now();
+
+  const batch = db.batch();
+  batch.set(db.collection("user-recommendations").doc(userId), {
+    recommendations: reorderedRecommendations,
+    recommendationSentiments,
+    topSentiments,
+    lastRefreshedAt: now,
+    dayCount: dayCount + 1,
+    notificationHistory: [
+      reorderedRecommendations[0].song.id,
+      ...userRecommendations.notificationHistory || [],
+    ].slice(0, MAX_NOTIFICATIONS_TO_REMEMBER),
+    featuredArtistHistory: [
+      ...(featuredArtist ? [featuredArtist.id] : []),
+      ...userRecommendations.featuredArtistHistory || [],
+    ].slice(0, MAX_FEATURED_ARTISTS_TO_REMEMBER),
+  }, {merge: true}
+  );
+  batch.update(db.collection("users").doc(userId), {
+    // double write this value to save us a read in process_users
+    lastRefreshedAt: now,
+  });
+
   await Promise.all([
-    db.collection("user-recommendations").doc(userId).set({
-      recommendations: reorderedRecommendations,
-      recommendationSentiments,
-      topSentiments,
-      lastRefreshedAt: Date.now(),
-      updateCount: (updateCount || 0) + 1,
-      notificationHistory: [
-        reorderedRecommendations[0].song.id,
-        ...userRecommendations.notificationHistory || [],
-      ].slice(0, MAX_NOTIFICATIONS_TO_REMEMBER),
-      featuredArtistHistory: [
-        ...(featuredArtist ? [featuredArtist.id] : []),
-        ...userRecommendations.featuredArtistHistory || [],
-      ].slice(0, MAX_FEATURED_ARTISTS_TO_REMEMBER),
-    }, {merge: true}),
+    batch.commit(),
     sendRecommendationNotif({recommendation: reorderedRecommendations[0], userId}),
   ]);
-};
+}
 
 // creates a task to run refreshUser
 export const createRefreshUserTask = async (
@@ -699,4 +740,15 @@ const getRandomIndexes = (n: number, k: number) => {
   }
 
   return indexes;
+}
+
+export const printRecentListens = async (userId: string) => {
+  const db = await getFirestoreDb();
+  const recentListens = (await db.collection("user-recent-listens").doc(userId).get()).data() ?? {};
+  const songsYesterday = recentListens.yesterday?.songs ?? [];
+  const songDocs = await db.getAll(...songsYesterday.map((songId: string) => {
+    return db.collection("songs").doc(songId);
+  }));
+  const songs = songDocs.map((doc) => doc.data());
+  console.log(JSON.stringify(songs, null, 2));
 }
