@@ -363,7 +363,7 @@ const getIndexedArtistIds = async (artistIds: string[]): Promise<string[]> => {
   // consider an artist indexed if they have at least N songs indexed or if we've already
   // marked them as having insufficient top songs
   return artistsIndexed
-    .filter(d => (d.numIndexedSongs ?? 0) > MAX_SONGS_PER_ARTIST || d.hasInsufficientTopSongs)
+    .filter(d => (d.numIndexedSongs ?? 0) >= MAX_SONGS_PER_ARTIST || d.hasInsufficientTopSongs)
     .map((d) => d.artistId);
 }
 
