@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirestoreDb } from "./integrations/firebase";
-import { lookupPassage } from "./integrations/open_search";
+import { lookupPassage } from "./integrations/open_search/passages";
 
 // *** PUBLIC INTERFACE ***
 // Used ad hoc to look up a specific passage and add it to a bundle

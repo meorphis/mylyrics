@@ -1,6 +1,6 @@
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { getFirestoreDb } from "./integrations/firebase";
-import { getScoredSentiments, getDailyRecommendations } from "./integrations/open_search";
+import { getDailyPassageRecommendations } from "./integrations/open_search/passages";
 import { 
   GROUP_TO_SENTIMENTS, SENTIMENT_TO_GROUP, getSentimentValue 
 } from "./utility/sentiments";
@@ -9,6 +9,9 @@ import { sendRecommendationNotif } from "./integrations/notifications";
 import { getTopArtistsForUser, getTopTracksForUser } from "./integrations/spotify/spotify_data";
 import { getFreshSpotifyResponse } from "./integrations/spotify/spotify_auth";
 import { Artist, Recommendation } from "./utility/types";
+import { 
+  getScoredSentiments, getTopSentimentsWithTopArtistsInInterval 
+} from "./integrations/open_search/sentiments";
 
 // *** CONSTANTS ***
 // recent listens: note that recent listen limits are not hard limits - we never delete records from
@@ -69,7 +72,8 @@ export const refreshUser = async ({
   const {
     lastRefreshedAt,
     lastPushedBackRecentPlaysAt,
-    sentiments,
+    updateCount,
+    recommendationSentiments: previousRecommendationSentiments,
   } = userRecommendations;
 
   // this shouldn't happen, but if we somehow create a task for a user that already has
@@ -103,17 +107,20 @@ export const refreshUser = async ({
 
   const recentListens = (await db.collection("user-recent-listens").doc(userId).get()).data() ?? {};
 
-  const recommendedSentiments = await getRecommendedSentiments({
+  const recommendationSentiments = await getRecommendationSentiments({
     userId,
-    previouslyRecommendedSentiments: sentiments,
+    previousRecommendationSentiments,
     recentListens,
   });
 
   console.log(
-    `recommended sentiments for user ${userId}: ${JSON.stringify(recommendedSentiments)}`
+    `recommended sentiments for user ${userId}: ${JSON.stringify(recommendationSentiments)}`
   );
 
-  if (!recommendedSentiments || Object.values(recommendedSentiments).flat().length === 0) {
+  if (
+    !recommendationSentiments ||
+    Object.values(recommendationSentiments).flat().length === 0
+  ) {
     console.log(`no recommended sentiments for user ${userId}`);
     if (numRetries > 0) {
       console.log(`retrying in 60 seconds for user ${userId}`);
@@ -171,19 +178,34 @@ export const refreshUser = async ({
     `featured artist options for user ${userId}: ${JSON.stringify(featuredArtistOptions.map(a => a.name))}`
   );
 
-  const {recommendations, featuredArtist} = await getDailyRecommendations(
-    {
-      userId,
-      recentListens,
-      topSpotifyArtists,
-      topSpotifySongs,
-      featuredArtistOptions,
-      recommendedSentiments,
-    }
-  );
+  const [{recommendations, featuredArtist}, ...topSentimentArray] = await Promise.all([
+    getDailyPassageRecommendations(
+      {
+        userId,
+        recentListens,
+        topSpotifyArtists,
+        topSpotifySongs,
+        featuredArtistOptions,
+        recommendationSentiments,
+      }
+    ),
+    ...(
+      ["last-day", "last-week", "all-time"]
+        .map((interval) => getTopSentimentsWithTopArtistsInInterval({
+          recentListens,
+          interval: interval as "last-day" | "last-week" | "all-time",
+        }))
+    )
+  ]);
+
+  const topSentiments = {
+    "last-day": topSentimentArray[0],
+    "last-week": topSentimentArray[1],
+    "all-time": topSentimentArray[2],
+  }
 
   if (recommendations.length === 0) {
-    console.log(`no recommendations for sentiments ${recommendedSentiments} for user ${userId}`);
+    console.log(`no recommendations for sentiments ${recommendationSentiments} for user ${userId}`);
     return;
   }
 
@@ -201,8 +223,10 @@ export const refreshUser = async ({
   await Promise.all([
     db.collection("user-recommendations").doc(userId).set({
       recommendations: reorderedRecommendations,
-      sentiments: recommendedSentiments,
+      recommendationSentiments,
+      topSentiments,
       lastRefreshedAt: Date.now(),
+      updateCount: (updateCount || 0) + 1,
       notificationHistory: [
         reorderedRecommendations[0].song.id,
         ...userRecommendations.notificationHistory || [],
@@ -421,11 +445,11 @@ const maxNumImpressionsToRememberForKey = (key: string) => {
 //    are positive or mixed
 // - we weigh each group according to the sum of the squares of the scores of its eligible
 //    sentiments with a downrank factor for groups that have been recommended recently
-const getRecommendedSentiments = async (
-  {userId, previouslyRecommendedSentiments, recentListens} : 
+const getRecommendationSentiments = async (
+  {userId, previousRecommendationSentiments, recentListens} : 
   {
     userId: string,
-    previouslyRecommendedSentiments?: Record<string, string[]>
+    previousRecommendationSentiments?: Record<string, string[]>
     recentListens: Record<string, {songs?: Array<string>, artists?: Array<string>} | undefined>,
   },
 ): Promise<string[] | null> => {
@@ -476,8 +500,8 @@ const getRecommendedSentiments = async (
   }, {} as Record<string, number>)
 
   // downrank groups that have been recommended recently
-  if (previouslyRecommendedSentiments) {
-    const previousGroups = Object.keys(previouslyRecommendedSentiments);
+  if (previousRecommendationSentiments) {
+    const previousGroups = Object.keys(previousRecommendationSentiments);
 
     previousGroups.forEach((group) => {
       groupScores[group] = (groupScores[group] || 0) / 4;
