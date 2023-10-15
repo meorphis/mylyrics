@@ -23,6 +23,7 @@ const DEFAULT_OPEN_AI_PARAMS = {
   model: MODEL,
   temperature: 0,
   top_p: 1.0,
+  max_tokens: 2000,
 }
 
 // *** PUBLIC INTERFACE ***

@@ -34,15 +34,15 @@ export const useSpotifyAuthentication = (): [
 const _authenticate = async ({deviceId}: {deviceId: string}) => {
   const spotifyConfig = {
     clientID: CLIENT_ID,
-    redirectURL: 'mylyrics://' + REDIRECT_PATH,
+    redirectURL: 'finelines://' + REDIRECT_PATH,
     tokenRefreshURL: '',
     tokenSwapURL: `${API_HOST}/swap_spotify_code?userId=${deviceId}`,
     scopes: [ApiScope.UserTopReadScope, ApiScope.UserReadRecentlyPlayedScope],
   };
 
   try {
-    await SpotifyAuth.authorize(spotifyConfig);
-    return true;
+    const session = await SpotifyAuth.authorize(spotifyConfig);
+    return !!session;
   } catch (e) {
     if (e instanceof Error) {
       console.log(e.message);

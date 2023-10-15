@@ -7,7 +7,7 @@ import { DocumentData } from "firebase-admin/firestore";
 // *** CONSTANTS AND TYPES ***
 // public ID, ok to leave in code
 export const SPOTIFY_CLIENT_ID = "74da9b8462df4dc2b5b6f3a5fc5e622c";
-export const SPOTIFY_REDIRECT_URL = "mylyrics://spotify-auth-callback";
+export const SPOTIFY_REDIRECT_URL = "finelines://spotify-auth-callback";
 
 type SpotifyAPIResponse = {
   status: 200,
@@ -32,7 +32,7 @@ type SpotifyAPIResponse = {
 export const swapCodeForSpotifyResponse = async (
   {userId, code} : {userId: string, code: string}
 ): Promise<SpotifyAPIResponse | null> => {
-  return makeSpotifyAuthRequest(
+  return await makeSpotifyAuthRequest(
     {
       userId,
       // eslint-disable-next-line max-len
@@ -102,6 +102,7 @@ const makeSpotifyAuthRequest = async (
     setNullSeed?: boolean
   }
 ): Promise<SpotifyAPIResponse> => {
+  console.log(`making request to spotify for user ${userId}`);
 
   const spotifyClientSecret = await getSecretString("spotifyClientSecret");
 
@@ -124,6 +125,10 @@ const makeSpotifyAuthRequest = async (
     )).data;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
+    console.log(
+      `error from spotify for user ${userId}: ${error.message}: 
+      ${JSON.stringify(error.response.data)}`
+    );
 
     if (typeof error === "object" && "response" in error) {
       return {
@@ -190,7 +195,7 @@ const makeSpotifyAuthRequest = async (
     merge: true,
   });
 
-  // we will always depend on the refresh token as stored in dynamo, so the client
+  // we will always depend on the refresh token as stored in firestore, so the client
   // does not need it
   if (spotifyResponseData.refresh_token != null) {
     spotifyResponseData.refresh_token = "[REDACTED]";

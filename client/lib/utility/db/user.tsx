@@ -47,7 +47,11 @@ export const useSetUserRequest = () => {
   const deviceId = useDeviceId();
 
   const setUserRequest = async (data: SetUserType) => {
-    await setDoc(doc(db, 'users', deviceId), data, {merge: true});
+    await setDoc(
+      doc(db, 'users', deviceId),
+      {deviceId, ...data},
+      {merge: true},
+    );
   };
 
   return setUserRequest;

@@ -8,6 +8,7 @@ export const swapSpotifyCode = async (
 ) => {
   const spotifyResponse = await swapCodeForSpotifyResponse({userId, code});
   if (spotifyResponse == null) {
+    console.log(`failed to swap code for spotify response for user ${userId}`);
     throw new Error(`failed to swap code for spotify response for user ${userId}`);
   }
 

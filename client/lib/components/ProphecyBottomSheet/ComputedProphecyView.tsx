@@ -33,7 +33,7 @@ const ComputedProphecyView = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
-  container: {},
+  container: {paddingTop: 12},
   titleText: {
     fontSize: 28,
     fontWeight: 'bold',
