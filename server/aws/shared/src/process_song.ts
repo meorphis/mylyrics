@@ -26,8 +26,6 @@ export const processSong = async (
   // make sure we have all the environment variables we need
   assertEnvironmentVariables();
 
-  const db = await getFirestoreDb();
-
   // the song was already added to the db so we assume that another lambda
   // is already processing it
   if (!(await addSongToDb(song))) {
@@ -57,6 +55,7 @@ export const processSong = async (
   }
 
   const {lyrics: unnormalizedSongLyrics} = getLyricsResponse;
+  const normalizedSongLyrics = normalizeSongLyrics(unnormalizedSongLyrics);
 
   console.log(`got lyrics for song: ${JSON.stringify(
     {
@@ -67,8 +66,10 @@ export const processSong = async (
 
   let successfuLabelPassagesResponse: { 
     status: "success";
+    numDiscarded: number;
     content: { sentiments: string[]; passages: LabeledPassage[]; metadata: LabelingMetadata}
-  }
+  } | null = null;
+  let shouldTryOpenAI = false;
 
   // get analysis from anthropic integration and image colors in parallel
   const [labelPassagesResponseAnthropic, colors] = await Promise.all([
@@ -76,27 +77,96 @@ export const processSong = async (
     getImageColors({url: song.album.image.url})
   ]);
 
+  console.log(`got analysis from anthropic for song ${song.name} by ${song.primaryArtist.name}`);
+
   if (labelPassagesResponseAnthropic.status === "success") {
-    successfuLabelPassagesResponse = labelPassagesResponseAnthropic;
+    const {
+      normalizedPassages: anthropicNormalizedPassages,
+      numDiscarded: anthropicNumDiscarded
+    } = await _normalizePassages({
+      song,
+      normalizedSongLyrics,
+      unnormalizedPassages: labelPassagesResponseAnthropic.content.passages,
+      labeledBy: "anthropic.claude-instant-v1"
+    })
+
+    console.log(
+      `normalized passages from anthropic for song ${song.name} by ${song.primaryArtist.name}`
+    );
+
+    if (anthropicNumDiscarded > 0) {
+      console.log(
+        // eslint-disable-next-line max-len
+        `discarded ${anthropicNumDiscarded} passages for song: ${song.primaryArtist.name}: ${song.name}`
+      );
+      shouldTryOpenAI = true;
+    }
+
+    successfuLabelPassagesResponse = {
+      ...labelPassagesResponseAnthropic,
+      numDiscarded: anthropicNumDiscarded,
+      content: {
+        ...labelPassagesResponseAnthropic.content,
+        passages: anthropicNormalizedPassages,
+      }
+    }
   } else {
-    // try open AI if for some reason anthropic fails
+    shouldTryOpenAI = true
+    console.log(
+      `anthropic error labeling passages for song: ${song.primaryArtist.name}: ${song.name}`
+    )
+  }
+
+  if (shouldTryOpenAI) {
+    // try open AI if for some reason anthropic fails or some anthropic passages are invalid
     const labelPassagesOpenAIResponse = await labelPassagesOpenAI({lyrics: unnormalizedSongLyrics});
     if (labelPassagesOpenAIResponse.status === "success") {
-      successfuLabelPassagesResponse = labelPassagesOpenAIResponse;
-    } else {
+      const {
+        normalizedPassages: openaiNormalizedPassages,
+        numDiscarded: openaiNumDiscarded
+      } = await _normalizePassages({
+        song,
+        normalizedSongLyrics,
+        unnormalizedPassages: labelPassagesOpenAIResponse.content.passages,
+        labeledBy: "gpt-3.5-turbo",
+      });
+
       console.log(
-        `error labeling passages for song: ${song.primaryArtist.name}: ${song.name}`
-      )
-      await markSongAsNotIndexed({song, reason: "error_labeling", indexTriggeredBy: triggeredBy});
-      return;
+        `normalized passages from openai for song ${song.name} by ${song.primaryArtist.name}`
+      );
+
+      // if the anthropic call failed or had a greater number of invalid passages, use the
+      // openai response
+      if (
+        successfuLabelPassagesResponse == null || 
+        openaiNumDiscarded < successfuLabelPassagesResponse.numDiscarded
+      ) {
+        console.log(`using openai response for song ${song.name} by ${song.primaryArtist.name}`);
+        successfuLabelPassagesResponse = {
+          ...labelPassagesOpenAIResponse,
+          numDiscarded: openaiNumDiscarded,
+          content: {
+            ...labelPassagesOpenAIResponse.content,
+            passages: openaiNormalizedPassages,
+          }
+        }
+      } 
     }
+  } 
+   
+  if (successfuLabelPassagesResponse == null) {
+    console.log(
+      `error labeling passages for song: ${song.primaryArtist.name}: ${song.name}`
+    )
+    await markSongAsNotIndexed({song, reason: "error_labeling", indexTriggeredBy: triggeredBy});
+    return;
   }
 
   const {
-    sentiments: songSentiments, passages: unnormalizedPassages, metadata: labelingMetadata
+    sentiments: songSentiments, passages: unvectorizedPassages, metadata: labelingMetadata
   } = successfuLabelPassagesResponse.content;
 
-  if (unnormalizedPassages.length === 0) {
+  if (unvectorizedPassages.length === 0) {
     console.log(
       `no passages found for song: ${song.primaryArtist.name}: ${song.name}`
     )
@@ -116,48 +186,12 @@ export const processSong = async (
     {
       song,
       songSentiments,
-      unnormalizedPassages,
+      unvectorizedPassages,
     }
   )}`);
 
-  const normalizedSongLyrics = normalizeSongLyrics(unnormalizedSongLyrics);
-  const normalizedPassages: LabeledPassage[] = unnormalizedPassages.map((passage) => {
-    const normalizedPassageLyrics = normalizePassageLyrics({
-      normalizedSongLyrics,
-      passageLyrics: passage.lyrics,
-    });
-
-    if (normalizedPassageLyrics == null) {
-      console.log(
-        // eslint-disable-next-line max-len
-        `passage lyrics not found in song lyrics for song: ${song.primaryArtist.name}: ${song.name}; passage lyrics: ${passage.lyrics}`
-      )
-      db.collection("orphan-passages").doc(uuidForPassage({
-        lyrics: passage.lyrics,
-        songName: song.name,
-        artistName: song.primaryArtist.name,
-      })).set({
-        songId: song.id,
-        songName: song.name,
-        artistId: song.primaryArtist.id,
-        artistName: song.primaryArtist.name,
-        passageLyrics: passage.lyrics,
-        normalizedSongLyrics,
-      });
-      return null;
-    }
-
-    return {
-      ...passage,
-      lyrics: normalizedPassageLyrics,
-      metadata: {
-        ...passage.metadata,
-      },
-    }
-  }).filter((passage) => passage != null) as LabeledPassage[];
-
   const vectorizedPassages = await vectorizePassages({labeledPassages: [
-    ...normalizedPassages,
+    ...unvectorizedPassages,
     // include the full song as a passage since it may be useful for semantic search
     {
       ...addMetadataToPassage({
@@ -176,7 +210,7 @@ export const processSong = async (
       songSentiments,
       songLyrics: normalizedSongLyrics,
       albumColors: colors,
-      unvectorizedPassages: normalizedPassages,
+      unvectorizedPassages,
       vectorizedPassages,
       labelingMetadata
     }
@@ -187,7 +221,8 @@ export const processSong = async (
     {song, sentiments: songSentiments, labeledBy: labelingMetadata.labeledBy}
   );
   console.log(`updated song ${song.primaryArtist.name}: ${song.name} with sentiments in db`);
-};
+}
+
 
 // *** PRIVATE HELPERS ***
 const assertEnvironmentVariables = () => {
@@ -386,4 +421,57 @@ const updateSongAfterIndexing = async ({song, sentiments, labeledBy}: {
     sentiments,
     labeledBy,
   });
+}
+
+const _normalizePassages = async ({song, normalizedSongLyrics, unnormalizedPassages, labeledBy}: {
+  song: Song,
+  normalizedSongLyrics: string,
+  unnormalizedPassages: LabeledPassage[],
+  labeledBy: string,
+}) => {
+  const db = await getFirestoreDb();
+
+  let numDiscarded = 0;
+
+  const normalizedPassages = unnormalizedPassages.map((passage) => {
+    const normalizedPassageLyrics = normalizePassageLyrics({
+      normalizedSongLyrics,
+      passageLyrics: passage.lyrics,
+    });
+
+    if (normalizedPassageLyrics == null) {
+      console.log(
+        // eslint-disable-next-line max-len
+        `passage lyrics not found in song lyrics for song: ${song.primaryArtist.name}: ${song.name}; passage lyrics: ${passage.lyrics}`
+      )
+      numDiscarded++;
+      db.collection("orphan-passages").doc(uuidForPassage({
+        lyrics: passage.lyrics,
+        songName: song.name,
+        artistName: song.primaryArtist.name,
+      })).set({
+        songId: song.id,
+        songName: song.name,
+        artistId: song.primaryArtist.id,
+        artistName: song.primaryArtist.name,
+        passageLyrics: passage.lyrics,
+        normalizedSongLyrics,
+        labeledBy,
+      });
+      return null;
+    }
+
+    return {
+      ...passage,
+      lyrics: normalizedPassageLyrics,
+      metadata: {
+        ...passage.metadata,
+      },
+    }
+  }).filter((passage) => passage != null) as LabeledPassage[];
+
+  return {
+    normalizedPassages,
+    numDiscarded,
+  }
 }
