@@ -92,6 +92,10 @@ const MainScreen = () => {
     !getUserRequest.data?.hasSpotifyAuth &&
     spotifyAuthStatus !== 'succeeded';
 
+  console.log(
+    `dataisloading: ${dataIsLoading}, recommendationsRequestStatus: ${recommendationsRequestStatus}, getUserRequest.status: ${getUserRequest.status}, recentLikesRequest.status: ${recentLikesRequest.status}, spotifyAuthStatus: ${spotifyAuthStatus}`,
+  );
+
   if (showSpotifyLogin) {
     return <SpotifyLogin handleSpotifyLogin={handleSpotifyLogin} />;
   }

@@ -15,22 +15,23 @@ const PendingRecommendations = (props: Props) => {
 
   return (
     <View style={styles.container}>
-      <AppearingView duration={500}>
+      <AppearingView duration={1000}>
         <IconButton
           text="you are connected"
           icon={
             <Icon
               name="checkmark-circle-outline"
-              size={24}
+              size={36}
               color="white"
               style={styles.connectedIcon}
             />
           }
           style={styles.connectedBadge}
+          textStyle={styles.connectedBadgeText}
         />
       </AppearingView>
       <AppearingView
-        delay={500}
+        delay={1000}
         duration={1000}
         style={styles.recommendationsContainer}>
         <Text style={{...textStyleCommon, ...styles.recommendationsText}}>
@@ -38,7 +39,7 @@ const PendingRecommendations = (props: Props) => {
         </Text>
         {notificationStatus === 'granted' ? (
           <Text style={{...textStyleCommon, ...styles.recommendationsText}}>
-            you will receive your first notification shortly
+            you will receive a notification when they are ready
           </Text>
         ) : (
           <TextLink
@@ -72,6 +73,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingLeft: 16,
     paddingRight: 24,
+    height: 72,
+    borderRadius: 36,
+  },
+  connectedBadgeText: {
+    fontSize: 20,
   },
   connectedIcon: {
     marginRight: 8,
@@ -84,12 +90,13 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   recommendationsText: {
-    fontSize: 18,
+    marginTop: 12,
+    fontSize: 20,
     color: '#333333',
     textAlign: 'center',
   },
   linkText: {
-    fontSize: 18,
+    fontSize: 20,
     color: 'blue',
   },
 });

@@ -1,33 +1,34 @@
 import {useDeviceId} from '../../utility/contexts/device_id';
-import React from 'react';
+import React, {memo} from 'react';
 import {Image, StyleSheet, Text, View} from 'react-native';
 import IconButton from '../common/IconButton';
 import AppearingView from '../common/AppearingView';
 import {textStyleCommon} from '../../utility/helpers/text';
+const spotifyIcon = require('../../assets/spotify_icon_white.png');
 
 type Props = {
   handleSpotifyLogin: ({deviceId}: {deviceId: string}) => Promise<void>;
 };
 
 const SpotifyLogin = (props: Props) => {
+  console.log('rendering SpotifyLogin');
+
   const {handleSpotifyLogin} = props;
   const deviceId = useDeviceId();
 
   return (
     <View style={styles.container}>
-      <IconButton
-        style={styles.spotifyButton}
-        onPress={() => handleSpotifyLogin({deviceId})}
-        icon={
-          <Image
-            source={require('../../assets/spotify_icon_white.png')}
-            style={styles.spotifyIcon}
-          />
-        }
-        text="connect with spotify"
-      />
+      <AppearingView duration={1000}>
+        <IconButton
+          style={styles.spotifyButton}
+          textStyle={styles.spotifyButtonText}
+          onPress={() => handleSpotifyLogin({deviceId})}
+          icon={<Image source={spotifyIcon} style={styles.spotifyIcon} />}
+          text="connect with spotify"
+        />
+      </AppearingView>
       <AppearingView
-        delay={500}
+        delay={1000}
         duration={1000}
         style={styles.commentaryContainer}>
         <Text style={{...textStyleCommon, ...styles.commentaryText}}>
@@ -55,20 +56,26 @@ const styles = StyleSheet.create({
     paddingRight: 24,
     alignSelf: 'center',
     marginBottom: 12,
+    height: 64,
+    borderRadius: 32,
+  },
+  spotifyButtonText: {
+    fontSize: 20,
   },
   spotifyIcon: {
-    width: 24,
-    height: 24,
+    width: 36,
+    height: 36,
     marginRight: 12,
   },
   commentaryContainer: {
     maxWidth: '80%',
   },
   commentaryText: {
-    fontSize: 18,
+    marginTop: 12,
+    fontSize: 20,
     color: '#333333',
     textAlign: 'center',
   },
 });
 
-export default SpotifyLogin;
+export default memo(SpotifyLogin, () => true);

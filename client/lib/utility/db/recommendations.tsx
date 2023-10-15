@@ -63,12 +63,8 @@ export const useRecommendationsRequest = () => {
   // the recommendations if either no recommendations are set yet or the data that is set is
   // stale
   const shouldUpdateRecommendationsOnFocus = (docSnap: DocumentSnapshot) => {
-    return (
-      // if there's no data loaded, it's always ok to set new data
-      !recommendationsRequestStatus.current.startsWith('loaded') ||
-      // if there is data loaded, only set new data if it's different from the old data
-      isNewDataAvailable({newSnap: docSnap})
-    );
+    // if there is data loaded, only set new data if it's different from the old data
+    return isNewDataAvailable({newSnap: docSnap});
   };
 
   const setRecommendations = async (docSnap: DocumentSnapshot) => {
@@ -135,7 +131,10 @@ export const useRecommendationsRequest = () => {
           setRecommendationsRequestStatus('pending_reload');
         } else if (
           // if we don't actually have data yet, we can just update immediately
-          recommendationsRequestStatus.current === 'loaded_with_no_data'
+          ['loaded_with_no_data', 'error'].includes(
+            recommendationsRequestStatus.current,
+          ) &&
+          isNewDataAvailable({newSnap: d})
         ) {
           setRecommendations(d);
         }
@@ -158,7 +157,6 @@ export const useRecommendationsRequest = () => {
           nextAppState === 'active'
         ) {
           if (recommendationsRequestStatus.current.startsWith('loaded')) {
-            // we should not override our successfully loaded data with an error
             await maybeUpdateThenContinuouslyCheckForUpdatesOnFocus({
               isInitialLoad: false,
             });
