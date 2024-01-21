@@ -9,6 +9,7 @@ import statsReducer from './stats/slice';
 import {enableMapSet} from 'immer';
 import {requestedBundleChangeMiddleware} from './requested_bundle_change/middleware';
 import {logTimingMiddleware} from './timing/middleware';
+import _ from 'lodash';
 
 enableMapSet();
 
@@ -45,22 +46,20 @@ const rootReducer = (
       ...newState,
       bundles: {
         ...newState.bundles,
-        bundles: originalState.bundles.bundles,
-        bundleKeyToPassageKey: originalState.bundles.bundleKeyToPassageKey,
+        bundles: _.cloneDeep(originalState.bundles.bundles),
+        bundleKeyToPassageKey: _.cloneDeep(
+          originalState.bundles.bundleKeyToPassageKey,
+        ),
       },
     };
 
     Object.entries(newState.bundles.bundles).forEach(([bundleKey, bundle]) => {
       if (['top', 'artist', 'sentiment'].includes(bundle.info.type)) {
+        console.log('deleting', bundle.info.key);
         delete newState.bundles.bundles[bundleKey];
         delete newState.bundles.bundleKeyToPassageKey[bundleKey];
       }
     });
-
-    console.log(
-      Object.values(originalState.bundles.bundles).map(b => b.info.type),
-    );
-    console.log(Object.values(newState.bundles.bundles).map(b => b.info.type));
 
     newState.bundles.bundleKeyToPassageKey =
       originalState.bundles.bundleKeyToPassageKey;

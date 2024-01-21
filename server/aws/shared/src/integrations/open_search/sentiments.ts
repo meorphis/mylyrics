@@ -176,10 +176,11 @@ export const getTopSentimentsWithTopArtistsInInterval = async (
 // been seen yet, so this function gives us a good idea of which sentiments have a lot
 // of content for getRecommendationsForSentiments to work with
 export const getScoredSentiments = async (
-  {userId, recentListens}:
+  {userId, recentListens, excludeSongIds}:
     {
       userId: string
       recentListens: Record<string, {songs?: Array<string>, artists?: Array<string>} | undefined>,
+      excludeSongIds?: string[],
     }
 ): Promise<{
     sentiment: string,
@@ -201,6 +202,15 @@ export const getScoredSentiments = async (
         "function_score": {
           "query": {
             "function_score": {
+              "query": {
+                "bool": {
+                  "must_not": [
+                    // do not return songs that the user has already seen passages from with this
+                    // sentiment attached (either currently or before)
+                    {"ids": {"values": excludeSongIds}},
+                  ]
+                },
+              },
               "functions": boosts,
               "score_mode": "sum",
               "boost_mode": "replace",

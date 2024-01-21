@@ -62,6 +62,11 @@ const SENTIMENT_VALUES: Record<string, Sentiment> = {
     group: "spine",
     value: "positive",
   },
+  "despair": {
+    name: "despair",
+    group: "eyes",
+    value: "negative",
+  },
   "desperation": {
     name: "desperation",
     group: "gut",

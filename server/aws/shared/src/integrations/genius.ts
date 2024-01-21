@@ -129,7 +129,7 @@ const getLyricsUrl = async ({song} : {song: Song}) : Promise<GetLyricsUrlRespons
   };
 }
 
-const getLyricsFromUrl = async (url: string): Promise<GetLyricsResponse> => {
+export const getLyricsFromUrl = async (url: string): Promise<GetLyricsResponse> => {
   const lyricsResponse = await axios.get(url);
   const lyricsHTML = lyricsResponse.data;
 

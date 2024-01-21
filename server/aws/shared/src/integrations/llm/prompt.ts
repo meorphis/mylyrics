@@ -3,7 +3,8 @@ import { VALID_SENTIMENTS } from "../../utility/sentiments";
 
 // we refer to sentiment themes as "floopters" in our prompt in order to steer the LLM away from
 // its preconceived notions about what a sentiment is and instead select from our curated list
-export const LABEL_PASSAGES_SYSTEM_MESSAGE = `The following nouns are considered "floopters": ${VALID_SENTIMENTS.join(", ")}.
+// (filter out despair since Anthropic tends to overuse it - even when we exclude it!)
+export const LABEL_PASSAGES_SYSTEM_MESSAGE = `The following nouns are considered "floopters": ${VALID_SENTIMENTS.filter(s => s !== "despair").join(", ")}.
 
 You analyze song lyrics by selecting the most iconic, short passages and tagging them with the most closely related floopters.
 

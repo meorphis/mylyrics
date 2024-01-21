@@ -34,21 +34,22 @@ export const processUsers = async ({minute}: {minute: number}) => {
 
   const db = await getFirestoreDb();
 
-  const newUsers = await db.collection("users")
-    .where("seed", "==", null)
-    .where("spotifyAuth", "!=", null).get();
+  const [newUsers, existingUsers] = await Promise.all([
+    db.collection("users")
+      .where("seed", "==", null)
+      .where("spotifyAuth", "!=", null).get(),
+    db.collection("users").where("seed", "==", minute).get(),
+  ]);
+
+  console.log(
+    `found ${newUsers.docs.length} new users and ${existingUsers.docs.length} existing users`
+  );
 
   await Promise.all(newUsers.docs.map((d) => {
     db.collection("users").doc(d.ref.id).set({
       seed: minute,
     }, {merge: true})
   }));
-
-  console.log(`found ${newUsers.docs.length} new users`);
-
-  const existingUsers = await db.collection("users").where("seed", "==", minute).get();
-
-  console.log(`found ${existingUsers.docs.length} existing users`);
 
   const errors: unknown[] = [];
 
@@ -309,7 +310,6 @@ const processOneUser = async (
 
   await createProcessSongTasks({songs: enrichedSongsToProcess, userId});
 
-  // if we haven't refreshed recommendations in the last ~24 hours, do so
   if (shouldRefresh({
     userId,
     isNew,
@@ -325,7 +325,7 @@ const processOneUser = async (
 
       // add a delay so that ideally some of the songs we just added to the queue will be
       // processed before we refresh recommendations
-      delaySeconds: 2 * 60,
+      delaySeconds: 3 * 60,
     })
   }
 }
@@ -604,7 +604,7 @@ const shouldRefresh = ({userId, isNew, lastRefreshedAt, timezoneOffset, hasRecen
 
   const noon = new Date(now - timezoneOffset).setHours(12, 0, 0, 0);
 
-  if (lastRefreshedAt < noon) {
+  if (now < noon) {
     // do not send a notif in the morning
     return false;
   }
@@ -614,9 +614,9 @@ const shouldRefresh = ({userId, isNew, lastRefreshedAt, timezoneOffset, hasRecen
     return true;
   }
 
-  const fourPm = new Date(now - timezoneOffset).setHours(4, 0, 0, 0);
+  const fourPm = new Date(now - timezoneOffset).setHours(16, 0, 0, 0);
 
-  if (lastRefreshedAt < fourPm) {
+  if (now < fourPm) {
     // wait a while to see if we can send a notif around the time the user is
     // listening to music
     return false;
