@@ -1,0 +1,10 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "react-native-reanimated-carousel": "3.5.1"
+  },
+  "changesets": [
+    "proud-zebras-jump"
+  ]
+}
