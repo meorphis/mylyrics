@@ -1,4 +1,5 @@
 import {
+  COMPUTE_NOTIF_PROMPT,
   GET_ARTIST_EMOJI_EXAMPLE_COMPLETIONS,
   GET_ARTIST_EMOJI_SYSTEM_MESSAGE,
   GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE,
@@ -12,7 +13,9 @@ import {
   LabeledPassage, Recommendation, VectorizedAndLabeledPassage
 } from "../../utility/types";
 import { getSecretString } from "../aws";
-import { ChatCompletionRequestMessageRoleEnum, Configuration, OpenAIApi } from "openai";
+import { 
+  ChatCompletionRequestMessageRoleEnum, ChatCompletionResponseMessageRoleEnum, Configuration, OpenAIApi
+} from "openai";
 import { cachedFunction } from "../../utility/cache";
 import { LabelPassagesOutput, labelPassages } from "./label_passages";
 
@@ -111,6 +114,35 @@ export const computeProphecy = async (
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return completionObject.data.choices[0].message!.content!;  
+}
+
+export const computeAnalysis = async (
+  {passages, model} : {passages: Recommendation[], model: "gpt-4-turbo-preview"}
+) => {
+  const openai = await getOpenAIClient();
+  const completionObject = await openai.createChatCompletion({
+    messages: [
+      {role: "system", content: COMPUTE_NOTIF_PROMPT},
+      ...passages.map((p) => ({
+        role: "user" as ChatCompletionResponseMessageRoleEnum, content: 
+          `Artist: ${p.song.artists[0].name}
+
+          Full Lyrics: ${p.song.lyrics}
+
+          Passage Lyrics: ${p.lyrics}`
+      }))
+    ],
+    ...DEFAULT_OPEN_AI_PARAMS,
+    temperature: 1.0,
+    model,
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const content = completionObject.data.choices[0].message!.content!;
+
+  console.log(`received response from open AI: ${content}`)
+
+  return content;
 }
 
 // gets an emoji (or sometimes a string of multiple emojis) that most closely represents an artist

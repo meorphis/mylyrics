@@ -2,8 +2,11 @@ import {
   getExpoPushTokenAsync,
   getPermissionsAsync,
   requestPermissionsAsync,
+  addNotificationResponseReceivedListener
 } from 'expo-notifications';
 import {useEffect, useState} from 'react';
+import { useDispatch } from 'react-redux';
+import { requestAutoflip } from '../redux/card_flip/slice';
 
 // requests permissions from the user to send push notifications if permissions
 // have not been determined yet and returns the current status of permissions
@@ -43,3 +46,15 @@ export const useNotifications = () => {
 
   return {notificationStatus, expoPushToken};
 };
+
+// export const useNotificationHandlers = () => {
+//   const dispatch = useDispatch();
+
+//   useEffect(() => {
+//     const subscription = addNotificationResponseReceivedListener(() => {
+//       console.log('notification clicked!')
+//       dispatch(requestAutoflip())
+//     });
+//     return () => subscription.remove();
+//   }, []);
+// }

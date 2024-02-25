@@ -9,7 +9,7 @@ export type LyricCardMeasurement = {
 
 // lyric cards are rendered in multiple places in the UI with different layout
 // characteristics, so we have to make multiple measurements
-export type LyricCardMeasurementContext = 'MAIN_SCREEN' | 'SHARE_BOTTOM_SHEET';
+export type LyricCardMeasurementContext = 'MAIN_SCREEN' | 'SHARE_BOTTOM_SHEET' | 'ANALYSIS_MAIN_SCREEN' | 'ANALYSIS_SHARE_BOTTOM_SHEET';
 
 // info for how to render various part of the LyricCard
 export type ScaleType = {

@@ -39,13 +39,157 @@ const NUMBER_OF_RECOMMENDATIONS_FOR_TOP_TRACKS = 10;
 const MAX_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 10;
 const MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST = 5;
 
+export const getDailyPassageRecommendations = async (
+  {
+    userId,
+    recentListens,
+    topSpotifyArtists,
+    topSpotifySongs,
+    featuredArtistIdOptions,
+    shouldUseFiveSentiments,
+    excludeSentiments,
+    excludeSongIds,
+  } : {
+    userId: string,
+    recentListens: Record<string, {songs?: string[]; artists?: string[];}>,
+    topSpotifyArtists: Artist[],
+    topSpotifySongs: SimplifiedSong[],
+    featuredArtistIdOptions: string[],
+    shouldUseFiveSentiments: boolean,
+    excludeSentiments: string[],
+    excludeSongIds: string[],
+  }
+) => {
+  const topPassageSearchResults = (await getSearchResultsForTopPassages({
+    userId,
+    recentListens,
+    topArtistNames: topSpotifyArtists.map((artist) => artist.name),
+    topSpotifySongIds: topSpotifySongs.map((t) => t.id),
+    excludeSongIds,
+  })).slice(0, 5);
+
+  let attemptsRemaining = 3;
+
+  while (attemptsRemaining > 0) {
+    attemptsRemaining -= 1;
+
+    const primaryResultChoice = singleWeightedRandomChoice(
+      topPassageSearchResults, topPassageSearchResults.map((r) => r.score)
+    );
+
+    let potentialFeaturedArtist: {
+      id: string,
+      name: string,
+      emoji: string,
+    } | null = null;
+    const artist = primaryResultChoice.song.artists[0];
+
+    let potentialFeaturedArtistSearchResults: SearchResult[] = [];
+    if (featuredArtistIdOptions.includes(artist.id)) {
+      const potentialResults = await potentialFeaturedArtistResults({artistId: artist.id});
+      if (potentialResults) {
+        potentialFeaturedArtistSearchResults = potentialResults.results;
+        potentialFeaturedArtist = potentialResults.featuredArtist;
+      }
+    }
+
+    if (potentialFeaturedArtist && Math.random() <= 0.2) {
+      return {
+        recommendations: parseSearchResults({
+          results: [
+            {
+              ...primaryResultChoice,
+              type: "artist",
+            },
+            ...potentialFeaturedArtistSearchResults.filter((r) => r.song.id !== primaryResultChoice.song.id)
+          ],
+          getBundleInfos: (passage: LabeledPassage) => [{
+            type: "artist",
+            key: "artist",
+            group: "featured",
+            artist: {
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              name: potentialFeaturedArtist!.name,
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              emoji: potentialFeaturedArtist!.emoji,
+            }
+          },
+          ...getSentimentBundleInfos(passage),
+          ]
+        }),
+        recommendationSentiments: null,
+        featuredArtist: potentialFeaturedArtist,
+      }
+    }
+
+    const primaryResultChoiceSentiments = primaryResultChoice.passage.sentiments;
+
+    const scoredSentiments = await getScoredSentiments({
+      userId,
+      recentListens,
+    });
+
+    const candidateSentiments = scoredSentiments.filter(
+      (s) => s.count >= 5 &&
+        primaryResultChoiceSentiments.includes(s.sentiment) &&
+        !excludeSentiments.includes(s.sentiment)
+    );
+
+    if (candidateSentiments.length === 0) {
+      continue;
+    }
+
+    const sentimentChoice = singleWeightedRandomChoice(
+      candidateSentiments, candidateSentiments.map((s) => s.score)
+    ).sentiment;
+
+    const sentimentChoices = [sentimentChoice];
+    if (shouldUseFiveSentiments) {
+      while (sentimentChoices.length < 5) {
+        const validChoices = scoredSentiments.filter((s) =>
+          s.count >= 5 && !sentimentChoices.includes(s.sentiment)
+        );
+        if (validChoices.length === 0) {
+          break;
+        }
+        sentimentChoices.push(singleWeightedRandomChoice(validChoices, validChoices.map((s) => s.score)).sentiment)
+      }
+    }
+
+    const searchResults = await getSearchResultsForSentiments({
+      userId,
+      sentiments: sentimentChoices,
+      recentListens,
+      excludeSongIds: [primaryResultChoice.song.id],
+    })
+
+    return {
+      recommendations: parseSearchResults({
+        results: [{
+          ...primaryResultChoice,
+          type: "sentiment",
+        }, ...searchResults],
+        getBundleInfos: getSentimentBundleInfos,
+      }),
+      recommendationSentiments: sentimentChoices,
+      featuredArtist: null,
+    }
+  }
+
+  return {
+    recommendations: [],
+    recommendationSentiments: null,
+    featuredArtist: null,
+  };
+}
+
 // *** PUBLIC INTERFACE ***
 // function to get recommendations for a given user, across a few different categories:
 // - featured artist: random passages from a song by one of the user's top artists
 // - top passages: passages from the user's most frequent plays
 // - sentiments: passages that match a given sentiment, generally that the user has
 //    not seen in their recommendations before
-export const getDailyPassageRecommendations = async (
+export const getDailyPassageRecommendationsOld = async (
   {
     userId,
     recentListens,
@@ -71,8 +215,6 @@ export const getDailyPassageRecommendations = async (
     emoji: string,
   } | null,
 }> => {
-  const db = await getFirestoreDb();
-
   let featuredArtist: {
     id: string,
     name: string,
@@ -82,45 +224,11 @@ export const getDailyPassageRecommendations = async (
   let artistSearchResults: SearchResult[] = [];
 
   for (const potentialFeaturedArtistId of featuredArtistIdOptions) {
-    const docSnap = await db.collection("artists").doc(potentialFeaturedArtistId).get()
-    const data = docSnap.data();
-
-    if ((data?.numIndexedSongs ?? 0) < MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST) {
-      console.log(`artist ${potentialFeaturedArtistId} has too few indexed songs`);
-      continue;
-    }
-
-    const potentialFeaturedArtist = {
-      id: potentialFeaturedArtistId,
-      emoji: data && data.artistEmoji,
-      name: data && data.artistName,
-    }
-
-    if (!potentialFeaturedArtist.emoji) {
-      console.log(`no emoji found for artist ${potentialFeaturedArtistId}`)
-      continue;
-    }
-
-    if (!potentialFeaturedArtist.name) {
-      console.log(`no name found for artist ${potentialFeaturedArtistId}`)
-      continue;
-    }
-    
-    console.log(`looking for passages for artist ${potentialFeaturedArtist.name}`)
-
-    // TODO: should be able to use ID here
-    const results = await getSearchResultsForArtist({
-      artistName: potentialFeaturedArtist.name,
-    });
-
-    // this should be covered by the numIndexedSongs check above, but let's double-check
-    if (results.length >= MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST) {
-      featuredArtist = potentialFeaturedArtist;
-      artistSearchResults = results;
-      console.log(`found ${results.length} results for artist ${featuredArtist.name}`)
+    const potentialResults = await potentialFeaturedArtistResults({artistId: potentialFeaturedArtistId});
+    if (potentialResults) {
+      artistSearchResults = potentialResults.results;
+      featuredArtist = potentialResults.featuredArtist;
       break;
-    } else {
-      console.log(`only found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
     }
   }
 
@@ -129,7 +237,7 @@ export const getDailyPassageRecommendations = async (
     recentListens,
     topArtistNames: topSpotifyArtists.map((artist) => artist.name),
     topSpotifySongIds: topSpotifySongs.map((t) => t.id),
-    excludeArtistName: featuredArtist?.name ?? null
+    excludeArtistName: featuredArtist?.name ?? undefined
   });
   console.log(`found ${topPassageSearchResults.length} top passages for user ${userId}`);
 
@@ -193,6 +301,55 @@ export const getDailyPassageRecommendations = async (
     recommendationSentiments: recommendationSentiments || [],
     featuredArtist,
   };
+}
+
+export const potentialFeaturedArtistResults = async (
+  {artistId}: {artistId: string}
+) => {
+  const db = await getFirestoreDb();
+
+  const docSnap = await db.collection("artists").doc(artistId).get()
+  const data = docSnap.data();
+
+  if ((data?.numIndexedSongs ?? 0) < MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST) {
+    console.log(`artist ${artistId} has too few indexed songs`);
+    return false;
+  }
+
+  const potentialFeaturedArtist = {
+    id: artistId,
+    emoji: data && data.artistEmoji,
+    name: data && data.artistName,
+  }
+
+  if (!potentialFeaturedArtist.emoji) {
+    console.log(`no emoji found for artist ${artistId}`)
+    return null;
+  }
+
+  if (!potentialFeaturedArtist.name) {
+    console.log(`no name found for artist ${artistId}`)
+    return null;
+  }
+  
+  console.log(`looking for passages for artist ${potentialFeaturedArtist.name}`)
+
+  // TODO: should be able to use ID here
+  const results = await getSearchResultsForArtist({
+    artistName: potentialFeaturedArtist.name,
+  });
+
+  // this should be covered by the numIndexedSongs check above, but let's double-check
+  if (results.length >= MIN_NUMBER_OF_RECOMMENDATIONS_FOR_FEATURED_ARTIST) {
+    console.log(`found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
+    return {
+      featuredArtist: potentialFeaturedArtist,
+      results,
+    };
+  } else {
+    console.log(`only found ${results.length} results for artist ${potentialFeaturedArtist.name}`)
+    return null;
+  }
 }
 
 // looks up a particular passage by song name, artist name, and line numbers
@@ -452,8 +609,10 @@ const getSearchResultsForArtist = async (
             {
               "function_score": {
                 "query": {
-                  "match": {
-                    "primaryArtist.name": artistName
+                  "match_phrase": {
+                    "primaryArtist.name": {
+                      "query": artistName
+                    }
                   }
                 },
                 "functions": [
@@ -489,12 +648,13 @@ const getSearchResultsForArtist = async (
 // - we apply a penalty if the song was very recently shown to the user, but we
 //    are much more tolerant of repeats here than we are in getRecommendationsForSentiments
 const getSearchResultsForTopPassages = async (
-  {userId, recentListens, topArtistNames, topSpotifySongIds, excludeArtistName}: {
+  {userId, recentListens, topArtistNames, topSpotifySongIds, excludeArtistName, excludeSongIds}: {
     userId: string,
     recentListens: Record<string, {songs?: string[]; artists?: string[];}>,
     topArtistNames: string[],
     topSpotifySongIds: string[],
-    excludeArtistName: string | null
+    excludeArtistName?: string,
+    excludeSongIds?: string[]
   }
 ): Promise<SearchResult[]> => {
   const db = await getFirestoreDb();
@@ -598,7 +758,8 @@ const getSearchResultsForTopPassages = async (
                     "match": {
                       "primaryArtist.name": excludeArtistName
                     }
-                  }
+                  },
+                  ...(excludeSongIds ? [{"ids": {"values": excludeSongIds}}] : []),
                 ]
               }
             }} : 
@@ -1128,7 +1289,9 @@ const multiWeightedRandomChoice = (options: Record<string, number>, maxK: number
   const optionsCopy = {...options};
 
   while (ret.length < maxK && Object.keys(optionsCopy).length > 0) {
-    const item = singleWeightedRandomChoice(optionsCopy);
+    const items = Object.keys(optionsCopy);
+    const weights = Object.values(optionsCopy);
+    const item = singleWeightedRandomChoice(items, weights);
     ret.push(item);
     delete optionsCopy[item];
   }
@@ -1138,11 +1301,8 @@ const multiWeightedRandomChoice = (options: Record<string, number>, maxK: number
 
 // returns a random item from the given options, where the probability of choosing
 // each item is proportional to its weight
-const singleWeightedRandomChoice = (options: Record<string, number>) => {
+const singleWeightedRandomChoice = <T>(items: T[], weights: number[]): T => {
   let i;
-
-  const items = Object.keys(options);
-  const weights = Object.values(options);
 
   for (i = 1; i < weights.length; i++)
     weights[i] += weights[i - 1];

@@ -136,7 +136,7 @@ export const getTopTracksForUser = async (
 }
 
 // client for Spotify
-const getSpotifyClient = (accessToken: string) => {
+export const getSpotifyClient = (accessToken: string) => {
   const sp = new SpotifyWebApi();
   sp.setAccessToken(accessToken);
   return sp;

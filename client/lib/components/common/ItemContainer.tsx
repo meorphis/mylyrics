@@ -2,7 +2,7 @@
 // we have a consistent look for both
 
 import React from 'react';
-import {StyleSheet, View, ViewStyle} from 'react-native';
+import {LayoutChangeEvent, StyleSheet, View, ViewStyle} from 'react-native';
 import ThemeType from '../../types/theme';
 import LinearGradient from 'react-native-linear-gradient';
 import {isColorLight} from '../../utility/helpers/color';
@@ -14,13 +14,14 @@ type Props = {
   ignoreFlex?: boolean;
   omitBorder?: boolean;
   children: React.ReactNode;
+  onLayout?: (event: LayoutChangeEvent) => void;
 };
 
 export const ITEM_CONTAINER_BORDER_WIDTH = 6;
 export const ITEM_CONTAINER_BORDER_RADIUS = 36;
 
 const ItemContainer = (props: Props) => {
-  const {theme, style, containerRef, omitBorder, ignoreFlex} = props;
+  const {theme, style, containerRef, omitBorder, ignoreFlex, onLayout} = props;
   const {backgroundColor} = theme;
   const borderWidth = omitBorder ? 0 : ITEM_CONTAINER_BORDER_WIDTH;
   const borderColor = isColorLight(backgroundColor) ? '#00000040' : '#ffffff40';
@@ -35,6 +36,7 @@ const ItemContainer = (props: Props) => {
         borderColor,
         ...style,
       }}
+      onLayout={onLayout}
       ref={containerRef}>
       <LinearGradient
         // eslint-disable-next-line react-native/no-inline-styles

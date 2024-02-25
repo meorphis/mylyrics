@@ -17,6 +17,7 @@ import {
 import {useDispatch} from 'react-redux';
 import {setBottomSheetTriggered} from '../../utility/redux/shareable_passage/slice';
 import {setMaxContentHeight} from '../../utility/redux/measurement/slice';
+import { useIsFlipped } from '../../utility/redux/card_flip/selectors';
 
 export const BOTTOM_SHEET_HANDLE_HEIGHT = 24;
 
@@ -26,6 +27,10 @@ const ShareBottomSheet = () => {
 
   const bottomSheetTriggered = useBottomSheetTriggered();
   const shareablePassage = useShareablePassage();
+  const isFlipped = useIsFlipped({
+    bundleKey: shareablePassage.passage.bundleKey,
+    passageKey: shareablePassage.passage.passageKey
+  });
   const dispatch = useDispatch();
 
   const {passage, customization} = shareablePassage;
@@ -84,6 +89,12 @@ const ShareBottomSheet = () => {
         value: maxPassageContainerHeight,
       }),
     );
+    dispatch(
+      setMaxContentHeight({
+        context: 'ANALYSIS_SHARE_BOTTOM_SHEET',
+        value: maxPassageContainerHeight,
+      }),
+    )
   }, [maxPassageContainerHeight]);
 
   // OTHER CONFIGURATION
@@ -130,6 +141,7 @@ const ShareBottomSheet = () => {
           setHeight={setLyricCardHeight}
           viewShotRef={viewShotRef}
           sharedTransitionKey={sharedTransitionKey}
+          isFlipped={isFlipped}
         />
       </View>
       <ControlPanel

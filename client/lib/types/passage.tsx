@@ -1,4 +1,4 @@
-import {BundleInfo} from './bundle';
+import {BundleInfo, BundlePassageType} from './bundle';
 import {SongType} from './song';
 import ThemeType, {ThemeSelection} from './theme';
 
@@ -12,18 +12,18 @@ export type RawPassageType = {
   song: SongType;
   bundleInfos: BundleInfo[];
   type: RawPassageTypeType;
-};
+  analysis?: string;
+}
 
 // has a theme and a passage key, allowing it to be rendered in a LyricCard
 export type PassageType = RawPassageType & {
   theme: ThemeType;
   passageKey: string;
-  hydrated: false;
 }
 
 // a passage with some optional customization metadata to alter its rendering
 export type CustomizablePassageType = {
-  passage: PassageType;
+  passage: BundlePassageType;
   customization: {
     themeSelection: ThemeSelection;
     textColorSelection: string;

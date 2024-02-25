@@ -59,7 +59,6 @@ export const getBundlesFromFlatPassages = async (
         sortKey: idx,
         bundleKey: bundleInfo.key,
         theme: getThemeFromAlbumColors(passage.song.album.image.colors),
-        hydrated: false,
       });
     });
   });

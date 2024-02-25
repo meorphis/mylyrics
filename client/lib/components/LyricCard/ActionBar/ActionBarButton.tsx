@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import ThemeType from '../../../types/theme';
 import React, {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -85,6 +85,16 @@ const ActionBarButton = (props: Props) => {
     };
   });
 
+  const inner = <React.Fragment><IconClass name={icon} size={40} color={theme.textColors[0]} />
+    <Text style={{...styles.actionText, color: theme.textColors[0]}}>
+      {text}
+    </Text>
+  </React.Fragment>
+
+  if (isDisabled) {
+    return <View style={styles.actionButton}>{inner}</View>
+  }
+
   return (
     <AnimatedPressable
       style={[animatedStyle, styles.actionButton]}
@@ -111,10 +121,7 @@ const ActionBarButton = (props: Props) => {
           }
         });
       }}>
-      <IconClass name={icon} size={40} color={theme.textColors[0]} />
-      <Text style={{...styles.actionText, color: theme.textColors[0]}}>
-        {text}
-      </Text>
+      {inner}
     </AnimatedPressable>
   );
 };

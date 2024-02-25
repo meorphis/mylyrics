@@ -39,7 +39,7 @@ const GroupSelectorBottomSheet = (props: Props) => {
           ...styles.container,
           paddingBottom: insets.bottom + 12,
         }}>
-        {putAtFrontOfArray(groupsToShow, i => i === 'essentials').map(group => (
+        {putAtBackOfArray(groupsToShow, i => i === 'essentials').map(group => (
           <View
             style={{
               ...styles.group,
@@ -91,14 +91,18 @@ const compareBundles = (a: BundleInfo, b: BundleInfo) => {
 
 // re-arranges the list, putting the item at the front of the array but retaining
 // the same sorting order when considering the items as a loop
-const putAtFrontOfArray = (array: any[], isItem: (i: any) => boolean) => {
+const putAtBackOfArray = (array: any[], isItem: (i: any) => boolean) => {
   const index = array.findIndex(isItem);
 
   if (index === -1) {
     return array;
   }
 
-  return [...array.slice(index), ...array.slice(0, index)];
+  if (index === array.length - 1) {
+    return array;
+  }
+
+  return [...array.slice(index + 1), ...array.slice(0, index + 1)];
 };
 
 const groupDisplayName = (group: string) => {

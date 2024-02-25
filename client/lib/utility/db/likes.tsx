@@ -161,7 +161,6 @@ export const useRecentLikesRequest = () => {
           sortKey: entry.data().timestamp,
           bundleKey: 'likes',
           theme: getThemeFromAlbumColors(rawPassage.song.album.image.colors),
-          hydrated: false,
         };
       });
 

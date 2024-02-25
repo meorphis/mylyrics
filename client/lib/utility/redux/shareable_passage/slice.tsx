@@ -7,6 +7,7 @@ import {
   getDefaultTextColorForThemeSelection,
 } from '../../helpers/theme';
 import {getPassageId} from '../../helpers/passage';
+import { BundlePassageType } from '../../../types/bundle';
 
 // allows setting and modifying the customization of a passage that can be shared
 // externally from the app
@@ -65,9 +66,7 @@ export const shareablePassagetSlice = createSlice({
     builder.addCase(setActiveBundlePassage, (state, action) => {
       const passage = {
         ...action.payload,
-      } as PassageType & {bundleKey?: string};
-
-      delete passage.bundleKey;
+      } as BundlePassageType;
 
       state.passage = {
         passage,

@@ -36,7 +36,7 @@ const BottomBar = (props: Props) => {
       activeBundle.info.type === 'user_made') &&
     previouslyActiveBundleKey != null;
   const shouldShowGroupSelectorButton = activeBundle.info.type !== 'user_made';
-  const shouldShowProphecyButton = activeBundle.info.type !== 'user_made';
+  // const shouldShowProphecyButton = activeBundle.info.type !== 'user_made';
   const shouldShowStatsButton =
     hasTopSentiments && activeBundle.info.type !== 'user_made';
 
@@ -79,7 +79,7 @@ const BottomBar = (props: Props) => {
             style={styles.button}
           />
         )}
-        {shouldShowProphecyButton && (
+        {/* {shouldShowProphecyButton && (
           <ThemeButton
             onPress={() => {
               prophecyBottomSheetRef.current?.expand();
@@ -88,7 +88,7 @@ const BottomBar = (props: Props) => {
             textStyle={styles.buttonText}
             style={styles.button}
           />
-        )}
+        )} */}
       </SafeAreaView>
       <GroupSelectorBottomSheet bottomSheetRef={groupSelectorBottomSheetRef} />
       {hasTopSentiments && (

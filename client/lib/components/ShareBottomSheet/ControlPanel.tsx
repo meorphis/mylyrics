@@ -33,6 +33,7 @@ import {
 import {useShareablePassage} from '../../utility/redux/shareable_passage/selectors';
 import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { useIsFlipped } from '../../utility/redux/card_flip/selectors';
 
 export const CONTROL_PANEL_HEIGHTS = {
   margin_top: 24,
@@ -60,6 +61,12 @@ const ControlPanel = (props: Props) => {
     passage,
     customization: {themeSelection, textColorSelection},
   } = useShareablePassage()!;
+
+  const isFlipped = useIsFlipped({
+    bundleKey: passage.bundleKey,
+    passageKey: passage.passageKey
+  });
+
   const dispatch = useDispatch();
 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -143,7 +150,7 @@ const ControlPanel = (props: Props) => {
               iconName="color-palette"
               text="edit colors"
             />
-            <EditorButton
+            {!isFlipped && <EditorButton
               onPress={() => {
                 navigation.navigate('FullLyrics', {
                   customizablePassage: {
@@ -166,7 +173,7 @@ const ControlPanel = (props: Props) => {
               IconClass={MaterialIcon}
               iconName="expand"
               text="change lyrics"
-            />
+            />}
           </View>
         </Animated.View>
         <Animated.View style={[styles.themeEditor, themeEditorOpacity]}>

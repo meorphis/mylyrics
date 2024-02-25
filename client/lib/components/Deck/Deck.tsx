@@ -2,7 +2,7 @@ import React, {memo, useEffect} from 'react';
 import {Dimensions, StyleSheet, Text, View} from 'react-native';
 import Carousel from '../../forks/react-native-reanimated-carousel/src';
 import {WithSharedTransitionKey} from '../LyricCard/hoc/WithSharedTransitionKey';
-import LyricCard from '../LyricCard/LyricCard';
+import { FlippableLyricCard}  from '../LyricCard/LyricCard';
 import {
   useActivePassageKeyForBundle,
   useBundle,
@@ -16,9 +16,10 @@ import {BundlePassageType} from '../../types/bundle';
 import {getEmptyDeckText} from '../../utility/helpers/deck';
 import {useSharedValue} from 'react-native-reanimated';
 import AnimatedThemeText from '../common/AnimatedThemeText';
+import { useShouldAutoFlip } from '../../utility/redux/card_flip/selectors';
 
 const PassageItemComponent = memo(
-  WithSharedTransitionKey(LyricCard),
+  WithSharedTransitionKey(FlippableLyricCard),
   () => true,
 );
 
@@ -74,7 +75,7 @@ const Deck = (props: Props) => {
 
   return (
     <React.Fragment>
-      {isActiveBundle && bundle.info.type === 'user_made' && (
+      {isActiveBundle && (
         <AnimatedThemeText />
       )}
 
@@ -111,8 +112,9 @@ const Deck = (props: Props) => {
           return (
             <PassageItemComponent
               passage={item as BundlePassageType}
+              bundleKey={bundleKey}
               measurementContext="MAIN_SCREEN"
-              style={{marginTop: itemMarginTop, marginHorizontal}}
+              containerStyle={{marginTop: itemMarginTop, marginHorizontal}}
             />
           );
         }}

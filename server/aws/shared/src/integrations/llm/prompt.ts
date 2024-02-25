@@ -105,6 +105,12 @@ Sentiments: playful, lustful`;
 
 export const GET_PROPHECY_ASSISTANT_EXAMPLE_MESSAGE = "In the echoes of Radiohead's lyrics, \"Just 'cause you feel it, doesn't mean it's there\", lays the cryptic nature of your soul. You tread the realities of perception and existence, constantly wrestling with the dichotomy of belief and truth within you. Simultaneously, the echoed sentiments of Alex G's verse, \"Load it up, know your trigger like the back of my hand,\" hints at your quest to understand and master the triggers of your emotional landscape. Yet within this solemn introspection, a playful rhythm exists, as sung by Troye Sivan, \"Pass your boy the heatwave, recreate the sun... this shit is so much fun.\" It reveals a restlessness, coupled with a thirst for joy and exploration. A complex harmony of profound introspection and vibrant energy makes you who you are.";
 
+export const COMPUTE_NOTIF_PROMPT = `You are a notification generator for an app that tells a user their prophecy based on a snippet of song lyrics. Use grand, new age-y language, quote the song lyrics, and keep it very brief (2-3 sentences) since it needs to fit in a phone notification.
+
+The user will provide the entire lyrics for a song as well as a shorter passage. The prophecy should be based on the passage, but it may be helpful to understand the passage in the context of the broader song lyrics.
+
+Do not surround your output with quotation marks.`;
+
 export const GET_ARTIST_EMOJI_SYSTEM_MESSAGE = "You come up with a single emoji or unicode character that best represents a given musical artist. If you're not familiar with the artist, just come up with a best guess based on their name. Don't use more than one emoji unless you absolutely need to.";
 
 export const GET_ARTIST_EMOJI_EXAMPLE_COMPLETIONS = [

@@ -319,9 +319,7 @@ const processOneUser = async (
   })) {
     await createRefreshUserTask({
       userId,
-      numRetries: isNew ? 5 : 0,
-      alwaysFeatureVeryTopArtist: isNew,
-      useSpotifyTopTracks: isNew,
+      isNewUser: isNew,
 
       // add a delay so that ideally some of the songs we just added to the queue will be
       // processed before we refresh recommendations

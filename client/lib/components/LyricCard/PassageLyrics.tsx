@@ -17,6 +17,7 @@ type Props = {
   sharedTransitionKey: string;
   measurementContext: LyricCardMeasurementContext;
   containerRef: React.RefObject<View>;
+  shouldUseAnalysis?: boolean;
 };
 
 // renders the lyrics for a passage, including performing some measurements that are
@@ -24,7 +25,7 @@ type Props = {
 const PassageLyrics = (props: Props) => {
   console.log(`rendering PassageLyrics for ${props.passage.song.name}`);
 
-  const {passage, measurementContext, containerRef} = props;
+  const {passage, measurementContext, containerRef, shouldUseAnalysis} = props;
   const {song, lyrics, theme, passageKey} = passage;
   const {scale, scaleFinalized} = useScaleInfo({
     globalPassageKey: passageKey,
@@ -34,39 +35,47 @@ const PassageLyrics = (props: Props) => {
   const ref = useRef<View>(null);
   const dispatch = useDispatch();
 
-  const splitLyrics = splitLyricsWithPassages({
+  const splitLyrics = shouldUseAnalysis ? [{
+    lineText: passage.analysis,
+    passageInfo: {
+      passageStart: 0,
+      passageEnd: passage.analysis!.length,
+      passageLine: 0,
+    }
+  }] : splitLyricsWithPassages({
     songLyrics: song.lyrics,
     passageLyrics: lyrics,
   });
 
   const {lyricsFontSize} = scale;
 
+  const onLayout = (height: number) => {
+    ref.current?.measureLayout(containerRef.current!, (__, y) => {
+      dispatch(
+        setLyricsYPosition({
+          globalPassageKey: passage.passageKey,
+          context: measurementContext,
+          value: y,
+        }),
+      );
+    });
+
+    dispatch(
+      setContentHeight({
+        globalPassageKey: passage.passageKey,
+        context: measurementContext,
+        // lyrics height + album image height + SongInfo bottom padding height
+        value: height,
+      }),
+    );
+  }
+
   return (
     <View
-      style={styles.container}
-      onLayout={(event: LayoutChangeEvent) => {
-        ref.current!.measureLayout(containerRef.current!, (__, y) => {
-          dispatch(
-            setLyricsYPosition({
-              globalPassageKey: passage.passageKey,
-              context: measurementContext,
-              value: y,
-            }),
-          );
-        });
-
-        dispatch(
-          setContentHeight({
-            globalPassageKey: passage.passageKey,
-            context: measurementContext,
-            // lyrics height + album image height + SongInfo bottom padding height
-            value: event.nativeEvent.layout.height,
-          }),
-        );
-      }}
+      style={shouldUseAnalysis ? styles.overflowScroll : styles.overflowHidden}
+      onLayout={shouldUseAnalysis ? undefined : (event: LayoutChangeEvent) => onLayout(event.nativeEvent.layout.height)}
       ref={ref}>
-      {splitLyrics
-        .map(({lineText, passageInfo}, index) => {
+      {splitLyrics.map(({lineText, passageInfo}, index: number) => {
           if (passageInfo == null) {
             return null;
           }
@@ -79,13 +88,18 @@ const PassageLyrics = (props: Props) => {
               // sharedTransitionTag={`${sharedTransitionKey}:lyrics:${passageLine}:text`}
               // sharedTransitionStyle={lyricsTransition}
               key={index}
+              onLayout={shouldUseAnalysis ? (event: LayoutChangeEvent) => {
+                const height = event.nativeEvent.layout.height
+                setTimeout(() => onLayout(height), 200)
+               } : undefined}
               // eslint-disable-next-line react-native/no-inline-styles
               style={{
                 ...textStyleCommon,
                 ...styles.lyricsLine,
+                ...(shouldUseAnalysis ? styles.italics : {}),
                 fontSize: lyricsFontSize,
                 color: theme.textColors[0],
-                opacity: scaleFinalized ? 1 : 0,
+                opacity: scaleFinalized  ? 1 : 0,
               }}>
               {lineText.slice(passageInfo.passageStart, passageInfo.passageEnd)}
             </Text>
@@ -108,17 +122,24 @@ const PassageLyrics = (props: Props) => {
 // });
 
 const styles = StyleSheet.create({
-  container: {
+  overflowHidden: {
     overflow: 'hidden',
+  },
+  overflowScroll: {
+    overflow: 'scroll',
   },
   lyricsLine: {
     color: 'lightgrey',
   },
+  italics: {
+    fontStyle: 'italic',
+  }
 });
 
 export default memo(
   PassageLyrics,
   (prev, next) =>
     _.isEqual(prev.passage.theme, next.passage.theme) &&
-    prev.passage.lyrics === next.passage.lyrics,
+    prev.passage.lyrics === next.passage.lyrics &&
+    prev.shouldUseAnalysis === next.shouldUseAnalysis
 );

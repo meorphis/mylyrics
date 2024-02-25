@@ -9,6 +9,11 @@ const expo = new Expo();
 export const sendRecommendationNotif = async (
   {userId, recommendation}: {userId: string, recommendation: Recommendation}
 ) => {
+  if (!recommendation.analysis) {
+    console.log("no analysis for recommendation - returning");
+    return;
+  }
+
   const db = await getFirestoreDb();
   const user = await db.collection("users").doc(userId).get();
   const expoPushToken = user.data()?.expoPushToken;
@@ -22,7 +27,12 @@ export const sendRecommendationNotif = async (
       to: expoPushToken,
       title: `${recommendation.song.name} by ${recommendation.song.artists[0].name}`,
       sound: "default",
-      body: recommendation.lyrics,
+      body: recommendation.analysis,
+      data: {
+        songName: recommendation.song.name,
+        artistName: recommendation.song.artists[0].name,
+        colors: recommendation.song.album.image.colors
+      }
     },
   ]);
 
@@ -44,6 +54,7 @@ export const sendRecommendationNotif = async (
     time: Date.now(),
     consumed: false,
     source: "pushMessage",
+    content: recommendation.analysis,
   });
 
   return true;

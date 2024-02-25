@@ -129,6 +129,7 @@ export type BundleInfo = {
 
 export type Recommendation = {
     lyrics: string,
+    analysis?: string,
     song: {
         id: string,
         album: {

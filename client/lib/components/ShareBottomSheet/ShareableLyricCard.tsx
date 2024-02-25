@@ -1,7 +1,7 @@
 import ViewShot from 'react-native-view-shot';
 import {StyleSheet, View} from 'react-native';
 import React from 'react';
-import LyricCard from '../LyricCard/LyricCard';
+import {BareLyricCard} from '../LyricCard/LyricCard';
 import {PassageType} from '../../types/passage';
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
   setHeight: ({lyricCardHeight}: {lyricCardHeight: number}) => void;
   viewShotRef: React.RefObject<ViewShot>;
   sharedTransitionKey: string;
+  isFlipped: boolean;
 };
 
 // a lyric card optimized visually for sharing and wrapped in a ViewShot to
@@ -16,7 +17,7 @@ type Props = {
 const ShareableLyricCard = (props: Props) => {
   console.log(`rendering ShareablePassageItem ${props.passage.song.name}`);
 
-  const {passage, sharedTransitionKey, setHeight, viewShotRef} = props;
+  const {passage, sharedTransitionKey, setHeight, viewShotRef, isFlipped} = props;
 
   return (
     <View
@@ -29,14 +30,15 @@ const ShareableLyricCard = (props: Props) => {
       }}>
       <ViewShot ref={viewShotRef} options={{format: 'png'}}>
         {passage && (
-          <LyricCard
+          <BareLyricCard
             key={passage.passageKey}
             passage={passage}
-            measurementContext="SHARE_BOTTOM_SHEET"
+            measurementContext={isFlipped ? "ANALYSIS_SHARE_BOTTOM_SHEET" : "SHARE_BOTTOM_SHEET"}
             sharedTransitionKey={sharedTransitionKey}
             omitActionBar
             ignoreFlex
             omitBorder
+            shouldUseAnalysis={isFlipped}
           />
         )}
       </ViewShot>

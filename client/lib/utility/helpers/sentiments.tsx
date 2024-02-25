@@ -36,6 +36,15 @@ export const getBundleEmoji = (info: BundleInfo) => {
   }
 };
 
+export const doesEmojiLookGoodAsASilhouette = (emoji: string) => {
+  return [
+    '🙏', '🔪', '🎉', '🖕', '💪',
+    '🤷‍♀️', '🧩', '✨', '💔', '🔍',
+    '🦋', '🔥', '🕊️', '🌱', '💕',
+    '🌹', '🦄', '🏆', '🔫'
+  ].includes(emoji);
+}
+
 const sentimentToEmojiMap: Record<string, string> = {
   affection: '🥰',
   alienation: '👽',

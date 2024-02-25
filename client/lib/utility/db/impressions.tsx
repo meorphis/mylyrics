@@ -1,4 +1,4 @@
-import {collection, doc, runTransaction} from '@firebase/firestore';
+import {collection, doc, runTransaction, updateDoc} from '@firebase/firestore';
 import {BundleType} from '../../types/bundle';
 import db from './firestore';
 import {useEffect, useState} from 'react';
@@ -44,6 +44,12 @@ const maybeUpdateImpressions = async ({
   deviceId: string;
   bundle: BundleType;
 }) => {
+  updateDoc(
+    doc(collection(db, 'user-recommendations'), deviceId),
+    {lastRequestAt: Date.now()}
+  )
+  
+
   if (!['sentiment', 'top'].includes(bundle.info.type)) {
     return;
   }

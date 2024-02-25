@@ -1,16 +1,20 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug iOS Hermes",
-            "request": "launch",
-            "type": "reactnativedirect",
-            "cwd": "${workspaceFolder}",
-            "platform": "ios",
-            "useHermesEngine": true,
-            "skipFiles": [
-                "${workspaceFolder}/node_modules/**/*.js"
-            ]
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Hermes application - Experimental",
+      "request": "attach",
+      "type": "reactnativedirect",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug iOS Hermes",
+      "request": "launch",
+      "type": "reactnativedirect",
+      "cwd": "${workspaceFolder}",
+      "platform": "ios",
+      "target": "9C973999-598F-4220-8599-695B9C5F68B4",
+      "sourceMaps": true
+    }
+  ]
 }

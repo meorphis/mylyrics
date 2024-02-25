@@ -5,7 +5,7 @@
  * @format
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 // import {useSpotifyAuthentication} from './lib/spotify_auth';
 import {DeviceIdProvider} from './lib/utility/contexts/device_id';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
