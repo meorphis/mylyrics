@@ -12,16 +12,8 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		5008F5142B5DBBAB00D92A61 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5008F5132B5DBBAB00D92A61 /* WidgetKit.framework */; };
-		5008F5162B5DBBAB00D92A61 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5008F5152B5DBBAB00D92A61 /* SwiftUI.framework */; };
-		5008F5192B5DBBAB00D92A61 /* LyricsWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5008F5182B5DBBAB00D92A61 /* LyricsWidgetBundle.swift */; };
-		5008F51B2B5DBBAB00D92A61 /* LyricsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5008F51A2B5DBBAB00D92A61 /* LyricsWidget.swift */; };
-		5008F51D2B5DBBAB00D92A61 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5008F51C2B5DBBAB00D92A61 /* Assets.xcassets */; };
-		5008F5212B5DBBAB00D92A61 /* LyricsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5008F5122B5DBBAB00D92A61 /* LyricsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		5008F5282B5DC3A700D92A61 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5008F5272B5DC3A700D92A61 /* FirebaseFirestore */; };
 		5008F52D2B5DD3A800D92A61 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5008F52C2B5DD3A800D92A61 /* GoogleService-Info.plist */; };
 		5008F52E2B5DD3A800D92A61 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5008F52C2B5DD3A800D92A61 /* GoogleService-Info.plist */; };
-		5008F52F2B5DD3A800D92A61 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5008F52C2B5DD3A800D92A61 /* GoogleService-Info.plist */; };
 		6A182412F84EF2CD53CEA499 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CFA6311390BE9F2EB8CB4DC /* ExpoModulesProvider.swift */; };
 		7699B88040F8A987B510C191 /* libPods-MyLyrics-MyLyricsTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-MyLyrics-MyLyricsTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
@@ -41,13 +33,6 @@
 			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
 			remoteInfo = MyLyrics;
 		};
-		5008F51F2B5DBBAB00D92A61 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 5008F5112B5DBBAB00D92A61;
-			remoteInfo = LyricsWidgetExtension;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -57,7 +42,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				5008F5212B5DBBAB00D92A61 /* LyricsWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -88,14 +72,8 @@
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-MyLyrics-MyLyricsTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyLyrics-MyLyricsTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CFA6311390BE9F2EB8CB4DC /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-MyLyrics/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-MyLyrics.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyLyrics.debug.xcconfig"; path = "Target Support Files/Pods-MyLyrics/Pods-MyLyrics.debug.xcconfig"; sourceTree = "<group>"; };
-		5008F5122B5DBBAB00D92A61 /* LyricsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LyricsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5008F5132B5DBBAB00D92A61 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		5008F5152B5DBBAB00D92A61 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		5008F5182B5DBBAB00D92A61 /* LyricsWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsWidgetBundle.swift; sourceTree = "<group>"; };
-		5008F51A2B5DBBAB00D92A61 /* LyricsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsWidget.swift; sourceTree = "<group>"; };
-		5008F51C2B5DBBAB00D92A61 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		5008F51E2B5DBBAB00D92A61 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		5008F5292B5DC70400D92A61 /* LyricsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LyricsWidgetExtension.entitlements; sourceTree = "<group>"; };
 		5008F52C2B5DD3A800D92A61 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-MyLyrics.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyLyrics.release.xcconfig"; path = "Target Support Files/Pods-MyLyrics/Pods-MyLyrics.release.xcconfig"; sourceTree = "<group>"; };
 		5B7EB9410499542E8C5724F5 /* Pods-MyLyrics-MyLyricsTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyLyrics-MyLyricsTests.debug.xcconfig"; path = "Target Support Files/Pods-MyLyrics-MyLyricsTests/Pods-MyLyrics-MyLyricsTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -129,16 +107,6 @@
 				A9B2601B2AC43AE5007C14C5 /* libRNReactNativeHapticFeedback.a in Frameworks */,
 				A95338C42A624EB7005B8FC2 /* SpotifyiOS.xcframework in Frameworks */,
 				0C80B921A6F3F58F76C31292 /* libPods-MyLyrics.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		5008F50F2B5DBBAB00D92A61 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5008F5162B5DBBAB00D92A61 /* SwiftUI.framework in Frameworks */,
-				5008F5142B5DBBAB00D92A61 /* WidgetKit.framework in Frameworks */,
-				5008F5282B5DC3A700D92A61 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,17 +176,6 @@
 			name = MyLyricsTests;
 			sourceTree = "<group>";
 		};
-		5008F5172B5DBBAB00D92A61 /* LyricsWidget */ = {
-			isa = PBXGroup;
-			children = (
-				5008F5182B5DBBAB00D92A61 /* LyricsWidgetBundle.swift */,
-				5008F51A2B5DBBAB00D92A61 /* LyricsWidget.swift */,
-				5008F51C2B5DBBAB00D92A61 /* Assets.xcassets */,
-				5008F51E2B5DBBAB00D92A61 /* Info.plist */,
-			);
-			path = LyricsWidget;
-			sourceTree = "<group>";
-		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
@@ -231,12 +188,10 @@
 			isa = PBXGroup;
 			children = (
 				5008F52C2B5DD3A800D92A61 /* GoogleService-Info.plist */,
-				5008F5292B5DC70400D92A61 /* LyricsWidgetExtension.entitlements */,
 				A95338CF2A74CE53005B8FC2 /* Fonts */,
 				13B07FAE1A68108700A75B9A /* MyLyrics */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* MyLyricsTests */,
-				5008F5172B5DBBAB00D92A61 /* LyricsWidget */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
@@ -252,7 +207,6 @@
 			children = (
 				13B07F961A680F5B00A75B9A /* MyLyrics.app */,
 				00E356EE1AD99517003FC87E /* MyLyricsTests.xctest */,
-				5008F5122B5DBBAB00D92A61 /* LyricsWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -336,32 +290,11 @@
 			buildRules = (
 			);
 			dependencies = (
-				5008F5202B5DBBAB00D92A61 /* PBXTargetDependency */,
 			);
 			name = MyLyrics;
 			productName = MyLyrics;
 			productReference = 13B07F961A680F5B00A75B9A /* MyLyrics.app */;
 			productType = "com.apple.product-type.application";
-		};
-		5008F5112B5DBBAB00D92A61 /* LyricsWidgetExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 5008F5252B5DBBAB00D92A61 /* Build configuration list for PBXNativeTarget "LyricsWidgetExtension" */;
-			buildPhases = (
-				5008F50E2B5DBBAB00D92A61 /* Sources */,
-				5008F50F2B5DBBAB00D92A61 /* Frameworks */,
-				5008F5102B5DBBAB00D92A61 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = LyricsWidgetExtension;
-			packageProductDependencies = (
-				5008F5272B5DC3A700D92A61 /* FirebaseFirestore */,
-			);
-			productName = LyricsWidgetExtension;
-			productReference = 5008F5122B5DBBAB00D92A61 /* LyricsWidgetExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -378,9 +311,6 @@
 					};
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
-					};
-					5008F5112B5DBBAB00D92A61 = {
-						CreatedOnToolsVersion = 15.2;
 					};
 				};
 			};
@@ -408,7 +338,6 @@
 			targets = (
 				13B07F861A680F5B00A75B9A /* MyLyrics */,
 				00E356ED1AD99517003FC87E /* MyLyricsTests */,
-				5008F5112B5DBBAB00D92A61 /* LyricsWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -434,20 +363,12 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		5008F5102B5DBBAB00D92A61 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5008F51D2B5DBBAB00D92A61 /* Assets.xcassets in Resources */,
-				5008F52F2B5DD3A800D92A61 /* GoogleService-Info.plist in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -460,7 +381,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"../node_modules/react-native/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
+			shellScript = "set -e\n\nexport NODE_BINARY=\"/opt/homebrew/Cellar/node/21.7.2/bin/node\"\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"../node_modules/react-native/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
 		};
 		00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -653,15 +574,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		5008F50E2B5DBBAB00D92A61 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5008F5192B5DBBAB00D92A61 /* LyricsWidgetBundle.swift in Sources */,
-				5008F51B2B5DBBAB00D92A61 /* LyricsWidget.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -669,11 +581,6 @@
 			isa = PBXTargetDependency;
 			target = 13B07F861A680F5B00A75B9A /* MyLyrics */;
 			targetProxy = 00E356F41AD99517003FC87E /* PBXContainerItemProxy */;
-		};
-		5008F5202B5DBBAB00D92A61 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 5008F5112B5DBBAB00D92A61 /* LyricsWidgetExtension */;
-			targetProxy = 5008F51F2B5DBBAB00D92A61 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -737,7 +644,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-MyLyrics.debug.xcconfig */;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = MyLyrics/MyLyrics.entitlements;
@@ -768,7 +674,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-MyLyrics.release.xcconfig */;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = MyLyrics/MyLyrics.entitlements;
@@ -790,99 +695,6 @@
 				PRODUCT_NAME = MyLyrics;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
-			};
-			name = Release;
-		};
-		5008F5232B5DBBAB00D92A61 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = LyricsWidgetExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 2TYFCK36F4;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LyricsWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LyricsWidget;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.meorphis.mylyrics.LyricsWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		5008F5242B5DBBAB00D92A61 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = LyricsWidgetExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 2TYFCK36F4;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LyricsWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LyricsWidget;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				MTL_FAST_MATH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.meorphis.mylyrics.LyricsWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -963,7 +775,8 @@
 					"-ld_classic",
 					"-Wl",
 					"-ld_classic",
-					"-Wl -ld_classic ",
+					"-Wl",
+					"-ld_classic",
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
@@ -1042,7 +855,8 @@
 					"-ld_classic",
 					"-Wl",
 					"-ld_classic",
-					"-Wl -ld_classic ",
+					"-Wl",
+					"-ld_classic",
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
@@ -1071,15 +885,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		5008F5252B5DBBAB00D92A61 /* Build configuration list for PBXNativeTarget "LyricsWidgetExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				5008F5232B5DBBAB00D92A61 /* Debug */,
-				5008F5242B5DBBAB00D92A61 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "MyLyrics" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1101,14 +906,6 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		5008F5272B5DC3A700D92A61 /* FirebaseFirestore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5008F5262B5DC12C00D92A61 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFirestore;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 83CBB9F71A601CBA00E9B192 /* Project object */;
 }

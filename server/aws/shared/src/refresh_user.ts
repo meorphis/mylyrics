@@ -65,7 +65,7 @@ export const refreshUser = async ({
     lastPushedBackRecentPlaysAt,
     dayCount = 1,
     recommendations: oldRecommendations = [],
-    notificationHistory,
+    notificationHistory = [],
     sentimentsUpdatedAt = []
   } = userRecommendations;
 

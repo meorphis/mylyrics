@@ -11,7 +11,8 @@ type Props = {
   passage: PassageType;
   sharedTransitionKey: string;
   rotate: () => void;
-  shouldUseAnalysis: boolean
+  shouldUseAnalysis: boolean;
+  shouldDisableFlip: boolean
 };
 
 // section to display at the bottom of a LyricsCard with actions that the user
@@ -19,7 +20,7 @@ type Props = {
 const ActionBar = (props: Props) => {
   console.log(`rendering ActionBar ${props.passage.song.name}`);
 
-  const {passage, sharedTransitionKey, rotate, shouldUseAnalysis} = props;
+  const {passage, sharedTransitionKey, rotate, shouldUseAnalysis, shouldDisableFlip} = props;
 
   return (
     <View style={styles.actionBar}>
@@ -31,7 +32,7 @@ const ActionBar = (props: Props) => {
           passage={passage}
           sharedTransitionKey={sharedTransitionKey}
         />}
-        {passage.analysis && <RotateButton passage={passage} rotate={rotate} shouldUseAnalysis={shouldUseAnalysis} />}
+        {passage.analysis && !shouldDisableFlip && <RotateButton passage={passage} rotate={rotate} shouldUseAnalysis={shouldUseAnalysis} />}
       </View>
     </View>
   );

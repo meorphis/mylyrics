@@ -65,7 +65,7 @@ export const shareablePassagetSlice = createSlice({
   extraReducers: builder => {
     builder.addCase(setActiveBundlePassage, (state, action) => {
       const passage = {
-        ...action.payload,
+        ...action.payload.bundlePassage,
       } as BundlePassageType;
 
       state.passage = {

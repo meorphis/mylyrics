@@ -324,10 +324,10 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
                       };
 
                       dispatch(
-                        setActiveBundlePassage({
+                        setActiveBundlePassage({bundlePassage: {
                           ...newPassage,
                           passageKey: getPassageId(newPassage),
-                        }),
+                        }}),
                       );
                       navigation.goBack();
                       break;

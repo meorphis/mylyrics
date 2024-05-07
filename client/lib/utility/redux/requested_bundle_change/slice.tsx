@@ -28,7 +28,7 @@ export const requestBundleChangeSlice = createSlice({
   },
   extraReducers: builder => {
     builder.addCase(setActiveBundlePassage, (state, action) => {
-      const {bundleKey} = action.payload;
+      const {bundleKey} = action.payload.bundlePassage;
       if (state.currentlyRequestedBundleKey === bundleKey) {
         state.currentlyRequestedBundleKey = null;
       }

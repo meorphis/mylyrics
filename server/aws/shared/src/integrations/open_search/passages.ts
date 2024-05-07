@@ -364,8 +364,20 @@ export const lookupPassage = async (
       "query": {
         "bool": {
           "filter": [
-            {"match": {"name": songName}},
-            {"match": {"primaryArtist.name": artistName}},
+            {
+              "match_phrase": {
+                "name": {
+                  "query": songName
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "primaryArtist.name": {
+                  "query": artistName
+                }
+              }
+            },
           ]
         }
       },
@@ -751,14 +763,14 @@ const getSearchResultsForTopPassages = async (
       "query": {
         "function_score": {
           ...(
-            excludeArtistName ? {"query": {
+            excludeArtistName || excludeSongIds ? {"query": {
               "bool": {
                 "must_not": [
-                  {
+                  ...(excludeArtistName ? [{
                     "match": {
                       "primaryArtist.name": excludeArtistName
                     }
-                  },
+                  }] : []),
                   ...(excludeSongIds ? [{"ids": {"values": excludeSongIds}}] : []),
                 ]
               }

@@ -5,3 +5,4 @@ aws/packaged.yaml
 aws/shared/node_modules
 aws/shared/nodejs
 aws/shared/package-lock.json
+aws/shared/src/integrations/firebase/serviceAccountKey.json

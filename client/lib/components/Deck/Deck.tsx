@@ -16,7 +16,6 @@ import {BundlePassageType} from '../../types/bundle';
 import {getEmptyDeckText} from '../../utility/helpers/deck';
 import {useSharedValue} from 'react-native-reanimated';
 import AnimatedThemeText from '../common/AnimatedThemeText';
-import { useShouldAutoFlip } from '../../utility/redux/card_flip/selectors';
 
 const PassageItemComponent = memo(
   WithSharedTransitionKey(FlippableLyricCard),
@@ -73,6 +72,8 @@ const Deck = (props: Props) => {
     );
   }
 
+  const extraMargin = ["sentiment", "artist"].includes(bundle.info.type) ? 24 : 0;
+
   return (
     <React.Fragment>
       {isActiveBundle && (
@@ -81,12 +82,12 @@ const Deck = (props: Props) => {
 
       <Carousel
         ref={ref}
-        style={{...styles.carouselContainer, marginTop: deckMarginTop}}
+        style={{...styles.carouselContainer, marginTop: deckMarginTop + extraMargin}}
         loop
         data={passages}
         height={deckHeight}
         width={Dimensions.get('window').width}
-        vertical
+        vertical={false}
         mode="vertical-stack"
         modeConfig={{
           stackInterval: passages.length > 1 ? 30 : 0,
@@ -105,7 +106,7 @@ const Deck = (props: Props) => {
           const item = passages[slideIndex];
 
           if (isActiveBundle) {
-            dispatch(setActiveBundlePassage(item));
+            dispatch(setActiveBundlePassage({bundlePassage: item}));
           }
         }}
         renderItem={({item}: {item: unknown}) => {

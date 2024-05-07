@@ -26,6 +26,7 @@ export type LyricCardProps = {
   ignoreFlex?: boolean;
   omitBorder?: boolean;
   excludeBack?: boolean;
+  shouldDisableFlip?: boolean;
 };
 
 // renders a lyric card containing a passage of lyrics with song metadata and tags;
@@ -58,7 +59,10 @@ const _FlippableLyricCard = (props: LyricCardProps) => {
   useEffect(() => {
     if (shouldAutoflip) {
       dispatch(acknowledgeAutoflip());
-      setTimeout(rotate, 2000);
+
+      if (passage.analysis) {
+        rotate();
+      }
     }
   }, [shouldAutoflip])
 
@@ -155,6 +159,7 @@ export const BareLyricCard = (props: LyricCardProps & {
     cardHeightOverride,
     cardContentHeightOverride,
     shouldUseAnalysis = false,
+    shouldDisableFlip = false,
   } = props;
 
   const dispatch = useDispatch();
@@ -203,7 +208,7 @@ export const BareLyricCard = (props: LyricCardProps & {
           ...styles.passageContainer,
           flex: ignoreFlex ? 0 : 1,
         }}>
-        <SongInfo passage={passage} measurementContext={measurementContext} />
+        <SongInfo passage={passage} measurementContext={measurementContext} style={measurementContext === "ANALYSIS_MAIN_SCREEN" ? {opacity: 0.3, transform: [{scaleX: -1}]} : {}}/>
         <View
           // eslint-disable-next-line react-native/no-inline-styles
           style={{
@@ -226,6 +231,7 @@ export const BareLyricCard = (props: LyricCardProps & {
             sharedTransitionKey={sharedTransitionKey}
             rotate={rotate}
             shouldUseAnalysis={shouldUseAnalysis}
+            shouldDisableFlip={shouldDisableFlip}
           />
         </View>
       )}

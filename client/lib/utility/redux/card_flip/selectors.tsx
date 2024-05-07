@@ -2,7 +2,6 @@ import { useSelector } from "react-redux";
 import { RootState } from "..";
 import _ from "lodash";
 import { getIsFlippedKey } from "./util";
-import { isDeckReadyForDisplay } from "../../helpers/deck";
 
 export const useShouldAutoFlip = ({bundleKey, passageKey}: {bundleKey: string, passageKey: string}) => {
     return useSelector(

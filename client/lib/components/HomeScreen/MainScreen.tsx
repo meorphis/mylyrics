@@ -131,8 +131,7 @@ const MainScreenInner = memo(
   }) => {
     const dispatch = useDispatch();
     const {activeBundleKey, setLoading, dataIsLoading} = props;
-    const contentReady =
-      useIsDeckReadyForDisplay({bundleKey: activeBundleKey}) && !dataIsLoading;
+    const contentReady = useIsDeckReadyForDisplay({bundleKey: activeBundleKey}) && !dataIsLoading;
 
     const recommendationsOpacitySharedValue = useSharedValue(0);
 
