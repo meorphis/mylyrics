@@ -20,7 +20,7 @@ import { cachedFunction } from "../../utility/cache";
 import { LabelPassagesOutput, labelPassages } from "./label_passages";
 
 // *** CONSTANTS ***
-const MODEL = "gpt-3.5-turbo";
+const MODEL = "gpt-4o-mini";
 
 const DEFAULT_OPEN_AI_PARAMS = {
   model: MODEL,
@@ -56,7 +56,7 @@ export const labelPassagesOpenAI = async ({lyrics}: {lyrics: string}): Promise<{
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return completionObject.data.choices[0].message!.content!;
     },
-    modelName: "gpt-3.5-turbo",
+    modelName: "gpt-4o-mini",
   })
 }
 
@@ -117,7 +117,7 @@ export const computeProphecy = async (
 }
 
 export const computeAnalysis = async (
-  {passages, model} : {passages: Recommendation[], model: "gpt-4-turbo-preview"}
+  {passages, model} : {passages: Recommendation[], model: "gpt-4o"}
 ) => {
   const openai = await getOpenAIClient();
   const completionObject = await openai.createChatCompletion({

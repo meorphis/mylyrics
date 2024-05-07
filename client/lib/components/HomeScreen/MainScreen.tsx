@@ -22,8 +22,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useImpressionsUpdates} from '../../utility/db/impressions';
 import {useIsDeckReadyForDisplay} from '../../utility/helpers/deck';
 import {SetUserType} from '../../types/user';
-import { useDispatch } from 'react-redux';
-import { requestAutoflip } from '../../utility/redux/card_flip/slice';
 
 const MainScreen = () => {
   const {getUserRequest, makeGetUserRequest} = useGetUserRequest();
@@ -129,7 +127,7 @@ const MainScreenInner = memo(
     setLoading: (loading: boolean) => void;
     dataIsLoading: boolean;
   }) => {
-    const dispatch = useDispatch();
+    // const dispatch = useDispatch();
     const {activeBundleKey, setLoading, dataIsLoading} = props;
     const contentReady =
       useIsDeckReadyForDisplay({bundleKey: activeBundleKey}) && !dataIsLoading;
@@ -142,7 +140,7 @@ const MainScreenInner = memo(
         recommendationsOpacitySharedValue.value = withTiming(1, {
           duration: 250,
         });
-        dispatch(requestAutoflip())
+        // dispatch(requestAutoflip());
       } else {
         setLoading(true);
         recommendationsOpacitySharedValue.value = withTiming(0, {

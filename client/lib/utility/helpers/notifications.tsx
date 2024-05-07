@@ -2,11 +2,8 @@ import {
   getExpoPushTokenAsync,
   getPermissionsAsync,
   requestPermissionsAsync,
-  addNotificationResponseReceivedListener
 } from 'expo-notifications';
 import {useEffect, useState} from 'react';
-import { useDispatch } from 'react-redux';
-import { requestAutoflip } from '../redux/card_flip/slice';
 
 // requests permissions from the user to send push notifications if permissions
 // have not been determined yet and returns the current status of permissions

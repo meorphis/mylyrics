@@ -22,7 +22,7 @@ export const labelPassagesAnthropic = async ({lyrics}: {lyrics: string}): Promis
       // eslint-disable-next-line max-len
       const prompt = `\n\nHuman ${LABEL_PASSAGES_SYSTEM_MESSAGE}\n\nHuman: ${LABEL_PASSAGES_USER_EXAMPLE_MESSAGE}\n\nAssistant: ${LABEL_PASSAGES_ASSISTANT_EXAMPLE_MESSAGE}\n\nHuman: ${lyrics}\n\nAssistant:`
       const command = new InvokeModelCommand({
-        modelId: "anthropic.claude-instant-v1",
+        modelId: "anthropic.claude-3-haiku-20240307-v1:0",
         body: JSON.stringify({
           prompt: prompt,
           max_tokens_to_sample: 4096,
@@ -36,7 +36,7 @@ export const labelPassagesAnthropic = async ({lyrics}: {lyrics: string}): Promis
       const textDecoder = new TextDecoder("utf-8");
       return removeTrailingQuote(JSON.parse(textDecoder.decode(response.body)).completion);
     },
-    modelName: "anthropic.claude-instant-v1",
+    modelName: "anthropic.claude-3-haiku-20240307-v1:0",
   })
 }
 

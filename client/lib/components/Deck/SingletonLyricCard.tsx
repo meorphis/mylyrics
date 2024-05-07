@@ -33,6 +33,7 @@ export const SingletonLyricCard = () => {
         <LyricCardComponent
           passage={singletonPassage}
           measurementContext="MAIN_SCREEN"
+          shouldDisableFlip
         />
       </View>
     </SafeAreaView>

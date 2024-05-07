@@ -18,7 +18,7 @@ const RotateButton = (props: Props) => {
       onPress={rotate}
       theme={passage.theme}
       defaultState={{
-        text: shouldUseAnalysis ? "lyrics" : "prophecy",
+        text: shouldUseAnalysis ? 'lyrics' : 'prophecy',
         icon: '360',
         IconClass: MaterialIcon,
       }}

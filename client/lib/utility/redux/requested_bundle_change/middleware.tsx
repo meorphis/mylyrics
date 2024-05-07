@@ -28,7 +28,9 @@ export const requestedBundleChangeMiddleware =
         const requestedBundlePassage = requestedBundle.passages.find(
           p => p.passageKey === requestedBundlePassageKey,
         )!;
-        store.dispatch(setActiveBundlePassage(requestedBundlePassage));
+        store.dispatch(
+          setActiveBundlePassage({bundlePassage: requestedBundlePassage}),
+        );
       }
     }
   };

@@ -1,7 +1,7 @@
 // shows metadata for a song, including album art, song name, artist name, and
 // album name
 
-import {View, StyleSheet, Text} from 'react-native';
+import {View, StyleSheet, Text, ViewStyle} from 'react-native';
 import React, {memo} from 'react';
 import {textStyleCommon} from '../../utility/helpers/text';
 import _ from 'lodash';
@@ -13,13 +13,14 @@ import AlbumArt from './AlbumArt';
 type Props = {
   passage: PassageType;
   measurementContext: LyricCardMeasurementContext;
+  style?: ViewStyle;
 };
 
 // shows some metadata about a song including name, artist, album and album art
 const SongInfo = (props: Props) => {
   console.log(`rendering SongInfo ${props.passage.song.name}`);
 
-  const {passage, measurementContext} = props;
+  const {passage, measurementContext, style} = props;
   const {song, theme, passageKey} = passage;
 
   const {scale} = useScaleInfo({
@@ -32,7 +33,8 @@ const SongInfo = (props: Props) => {
   const textColor = theme.textColors[0];
 
   return (
-    <View style={{...styles.metadataRow, paddingBottom: songNameSize}}>
+    <View
+      style={{...styles.metadataRow, paddingBottom: songNameSize, ...style}}>
       <AlbumArt url={song.album.image.url} albumImageSize={albumImageSize} />
       <View style={styles.metadataText}>
         <Text

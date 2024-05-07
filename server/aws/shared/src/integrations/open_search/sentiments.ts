@@ -155,7 +155,9 @@ export const getTopSentimentsWithTopArtistsInInterval = async (
   // TODO: clean this up
   const allArtistIds = uniq(parsedResults.flatMap((r) => r.artists.map((a) => a.id)));
   const db = await getFirestoreDb();
-  const artists = await db.getAll(...allArtistIds.map((id) => db.collection("artists").doc(id)));
+  const artists = allArtistIds.length ? 
+    await db.getAll(...allArtistIds.map((id) => db.collection("artists").doc(id)))
+    : [];
   return parsedResults.map((r) => {
     return {
       sentiment: r.sentiment,

@@ -325,8 +325,10 @@ const FullLyricsScreen = ({route}: FullLyricsScreenProps) => {
 
                       dispatch(
                         setActiveBundlePassage({
-                          ...newPassage,
-                          passageKey: getPassageId(newPassage),
+                          bundlePassage: {
+                            ...newPassage,
+                            passageKey: getPassageId(newPassage),
+                          },
                         }),
                       );
                       navigation.goBack();

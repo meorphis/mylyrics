@@ -27,13 +27,13 @@ const MAX_LYRICS_WORDS = 800;
 // - sentiments: an array of overall sentiments
 // - passages: an array of passage objects each of which has a lyrics string
 //    (again delineated by newline characters) and an array of sentiments
-// can be run with either the gpt-3.5-turbo or the anthropic.claude-instant-v1 model
+// can be run with either the gpt-4o-mini or the anthropic.claude-instant-v1 model
 export const labelPassages= async (
   {lyrics, invokeModel, modelName}:
     {
         lyrics: string,
         invokeModel: ({lyrics} : {lyrics: string}) => Promise<string>,
-        modelName: "gpt-3.5-turbo" | "anthropic.claude-instant-v1"
+        modelName: "anthropic.claude-3-haiku-20240307-v1:0" | "gpt-4o-mini"
     }
 ): Promise<{
     status: "success",

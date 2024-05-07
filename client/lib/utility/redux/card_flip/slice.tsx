@@ -1,5 +1,5 @@
 import {PayloadAction, Reducer, createSlice} from '@reduxjs/toolkit';
-import { getIsFlippedKey } from './util';
+import {getIsFlippedKey} from './util';
 
 type CardFlipState = {
   should_autoflip: boolean;
@@ -20,7 +20,10 @@ export const cardFlipSlice = createSlice({
     acknowledgeAutoflip: (state: CardFlipState) => {
       state.should_autoflip = false;
     },
-    toggleFlippedState: (state: CardFlipState, action: PayloadAction<{bundleKey: string, passageKey: string}>) => {
+    toggleFlippedState: (
+      state: CardFlipState,
+      action: PayloadAction<{bundleKey: string; passageKey: string}>,
+    ) => {
       const key = getIsFlippedKey(action.payload);
       state.is_flipped[key] = !(state.is_flipped[key] ?? false);
     },

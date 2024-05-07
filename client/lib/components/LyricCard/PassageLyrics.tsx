@@ -35,17 +35,21 @@ const PassageLyrics = (props: Props) => {
   const ref = useRef<View>(null);
   const dispatch = useDispatch();
 
-  const splitLyrics = shouldUseAnalysis ? [{
-    lineText: passage.analysis,
-    passageInfo: {
-      passageStart: 0,
-      passageEnd: passage.analysis!.length,
-      passageLine: 0,
-    }
-  }] : splitLyricsWithPassages({
-    songLyrics: song.lyrics,
-    passageLyrics: lyrics,
-  });
+  const splitLyrics = shouldUseAnalysis
+    ? [
+        {
+          lineText: passage.analysis,
+          passageInfo: {
+            passageStart: 0,
+            passageEnd: passage.analysis!.length,
+            passageLine: 0,
+          },
+        },
+      ]
+    : splitLyricsWithPassages({
+        songLyrics: song.lyrics,
+        passageLyrics: lyrics,
+      });
 
   const {lyricsFontSize} = scale;
 
@@ -68,14 +72,20 @@ const PassageLyrics = (props: Props) => {
         value: height,
       }),
     );
-  }
+  };
 
   return (
     <View
       style={shouldUseAnalysis ? styles.overflowScroll : styles.overflowHidden}
-      onLayout={shouldUseAnalysis ? undefined : (event: LayoutChangeEvent) => onLayout(event.nativeEvent.layout.height)}
+      onLayout={
+        shouldUseAnalysis
+          ? undefined
+          : (event: LayoutChangeEvent) =>
+              onLayout(event.nativeEvent.layout.height)
+      }
       ref={ref}>
-      {splitLyrics.map(({lineText, passageInfo}, index: number) => {
+      {splitLyrics
+        .map(({lineText, passageInfo}, index: number) => {
           if (passageInfo == null) {
             return null;
           }
@@ -88,10 +98,14 @@ const PassageLyrics = (props: Props) => {
               // sharedTransitionTag={`${sharedTransitionKey}:lyrics:${passageLine}:text`}
               // sharedTransitionStyle={lyricsTransition}
               key={index}
-              onLayout={shouldUseAnalysis ? (event: LayoutChangeEvent) => {
-                const height = event.nativeEvent.layout.height
-                setTimeout(() => onLayout(height), 200)
-               } : undefined}
+              onLayout={
+                shouldUseAnalysis
+                  ? (event: LayoutChangeEvent) => {
+                      const height = event.nativeEvent.layout.height;
+                      setTimeout(() => onLayout(height), 200);
+                    }
+                  : undefined
+              }
               // eslint-disable-next-line react-native/no-inline-styles
               style={{
                 ...textStyleCommon,
@@ -99,7 +113,7 @@ const PassageLyrics = (props: Props) => {
                 ...(shouldUseAnalysis ? styles.italics : {}),
                 fontSize: lyricsFontSize,
                 color: theme.textColors[0],
-                opacity: scaleFinalized  ? 1 : 0,
+                opacity: scaleFinalized ? 1 : 0,
               }}>
               {lineText.slice(passageInfo.passageStart, passageInfo.passageEnd)}
             </Text>
@@ -133,7 +147,7 @@ const styles = StyleSheet.create({
   },
   italics: {
     fontStyle: 'italic',
-  }
+  },
 });
 
 export default memo(
@@ -141,5 +155,5 @@ export default memo(
   (prev, next) =>
     _.isEqual(prev.passage.theme, next.passage.theme) &&
     prev.passage.lyrics === next.passage.lyrics &&
-    prev.shouldUseAnalysis === next.shouldUseAnalysis
+    prev.shouldUseAnalysis === next.shouldUseAnalysis,
 );

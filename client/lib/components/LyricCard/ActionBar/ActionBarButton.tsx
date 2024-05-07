@@ -85,14 +85,17 @@ const ActionBarButton = (props: Props) => {
     };
   });
 
-  const inner = <React.Fragment><IconClass name={icon} size={40} color={theme.textColors[0]} />
-    <Text style={{...styles.actionText, color: theme.textColors[0]}}>
-      {text}
-    </Text>
-  </React.Fragment>
+  const inner = (
+    <React.Fragment>
+      <IconClass name={icon} size={40} color={theme.textColors[0]} />
+      <Text style={{...styles.actionText, color: theme.textColors[0]}}>
+        {text}
+      </Text>
+    </React.Fragment>
+  );
 
   if (isDisabled) {
-    return <View style={styles.actionButton}>{inner}</View>
+    return <View style={styles.actionButton}>{inner}</View>;
   }
 
   return (

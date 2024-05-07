@@ -8,7 +8,10 @@ import {interpolate, useDerivedValue} from 'react-native-reanimated';
 import AnimatedLinearGradient from './AnimatedLinearGradient';
 import {useActiveBundle} from '../../utility/redux/bundles/selectors';
 import {useLyricCardSize} from '../../utility/helpers/lyric_card';
-import { doesEmojiLookGoodAsASilhouette, getBundleEmoji } from '../../utility/helpers/sentiments';
+import {
+  doesEmojiLookGoodAsASilhouette,
+  getBundleEmoji,
+} from '../../utility/helpers/sentiments';
 
 const AnimatedThemeText = () => {
   return (
@@ -29,7 +32,7 @@ const GradientText = (props: Omit<TextProps, 'children'>) => {
 
   let topText = '';
   let bottomText = '';
-    
+
   if (bundle.info.type === 'user_made') {
     const {title, creator, recipient} = bundle.info;
 
@@ -39,11 +42,13 @@ const GradientText = (props: Omit<TextProps, 'children'>) => {
   } else if (bundle.info.type === 'sentiment') {
     const {sentiment} = bundle.info;
     const emoji = getBundleEmoji(bundle.info);
-    topText = `lyrics of ${sentiment}${emoji && doesEmojiLookGoodAsASilhouette(emoji) ? ' ' + emoji : ''}`
+    topText = `lyrics of ${sentiment}${
+      emoji && doesEmojiLookGoodAsASilhouette(emoji) ? ' ' + emoji : ''
+    }`;
   } else if (bundle.info.type === 'artist') {
     const {artist} = bundle.info;
     const {name} = artist;
-    topText = `lyrics by ${name}`
+    topText = `lyrics by ${name}`;
   } else {
     return null;
   }

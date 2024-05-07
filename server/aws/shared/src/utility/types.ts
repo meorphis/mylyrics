@@ -8,7 +8,7 @@ type LabeledPassageMetadata = {
 }
 
 export type LabelingMetadata = {
-    labeledBy: "gpt-3.5-turbo" | "anthropic.claude-instant-v1",
+    labeledBy: "gpt-4o-mini" | "anthropic.claude-3-haiku-20240307-v1:0",
 }
 
 // a passage of lyrics that has been labeled with sentiments

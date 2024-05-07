@@ -18,3 +18,13 @@ export const useAllRequestedBundles = () => {
     _.isEqual,
   );
 };
+
+export const useIsOnlyUserMadeRequested = () => {
+  return useSelector(
+    (state: RootState) =>
+      state.requestedBundleChange.allRequestedBundleKeys.every(
+        bundleKey => state.bundles.bundles[bundleKey].info.type === 'user_made',
+      ),
+    _.isEqual,
+  );
+};

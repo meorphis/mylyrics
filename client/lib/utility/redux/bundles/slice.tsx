@@ -84,16 +84,30 @@ export const bundlesSlice = createSlice({
     },
     setActiveBundlePassage: (
       state: BundlesState,
-      action: PayloadAction<BundlePassageType>,
+      action: PayloadAction<{
+        bundlePassage: BundlePassageType;
+        deferToTypes?: string[];
+      }>,
     ) => {
-      const currentlyActiveBundleKey = state.activeBundleKey;
+      const {bundlePassage, deferToTypes} = action.payload;
 
-      const {bundleKey, passageKey} = action.payload;
+      const currentlyActiveBundleKey = state.activeBundleKey;
+      const currentlyActiveBundle = state.bundles[currentlyActiveBundleKey];
+
+      if (
+        deferToTypes &&
+        deferToTypes.includes(currentlyActiveBundle?.info.type)
+      ) {
+        state.previousActiveBundleKey = bundlePassage.bundleKey;
+        return;
+      }
+
+      const {bundleKey, passageKey} = bundlePassage;
 
       // TODO: clean this up
       if (bundleKey === 'singleton') {
         state.bundles.singleton = {
-          passages: [action.payload as BundlePassageType],
+          passages: [bundlePassage as BundlePassageType],
           info: {
             group: undefined,
             key: 'singleton',

@@ -1,5 +1,5 @@
 import React, {memo, useEffect, useRef, useState} from 'react';
-import {StyleSheet, View, ViewStyle, Text, LayoutChangeEvent} from 'react-native';
+import {StyleSheet, View, ViewStyle, LayoutChangeEvent} from 'react-native';
 import SongInfo from './SongInfo';
 import PassageLyrics from './PassageLyrics';
 import ActionBar from './ActionBar/ActionBar';
@@ -10,9 +10,18 @@ import {LyricCardMeasurementContext} from '../../types/measurement';
 import {useDispatch, useSelector} from 'react-redux';
 import {setMaxContentHeight} from '../../utility/redux/measurement/slice';
 import {RootState} from '../../utility/redux';
-import Animated, { SharedValue, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { acknowledgeAutoflip, toggleFlippedState } from '../../utility/redux/card_flip/slice';
-import { useShouldAutoFlip } from '../../utility/redux/card_flip/selectors';
+import Animated, {
+  SharedValue,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import {
+  acknowledgeAutoflip,
+  toggleFlippedState,
+} from '../../utility/redux/card_flip/slice';
+import {useShouldAutoFlip} from '../../utility/redux/card_flip/selectors';
 
 export const PASSAGE_ITEM_PADDING = 36;
 
@@ -26,6 +35,7 @@ export type LyricCardProps = {
   ignoreFlex?: boolean;
   omitBorder?: boolean;
   excludeBack?: boolean;
+  shouldDisableFlip?: boolean;
 };
 
 // renders a lyric card containing a passage of lyrics with song metadata and tags;
@@ -42,85 +52,111 @@ const _FlippableLyricCard = (props: LyricCardProps) => {
 
   const dispatch = useDispatch();
 
-  const shouldAutoflip = useShouldAutoFlip({bundleKey: bundleKey ?? "", passageKey: passage.passageKey})
+  const shouldAutoflip = useShouldAutoFlip({
+    bundleKey: bundleKey ?? '',
+    passageKey: passage.passageKey,
+  });
 
   const rotation = useSharedValue(0);
   const [isRotated, setIsRotated] = useState(false);
 
   const rotate = () => {
     rotation.value = rotation.value ? 0 : 1;
-    setIsRotated((r) => !r);
+    setIsRotated(r => !r);
     if (bundleKey) {
-      dispatch(toggleFlippedState({bundleKey, passageKey: passage.passageKey}))
+      dispatch(toggleFlippedState({bundleKey, passageKey: passage.passageKey}));
     }
-  }
+  };
 
   useEffect(() => {
     if (shouldAutoflip) {
       dispatch(acknowledgeAutoflip());
-      setTimeout(rotate, 2000);
+
+      if (passage.analysis) {
+        rotate();
+      }
     }
-  }, [shouldAutoflip])
+  }, [shouldAutoflip]);
 
   const [cardHeight, setCardHeight] = useState(0);
 
-  return <View style={{flex: ignoreFlex ? 0 : 1}}>
-    <LyricCardFront {...props} rotation={rotation} rotate={rotate} setCardHeight={setCardHeight} isVisible={!isRotated}/>
-    {props.passage.analysis && <LyricCardBack {...props} rotation={rotation} rotate={rotate} 
-      cardHeight={cardHeight} isVisible={isRotated}
-      measurementContext={"ANALYSIS_" + props.measurementContext as LyricCardMeasurementContext}
-    />}
-  </View>
+  return (
+    <View style={{flex: ignoreFlex ? 0 : 1}}>
+      <LyricCardFront
+        {...props}
+        rotation={rotation}
+        rotate={rotate}
+        setCardHeight={setCardHeight}
+        isVisible={!isRotated}
+      />
+      {props.passage.analysis && (
+        <LyricCardBack
+          {...props}
+          rotation={rotation}
+          rotate={rotate}
+          cardHeight={cardHeight}
+          isVisible={isRotated}
+          measurementContext={
+            ('ANALYSIS_' +
+              props.measurementContext) as LyricCardMeasurementContext
+          }
+        />
+      )}
+    </View>
+  );
 };
 
-const LyricCardFront = (props: LyricCardProps & {
-  rotation: SharedValue<number>,
-  rotate: () => void,
-  setCardHeight: (h: number) => void,
-  isVisible: boolean,
-}) => {
+const LyricCardFront = (
+  props: LyricCardProps & {
+    rotation: SharedValue<number>;
+    rotate: () => void;
+    setCardHeight: (h: number) => void;
+    isVisible: boolean;
+  },
+) => {
   const {rotation} = props;
 
-  const frontAnimatedStyles = useAnimatedStyle(()=>{
-    const rotateValue = interpolate(rotation.value,[0,1],[0,180])
+  const frontAnimatedStyles = useAnimatedStyle(() => {
+    const rotateValue = interpolate(rotation.value, [0, 1], [0, 180]);
     return {
-      transform:[
-        {
-          rotateY : withTiming(`${rotateValue}deg`,{duration:1000})
-        }
-      ],
-      ...styles.frontCard
-    }
-  })
-
-  return <BareLyricCard {...props} style={frontAnimatedStyles} />
-}
-
-
-const LyricCardBack = (props: LyricCardProps & {
-  rotation: SharedValue<number>,
-  rotate: () => void,
-  cardHeight: number,
-  isVisible: boolean
-}) => {
-  const {rotation, cardHeight} = props;
-
-  const backAnimatedStyles = useAnimatedStyle(()=>{
-    const rotateValue = interpolate(rotation.value,[0,1],[180,360])
-    return{
       transform: [
         {
-          rotateY : withTiming(`${rotateValue}deg`, {duration:1000})
-        }
+          rotateY: withTiming(`${rotateValue}deg`, {duration: 1000}),
+        },
+      ],
+      ...styles.frontCard,
+    };
+  });
+
+  return <BareLyricCard {...props} style={frontAnimatedStyles} />;
+};
+
+const LyricCardBack = (
+  props: LyricCardProps & {
+    rotation: SharedValue<number>;
+    rotate: () => void;
+    cardHeight: number;
+    isVisible: boolean;
+  },
+) => {
+  const {rotation, cardHeight} = props;
+
+  const backAnimatedStyles = useAnimatedStyle(() => {
+    const rotateValue = interpolate(rotation.value, [0, 1], [180, 360]);
+    return {
+      transform: [
+        {
+          rotateY: withTiming(`${rotateValue}deg`, {duration: 1000}),
+        },
       ],
       ...styles.backCard,
-    }
-  })
+    };
+  });
 
   const frontCardContentHeight = useSelector((state: RootState) => {
-    return state.lyricCardMeasurement.maxContentHeight["MAIN_SCREEN"];
+    return state.lyricCardMeasurement.maxContentHeight.MAIN_SCREEN;
   });
-  
+
   return cardHeight && frontCardContentHeight ? (
     <BareLyricCard
       {...props}
@@ -128,18 +164,21 @@ const LyricCardBack = (props: LyricCardProps & {
       cardHeightOverride={cardHeight}
       cardContentHeightOverride={frontCardContentHeight}
       shouldUseAnalysis
-    />) : null;
-}
+    />
+  ) : null;
+};
 
-export const BareLyricCard = (props: LyricCardProps & {
-  rotate?: () => void,
-  setCardHeight?: (h: number) => void,
-  isVisible?: boolean,
-  style?: ViewStyle,
-  cardContentHeightOverride?: number;
-  cardHeightOverride?: number;
-  shouldUseAnalysis?: boolean;
-}) => {
+export const BareLyricCard = (
+  props: LyricCardProps & {
+    rotate?: () => void;
+    setCardHeight?: (h: number) => void;
+    isVisible?: boolean;
+    style?: ViewStyle;
+    cardContentHeightOverride?: number;
+    cardHeightOverride?: number;
+    shouldUseAnalysis?: boolean;
+  },
+) => {
   const {
     passage,
     measurementContext,
@@ -155,6 +194,7 @@ export const BareLyricCard = (props: LyricCardProps & {
     cardHeightOverride,
     cardContentHeightOverride,
     shouldUseAnalysis = false,
+    shouldDisableFlip = false,
   } = props;
 
   const dispatch = useDispatch();
@@ -165,74 +205,95 @@ export const BareLyricCard = (props: LyricCardProps & {
     return state.lyricCardMeasurement.maxContentHeight[measurementContext];
   });
 
-  return <Animated.View style={[style, isVisible ? styles.zIndex1 : {}, ignoreFlex ? {flex: 0} : {flex: 1}]}>
-    <ItemContainer
-      theme={passage.theme}
-      style={{...containerStyle, ...(cardHeightOverride ? {height: cardHeightOverride} : {})}}
-      containerRef={containerRef}
-      ignoreFlex={ignoreFlex}
-      onLayout={(event: LayoutChangeEvent) => {
-        const { height } = event.nativeEvent.layout;
-        setCardHeight(height); 
-      }}
-      omitBorder={omitBorder}>
-      <View
-      // eslint-disable-next-line react-native/no-inline-styles
-      style={{
-        ...styles.container,
-        flex: ignoreFlex ? 0 : 1,
-        paddingBottom: omitActionBar ? undefined : 24,
-      }}>
-      <View
-        onLayout={event => {
-          // share bottom sheet sets this measurement manually
-          if (
-            maxContentHeight == null &&
-            !measurementContext.includes('SHARE_BOTTOM_SHEET')
-          ) {
-            dispatch(
-              setMaxContentHeight({
-                context: measurementContext,
-                value: cardContentHeightOverride ?? event.nativeEvent.layout.height,
-              }),
-            );
-          }
-        }}
-        // eslint-disable-next-line react-native/no-inline-styles
+  return (
+    <Animated.View
+      style={[
+        style,
+        isVisible ? styles.zIndex1 : {},
+        ignoreFlex ? {flex: 0} : {flex: 1},
+      ]}>
+      <ItemContainer
+        theme={passage.theme}
         style={{
-          ...styles.passageContainer,
-          flex: ignoreFlex ? 0 : 1,
-        }}>
-        <SongInfo passage={passage} measurementContext={measurementContext} />
+          ...containerStyle,
+          ...(cardHeightOverride ? {height: cardHeightOverride} : {}),
+        }}
+        containerRef={containerRef}
+        ignoreFlex={ignoreFlex}
+        onLayout={(event: LayoutChangeEvent) => {
+          const {height} = event.nativeEvent.layout;
+          setCardHeight(height);
+        }}
+        omitBorder={omitBorder}>
         <View
           // eslint-disable-next-line react-native/no-inline-styles
           style={{
-            ...styles.passageLyricsContainer,
+            ...styles.container,
             flex: ignoreFlex ? 0 : 1,
+            paddingBottom: omitActionBar ? undefined : 24,
           }}>
-          <PassageLyrics
-            passage={passage}
-            sharedTransitionKey={sharedTransitionKey}
-            measurementContext={measurementContext}
-            containerRef={containerRef}
-            shouldUseAnalysis={shouldUseAnalysis}
-          />
+          <View
+            onLayout={event => {
+              // share bottom sheet sets this measurement manually
+              if (
+                maxContentHeight == null &&
+                !measurementContext.includes('SHARE_BOTTOM_SHEET')
+              ) {
+                dispatch(
+                  setMaxContentHeight({
+                    context: measurementContext,
+                    value:
+                      cardContentHeightOverride ??
+                      event.nativeEvent.layout.height,
+                  }),
+                );
+              }
+            }}
+            // eslint-disable-next-line react-native/no-inline-styles
+            style={{
+              ...styles.passageContainer,
+              flex: ignoreFlex ? 0 : 1,
+            }}>
+            <SongInfo
+              passage={passage}
+              measurementContext={measurementContext}
+              style={
+                measurementContext === 'ANALYSIS_MAIN_SCREEN'
+                  ? {opacity: 0.3, transform: [{scaleX: -1}]}
+                  : {}
+              }
+            />
+            <View
+              // eslint-disable-next-line react-native/no-inline-styles
+              style={{
+                ...styles.passageLyricsContainer,
+                flex: ignoreFlex ? 0 : 1,
+              }}>
+              <PassageLyrics
+                passage={passage}
+                sharedTransitionKey={sharedTransitionKey}
+                measurementContext={measurementContext}
+                containerRef={containerRef}
+                shouldUseAnalysis={shouldUseAnalysis}
+              />
+            </View>
+          </View>
+          {!omitActionBar && (
+            <View style={styles.actionBar}>
+              <ActionBar
+                passage={passage}
+                sharedTransitionKey={sharedTransitionKey}
+                rotate={rotate}
+                shouldUseAnalysis={shouldUseAnalysis}
+                shouldDisableFlip={shouldDisableFlip}
+              />
+            </View>
+          )}
         </View>
-      </View>
-      {!omitActionBar && (
-        <View style={styles.actionBar}>
-          <ActionBar
-            passage={passage}
-            sharedTransitionKey={sharedTransitionKey}
-            rotate={rotate}
-            shouldUseAnalysis={shouldUseAnalysis}
-          />
-        </View>
-      )}
-    </View>
-    </ItemContainer>
-  </Animated.View>
-}
+      </ItemContainer>
+    </Animated.View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -254,18 +315,18 @@ const styles = StyleSheet.create({
   hidden: {
     opacity: 0,
   },
-  frontCard:{
+  frontCard: {
     flex: 1,
-    backfaceVisibility:'hidden'
+    backfaceVisibility: 'hidden',
   },
-  backCard:{
+  backCard: {
     flex: 1,
-    position: "absolute",
-    backfaceVisibility: "hidden",
+    position: 'absolute',
+    backfaceVisibility: 'hidden',
   },
   zIndex1: {
     zIndex: 1,
-  }
+  },
 });
 
 export const FlippableLyricCard = memo(_FlippableLyricCard, (prev, next) => {

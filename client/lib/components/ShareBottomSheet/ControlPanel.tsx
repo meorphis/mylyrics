@@ -33,7 +33,7 @@ import {
 import {useShareablePassage} from '../../utility/redux/shareable_passage/selectors';
 import {trigger as triggerHapticFeedback} from 'react-native-haptic-feedback';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import { useIsFlipped } from '../../utility/redux/card_flip/selectors';
+import {useIsFlipped} from '../../utility/redux/card_flip/selectors';
 
 export const CONTROL_PANEL_HEIGHTS = {
   margin_top: 24,
@@ -64,7 +64,7 @@ const ControlPanel = (props: Props) => {
 
   const isFlipped = useIsFlipped({
     bundleKey: passage.bundleKey,
-    passageKey: passage.passageKey
+    passageKey: passage.passageKey,
   });
 
   const dispatch = useDispatch();
@@ -150,30 +150,32 @@ const ControlPanel = (props: Props) => {
               iconName="color-palette"
               text="edit colors"
             />
-            {!isFlipped && <EditorButton
-              onPress={() => {
-                navigation.navigate('FullLyrics', {
-                  customizablePassage: {
-                    passage,
-                    customization: {
-                      themeSelection,
-                      textColorSelection,
+            {!isFlipped && (
+              <EditorButton
+                onPress={() => {
+                  navigation.navigate('FullLyrics', {
+                    customizablePassage: {
+                      passage,
+                      customization: {
+                        themeSelection,
+                        textColorSelection,
+                      },
                     },
-                  },
-                  lyricCardMeasurementContext: 'SHARE_BOTTOM_SHEET',
-                  lyricsYPositionOffset:
-                    windowHeight -
-                    snapPoint +
-                    BOTTOM_SHEET_HANDLE_HEIGHT -
-                    safeAreaInsets.top,
-                  sharedTransitionKey,
-                  onSelect: 'UPDATE_SHAREABLE',
-                });
-              }}
-              IconClass={MaterialIcon}
-              iconName="expand"
-              text="change lyrics"
-            />}
+                    lyricCardMeasurementContext: 'SHARE_BOTTOM_SHEET',
+                    lyricsYPositionOffset:
+                      windowHeight -
+                      snapPoint +
+                      BOTTOM_SHEET_HANDLE_HEIGHT -
+                      safeAreaInsets.top,
+                    sharedTransitionKey,
+                    onSelect: 'UPDATE_SHAREABLE',
+                  });
+                }}
+                IconClass={MaterialIcon}
+                iconName="expand"
+                text="change lyrics"
+              />
+            )}
           </View>
         </Animated.View>
         <Animated.View style={[styles.themeEditor, themeEditorOpacity]}>

@@ -44,11 +44,9 @@ const maybeUpdateImpressions = async ({
   deviceId: string;
   bundle: BundleType;
 }) => {
-  updateDoc(
-    doc(collection(db, 'user-recommendations'), deviceId),
-    {lastRequestAt: Date.now()}
-  )
-  
+  updateDoc(doc(collection(db, 'user-recommendations'), deviceId), {
+    lastRequestAt: Date.now(),
+  });
 
   if (!['sentiment', 'top'].includes(bundle.info.type)) {
     return;

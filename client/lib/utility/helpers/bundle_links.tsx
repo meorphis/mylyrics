@@ -4,19 +4,23 @@ import db from '../db/firestore';
 import {doc, getDoc} from '@firebase/firestore';
 import {useDispatch} from 'react-redux';
 import {RawPassageType} from '../../types/passage';
-import {addBundles} from '../redux/bundles/slice';
+import {addBundles, setActiveBundlePassage} from '../redux/bundles/slice';
 import {BundlePassageType, BundleType} from '../../types/bundle';
 import {requestBundleChange} from '../redux/requested_bundle_change/slice';
 import {getThemeFromAlbumColors} from './theme';
-import {getPassageId} from './passage';
+import {getPassageId, usePassageHydration} from './passage';
 
 // handler for bundles shared as links; loads the bundle from db, adds it to redux
 // and sets it as the active bundle
 export const useBundleLink = () => {
   const dispatch = useDispatch();
+  const hydratePassages = usePassageHydration();
 
   useEffect(() => {
-    const handleOpenURL = async (event: {url: string}) => {
+    const handleOpenURL = async (event: {
+      url: string;
+      forceBundle?: boolean;
+    }) => {
       const url = event.url;
 
       let bundleKey: string | undefined;
@@ -50,6 +54,9 @@ export const useBundleLink = () => {
         };
       };
       const {passages: rawPassages, creator, title} = data;
+
+      hydratePassages(rawPassages);
+
       const bundle: BundleType = {
         passages: rawPassages.map((p, idx) => ({
           ...p,
@@ -69,14 +76,23 @@ export const useBundleLink = () => {
       };
 
       dispatch(addBundles([bundle]));
-      dispatch(requestBundleChange({bundleKey}));
+
+      if (event.forceBundle) {
+        dispatch(
+          setActiveBundlePassage({
+            bundlePassage: bundle.passages[0],
+          }),
+        );
+      } else {
+        dispatch(requestBundleChange({bundleKey}));
+      }
     };
 
     const linkingEvent = Linking.addEventListener('url', handleOpenURL);
     Linking.getInitialURL()
       .then(url => {
         if (url) {
-          handleOpenURL({url});
+          handleOpenURL({url, forceBundle: true});
         }
       })
       .catch(err => {

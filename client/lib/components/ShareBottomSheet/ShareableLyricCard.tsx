@@ -17,7 +17,8 @@ type Props = {
 const ShareableLyricCard = (props: Props) => {
   console.log(`rendering ShareablePassageItem ${props.passage.song.name}`);
 
-  const {passage, sharedTransitionKey, setHeight, viewShotRef, isFlipped} = props;
+  const {passage, sharedTransitionKey, setHeight, viewShotRef, isFlipped} =
+    props;
 
   return (
     <View
@@ -33,7 +34,9 @@ const ShareableLyricCard = (props: Props) => {
           <BareLyricCard
             key={passage.passageKey}
             passage={passage}
-            measurementContext={isFlipped ? "ANALYSIS_SHARE_BOTTOM_SHEET" : "SHARE_BOTTOM_SHEET"}
+            measurementContext={
+              isFlipped ? 'ANALYSIS_SHARE_BOTTOM_SHEET' : 'SHARE_BOTTOM_SHEET'
+            }
             sharedTransitionKey={sharedTransitionKey}
             omitActionBar
             ignoreFlex

@@ -13,13 +13,13 @@ export type RawPassageType = {
   bundleInfos: BundleInfo[];
   type: RawPassageTypeType;
   analysis?: string;
-}
+};
 
 // has a theme and a passage key, allowing it to be rendered in a LyricCard
 export type PassageType = RawPassageType & {
   theme: ThemeType;
   passageKey: string;
-}
+};
 
 // a passage with some optional customization metadata to alter its rendering
 export type CustomizablePassageType = {

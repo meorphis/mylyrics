@@ -20,6 +20,7 @@ import {AppState} from 'react-native';
 import {usePassageHydration} from '../helpers/passage';
 import {BundlePassageType} from '../../types/bundle';
 import {setTopSentiments} from '../redux/stats/slice';
+import {useIsOnlyUserMadeRequested} from '../redux/requested_bundle_change/selectors';
 
 // returns:
 // - the current status of fetching recommendations from firestore
@@ -214,6 +215,7 @@ export const useRecommendationsRequest = () => {
 const useSetupRecommendations = () => {
   const dispatch = useDispatch();
   const hydratePassages = usePassageHydration();
+  const isOnlyUserMadeRequested = useIsOnlyUserMadeRequested();
 
   const setupRecommendations = async ({
     docSnap,
@@ -239,10 +241,15 @@ const useSetupRecommendations = () => {
 
     await hydratePassages(firstBundle.passages);
 
-    dispatch({type: 'RESET_RECOMMENDATIONS'});
+    if (!isOnlyUserMadeRequested) {
+      dispatch({type: 'RESET_RECOMMENDATIONS'});
+    }
     dispatch(addBundles(bundles));
     dispatch(
-      setActiveBundlePassage(bundles[0].passages[0] as BundlePassageType),
+      setActiveBundlePassage({
+        bundlePassage: bundles[0].passages[0] as BundlePassageType,
+        deferToTypes: ['user_made'],
+      }),
     );
     dispatch(resetProphecyState());
     dispatch(setTopSentiments(data.topSentiments));

@@ -65,7 +65,7 @@ export const refreshUser = async ({
     lastPushedBackRecentPlaysAt,
     dayCount = 1,
     recommendations: oldRecommendations = [],
-    notificationHistory,
+    notificationHistory = [],
     sentimentsUpdatedAt = []
   } = userRecommendations;
 
@@ -212,9 +212,9 @@ export const refreshUser = async ({
   );
 
   const analyses = await Promise.all([
-    computeAnalysis({passages: [newUnanalyzedRecommendations[0]], model: "gpt-4-turbo-preview"}),
+    computeAnalysis({passages: [newUnanalyzedRecommendations[0]], model: "gpt-4o"}),
     ...newUnanalyzedRecommendations.slice(1).map((r) => 
-      computeAnalysis({passages: [r], model: "gpt-4-turbo-preview"})
+      computeAnalysis({passages: [r], model: "gpt-4o"})
     )
   ]);
 
@@ -228,10 +228,10 @@ export const refreshUser = async ({
   const recommendations = [
     ...newRecommendations,
     ...oldRecommendations
-      // remove old matches for these sentiment
-      .filter((r: Recommendation) => !(recommendationSentiments && r.bundleInfos.some(
-        (r) => recommendationSentiments.includes(r.key) )
-      ))
+      // remove old matches for these sentiments
+      .filter((r: Recommendation) => !(
+        recommendationSentiments && recommendationSentiments.includes(r.bundleInfos[0].key))
+      )
       // remove old matches for this artist
       .filter((r: Recommendation) => !(featuredArtist && r.bundleInfos.some((b) => b.type === "artist")))
       // remove duplicate songs

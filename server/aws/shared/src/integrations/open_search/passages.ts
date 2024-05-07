@@ -169,7 +169,7 @@ export const getDailyPassageRecommendations = async (
           ...primaryResultChoice,
           type: "sentiment",
         }, ...searchResults],
-        getBundleInfos: getSentimentBundleInfos,
+        getBundleInfos: (passage) => getSentimentBundleInfos(passage, {primarySentiment: sentimentChoice}),
       }),
       recommendationSentiments: sentimentChoices,
       featuredArtist: null,
@@ -364,8 +364,20 @@ export const lookupPassage = async (
       "query": {
         "bool": {
           "filter": [
-            {"match": {"name": songName}},
-            {"match": {"primaryArtist.name": artistName}},
+            {
+              "match_phrase": {
+                "name": {
+                  "query": songName
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "primaryArtist.name": {
+                  "query": artistName
+                }
+              }
+            },
           ]
         }
       },
@@ -751,14 +763,14 @@ const getSearchResultsForTopPassages = async (
       "query": {
         "function_score": {
           ...(
-            excludeArtistName ? {"query": {
+            excludeArtistName || excludeSongIds ? {"query": {
               "bool": {
                 "must_not": [
-                  {
+                  ...(excludeArtistName ? [{
                     "match": {
                       "primaryArtist.name": excludeArtistName
                     }
-                  },
+                  }] : []),
                   ...(excludeSongIds ? [{"ids": {"values": excludeSongIds}}] : []),
                 ]
               }
@@ -1316,14 +1328,20 @@ const singleWeightedRandomChoice = <T>(items: T[], weights: number[]): T => {
   return items[i];
 }
 
-const getSentimentBundleInfos = (passage: LabeledPassage): BundleInfo[] => {
-  return passage.sentiments.map((sentiment) => {
-    return {
-      type: "sentiment",
-      key: sentiment,
-      sentiment,
-      group: SENTIMENT_TO_GROUP[sentiment],
-      value: getSentimentValue(sentiment),
-    } as BundleInfo
+const getSentimentBundleInfos = (passage: LabeledPassage, opts?: {primarySentiment?: string}): BundleInfo[] => {
+  return passage.sentiments.map((sentiment) => ({
+    type: "sentiment",
+    key: sentiment,
+    sentiment,
+    group: SENTIMENT_TO_GROUP[sentiment],
+    value: getSentimentValue(sentiment),
+  } as BundleInfo)).sort((a, b) => {
+    if (a.key === opts?.primarySentiment) {
+      return -1
+    } else if (b.key === opts?.primarySentiment) {
+      return 1
+    } else {
+      return 0
+    }
   })
 }
