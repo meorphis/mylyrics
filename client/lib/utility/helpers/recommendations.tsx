@@ -71,15 +71,25 @@ export const getBundlesFromFlatPassages = async (
   // avoid having the same artist back to back in the sentiment bundle
   bundles
     .filter(({info}) => info.type === 'sentiment')
-    .forEach(bundle => {
-      reorderPassages(bundle.passages, passage => passage.song.artists[0].name);
+    .forEach((bundle, i) => {
+      reorderPassages(
+        bundle.passages,
+        passage => passage.song.artists[0].name,
+        // for the first bundle, keep the first passage first
+        i === 0,
+      );
     });
 
   // avoid having the same album back to back in the artist bundles
   bundles
     .filter(({info}) => info.type === 'artist')
-    .forEach(bundle => {
-      reorderPassages(bundle.passages, passage => passage.song.album.name);
+    .forEach((bundle, i) => {
+      reorderPassages(
+        bundle.passages,
+        passage => passage.song.album.name,
+        // for the first bundle, keep the first passage first
+        i === 0,
+      );
     });
 
   return bundles;
@@ -91,6 +101,7 @@ export const getBundlesFromFlatPassages = async (
 const reorderPassages = (
   passages: RawPassageType[],
   getKey: (passage: RawPassageType) => string,
+  keepFirstPassageFirst: boolean,
 ) => {
   const keyToPassages = Object.entries(
     passages.reduce(
@@ -104,7 +115,18 @@ const reorderPassages = (
       },
       {} as {[key: string]: RawPassageType[]},
     ),
-  ).sort(([, passagesA], [, passagesB]) => passagesB.length - passagesA.length);
+  ).sort(([, passagesA], [, passagesB]) => {
+    // make sure the first passage (the one contained in the notification) remains first
+    if (keepFirstPassageFirst && passagesA[0].song === passages[0].song) {
+      return -1;
+    }
+
+    if (keepFirstPassageFirst && passagesB[0].song === passages[0].song) {
+      return 1;
+    }
+
+    return passagesB.length - passagesA.length;
+  });
   const usedIndexes = new Set<number>();
   const indexToPassage = {} as {[index: number]: RawPassageType};
 
